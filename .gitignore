@@ -1,0 +1,7 @@
+vault.db
+vault.db.*
+vault-token.key
+vault-tokens.json
+shared-token-vault.json
+vault.log
+bin/
