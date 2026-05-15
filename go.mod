@@ -1,6 +1,6 @@
 module github.com/olelbis/myminivault
 
-go 1.23.4
+go 1.26
 
 require (
 	golang.org/x/crypto v0.40.0
