@@ -397,6 +397,14 @@ The vault currently uses:
 
 ## Development
 
+Use `main` as the stable base branch. Create a focused branch for each backlog item:
+
+```bash
+git switch main
+git pull
+git switch -c codex/cli-smoke-tests
+```
+
 Run all package checks:
 
 ```bash
@@ -449,4 +457,3 @@ Recommended follow-up tasks:
 - create token runtime files only when token functionality is used
 - validate `vault-config.json`
 - add unit tests for crypto roundtrip, token signing, key validation, pattern matching, and import parsing
-
