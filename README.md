@@ -1,0 +1,452 @@
+# myminivault
+
+`myminivault` is a local command-line vault written in Go. It stores key/value secrets in an encrypted vault file, supports password recovery, temporary access tokens, backup/import/export utilities, and basic security auditing.
+
+The main CLI lives in `cmd/vault`.
+
+## Current Status
+
+The vault command has been split from a monolithic source file into focused files under `cmd/vault` while keeping the package as `main`.
+
+The current implementation supports the full CLI flow, but the project should still be treated as a local/personal vault rather than a hardened production password manager. Some areas, especially recovery and cross-process locking, are marked in this README as operational notes.
+
+## Build
+
+Build the CLI from the repository root:
+
+```bash
+go build -o bin/vault ./cmd/vault
+```
+
+Run it:
+
+```bash
+./bin/vault help
+```
+
+For development, you can also run it directly:
+
+```bash
+go run ./cmd/vault help
+```
+
+## Files Created At Runtime
+
+The CLI stores runtime files in the current working directory where the command is executed.
+
+| File | Purpose |
+| --- | --- |
+| `vault.db` | Main encrypted vault |
+| `vault.db.bak` | Backup of previous main vault version |
+| `vault.db.recovery` | Recovery-encrypted vault copy, when recovery is configured |
+| `vault-token.key` | Local token master key |
+| `shared-token-vault.json` | Encrypted shared vault used by token access |
+| `vault-tokens.json` | Token registry metadata |
+| `vault.log` | Audit log |
+| `vault-config.json` | Optional config override |
+
+These files are ignored by Git because they may contain encrypted secrets, keys, logs, or local runtime state.
+
+## Password Model
+
+Most commands ask for the master password. If the vault does not exist yet, entering a new password creates it.
+
+Example:
+
+```bash
+./bin/vault set API_KEY secret-value
+```
+
+The CLI prompts:
+
+```text
+Password:
+```
+
+Use the same password for later commands.
+
+## Basic Commands
+
+### Set A Secret
+
+```bash
+./bin/vault set API_KEY secret-value
+```
+
+Stores a key/value pair in the encrypted vault.
+
+Keys must:
+
+- not be empty
+- be at most 255 characters
+- not contain spaces, quotes, backslashes, `=`, `:`, `;`, or `,`
+
+### Get A Secret
+
+```bash
+./bin/vault get API_KEY
+```
+
+Prints the stored value for the key.
+
+### Delete A Secret
+
+```bash
+./bin/vault delete API_KEY
+```
+
+Deletes a key from the main vault and mirrors the updated main vault to the shared token vault.
+
+### List Keys
+
+```bash
+./bin/vault list
+```
+
+Lists key names only. Values are not printed.
+
+### Search Keys
+
+```bash
+./bin/vault search API
+```
+
+Searches keys by case-insensitive substring and prints matching key/value pairs.
+
+### Clear Vault
+
+```bash
+./bin/vault clear
+```
+
+Deletes all entries after confirmation.
+
+### Stats
+
+```bash
+./bin/vault stats
+```
+
+Shows vault metadata:
+
+- number of keys
+- vault version
+- created timestamp
+- access count
+- last access timestamp
+- recovery status
+- token summary
+
+## Import And Export
+
+### Export
+
+```bash
+./bin/vault export
+```
+
+Prints entries as shell-style `export KEY="value"` lines.
+
+Operational note: export output is currently simple and does not fully shell-escape complex values containing quotes, variable expansion characters, or newlines.
+
+### Import
+
+```bash
+./bin/vault import secrets.env
+```
+
+Imports lines in either format:
+
+```text
+API_KEY=secret-value
+export API_KEY="secret-value"
+```
+
+Blank lines and lines starting with `#` are ignored.
+
+## Backup
+
+Create a timestamped backup of `vault.db`:
+
+```bash
+./bin/vault backup
+```
+
+The backup filename looks like:
+
+```text
+vault.db.2026-05-15_22-30-00.bak
+```
+
+The normal save path also keeps `vault.db.bak` as the previous version of the vault. The loader uses `vault.db.bak` only when `vault.db` is missing, not as a fallback for wrong passwords.
+
+## Password Recovery
+
+### Setup Recovery
+
+```bash
+./bin/vault setup-recovery
+```
+
+Generates a recovery key and asks you to retype it to confirm that you saved it.
+
+### Test Recovery
+
+```bash
+./bin/vault test-recovery
+```
+
+Checks whether a recovery key matches the configured recovery data.
+
+### Recover Master Password
+
+```bash
+./bin/vault recover
+```
+
+Uses the recovery key to decrypt the recovery vault copy and set a new master password.
+
+### Change Master Password
+
+```bash
+./bin/vault change-password
+```
+
+Prompts for the current master password first, then asks for the new password and confirmation.
+
+Operational note: recovery exists, but it should be revisited before relying on it heavily. The current recovery key generation is convenient but weaker than a modern high-entropy recovery secret, and the recovery file update behavior should be part of future hardening work.
+
+## Token System
+
+The token system creates temporary signed tokens that can access only matching keys and only with selected permissions.
+
+Token access uses:
+
+- a compact signed token string
+- token expiration time
+- max-use limits
+- key pattern restrictions
+- read/write permissions
+- encrypted shared token vault
+
+### Create Token
+
+```bash
+./bin/vault create-token --keys="API_*" --duration="2h" --permissions="read" --max-uses=20
+```
+
+Arguments:
+
+| Option | Required | Description |
+| --- | --- | --- |
+| `--keys=<pattern>` | Yes | Key pattern. `*` is supported as a wildcard |
+| `--duration=<duration>` | Yes | Go duration such as `30m`, `2h`, `24h` |
+| `--permissions=read,write` | No | Defaults to `read` |
+| `--max-uses=N` | No | Defaults to `100` |
+
+Maximum token duration is 24 hours.
+
+Examples:
+
+```bash
+./bin/vault create-token --keys="API_*" --duration="2h" --permissions="read"
+./bin/vault create-token --keys="*" --duration="1h" --permissions="read,write" --max-uses=50
+```
+
+### Use Token To Read
+
+```bash
+./bin/vault use-token <token> get API_KEY
+```
+
+### Use Token To Write
+
+```bash
+./bin/vault use-token <token> set API_KEY new-value
+```
+
+Requires a token with `write` permission and a matching key pattern.
+
+### Use Token To List Accessible Keys
+
+```bash
+./bin/vault use-token <token> list
+```
+
+### Use Token To Search
+
+```bash
+./bin/vault use-token <token> search API
+```
+
+### List Tokens
+
+```bash
+./bin/vault list-tokens
+```
+
+Shows active, expired, and used-up token status.
+
+### Token Info
+
+```bash
+./bin/vault token-info <token-id>
+```
+
+Prints token details:
+
+- ID
+- key pattern
+- permissions
+- creation time
+- expiration time
+- usage count
+- status
+
+### Revoke Token
+
+```bash
+./bin/vault revoke-token <token-id>
+```
+
+Removes a token from the vault.
+
+### Cleanup Tokens
+
+```bash
+./bin/vault cleanup-tokens
+```
+
+Removes expired or fully used tokens.
+
+### Regenerate Token Key
+
+```bash
+./bin/vault regenerate-token-key
+```
+
+Generates a new token master key. This invalidates all existing tokens.
+
+## Synchronization
+
+The CLI keeps a main vault and a shared token vault:
+
+- `vault.db` is the main password-protected vault
+- `shared-token-vault.json` is an encrypted shared vault used for token commands
+
+Commands that mutate the main vault, such as `set`, `delete`, `clear`, and `import`, mirror the main vault back to the shared token vault after saving.
+
+Token write operations save immediately to the shared token vault. The main vault synchronizes token-side changes at startup or when running:
+
+```bash
+./bin/vault sync-tokens
+```
+
+Operational note: synchronization is designed for normal sequential CLI use. The current in-process mutex does not protect against two separate CLI processes writing at exactly the same time. File locking is a recommended future improvement.
+
+## Security Audit
+
+```bash
+./bin/vault security-audit
+```
+
+Reports:
+
+- recovery status
+- active/expired token counts
+- token master key presence
+- vault key count and access count
+- vault version
+- last access time
+- main vault file status
+- recovery file status
+- shared token vault status
+
+## Configuration
+
+Show current config:
+
+```bash
+./bin/vault config
+```
+
+Default values:
+
+| Setting | Default |
+| --- | --- |
+| `scrypt_n` | `32768` |
+| `scrypt_r` | `8` |
+| `scrypt_p` | `1` |
+| `key_size` | `32` |
+| `max_backups` | `5` |
+
+The program can load `vault-config.json` from the current working directory.
+
+Operational note: config editing/validation is minimal today. Invalid or unsafe config values should be guarded by future validation.
+
+## Cryptography
+
+The vault currently uses:
+
+- AES-GCM for authenticated encryption
+- scrypt for key derivation
+- SHA-256 checksums over serialized vault data
+- HMAC-SHA256 for token signatures
+- random salt per vault encryption
+- random nonce per AES-GCM encryption
+
+## Development
+
+Run all package checks:
+
+```bash
+go test ./...
+```
+
+Build the vault command:
+
+```bash
+go build -o bin/vault ./cmd/vault
+```
+
+Suggested isolated smoke-test pattern:
+
+```bash
+tmpdir=$(mktemp -d /tmp/myminivault-smoke-XXXXXX)
+go build -o "$tmpdir/vault" ./cmd/vault
+cd "$tmpdir"
+printf 'oldpass\n' | ./vault set TEST_KEY hello
+printf 'oldpass\n' | ./vault get TEST_KEY
+```
+
+## Project Layout
+
+```text
+cmd/
+  vault/
+    main.go       CLI dispatch and top-level command flow
+    commands.go   basic key/value commands, import/export, stats
+    config.go     config loading/display
+    crypto.go     encryption, decryption, random bytes, key derivation
+    recovery.go   recovery key and password change flows
+    storage.go    main vault load/save
+    sync.go       main/shared vault synchronization
+    token.go      token creation, validation, token commands
+    types.go      shared data structures
+  splitter/
+    splitter.go   legacy helper for splitting older monolithic sources
+```
+
+## Recommended Next Hardening Work
+
+Recommended follow-up tasks:
+
+- add automated smoke tests for the CLI
+- strengthen recovery key generation
+- make recovery file updates explicit and reliable
+- add file locking for cross-process writes
+- make `export` shell-safe
+- create token runtime files only when token functionality is used
+- validate `vault-config.json`
+- add unit tests for crypto roundtrip, token signing, key validation, pattern matching, and import parsing
+
