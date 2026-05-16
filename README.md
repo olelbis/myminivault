@@ -132,9 +132,13 @@ The CLI stores runtime files in the current working directory where the command 
 
 ## Versioning
 
-Application releases use Git tags such as `v0.3.0` and are documented in `CHANGELOG.md`.
+`myminivault` uses `v0.x.y` releases while the CLI is still evolving.
 
-The CLI-visible version is kept in sync with the current release tag. When the vault file format changes, the version should be updated together with migration notes in the changelog.
+Each release is published as a Git tag and a GitHub Release, with notes recorded in `CHANGELOG.md`. Release assets currently include Linux and macOS archives plus SHA-256 checksum files.
+
+The CLI-visible version is kept in sync with the current release tag. Patch releases are used for documentation, tests, packaging, fixes, and small refactors. Minor releases are reserved for user-facing behavior changes or larger security/compatibility work.
+
+If the vault file format changes, the release notes should include migration guidance and any compatibility limits.
 
 ## License
 
