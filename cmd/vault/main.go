@@ -205,7 +205,7 @@ func showUsage() {
 }
 
 func showHelp() {
-	fmt.Println(`🔐 Enterprise Mini Vault CLI v2.0 - Production Ready & Synchronized
+	fmt.Println(`🔐 myminivault CLI v0.1.0
 
 BASIC COMMANDS:
   set <key> <value>     Set a key-value pair

@@ -4,6 +4,12 @@
 
 The main CLI lives in `cmd/vault`.
 
+## Versioning
+
+Application releases use Git tags such as `v0.1.0` and are documented in `CHANGELOG.md`.
+
+The CLI-visible version is kept in sync with the current release tag. When the vault file format changes, the version should be updated together with migration notes in the changelog.
+
 ## Current Status
 
 The vault command has been split from a monolithic source file into focused files under `cmd/vault` while keeping the package as `main`.

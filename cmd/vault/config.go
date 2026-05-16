@@ -33,7 +33,7 @@ const (
 	tokenKeyFile     = "vault-token.key"
 	sharedTokenVault = "shared-token-vault.json" // ⭐ VAULT CONDIVISO
 	saltSize         = 16
-	vaultVersion     = "2.0.0"
+	vaultVersion     = "0.1.0"
 )
 
 func showConfig() {

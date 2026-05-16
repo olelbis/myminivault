@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Last committed main milestone: `16b3727 Clarify token sync policy`
+- Current baseline release: `v0.1.0`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -38,6 +38,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Added smoke coverage for automatic token-write import by master-password commands.
 - Removed the legacy `cmd/splitter` helper after the monolith split was complete.
 - Made `export` output shell-safe with POSIX single-quote escaping and added smoke/unit coverage.
+- Added `CHANGELOG.md` and adopted Git release tags such as `v0.1.0`, kept in sync with the CLI-visible version.
 
 ## Current Verification
 
@@ -76,6 +77,18 @@ cmd/
 ```
 
 ## Next Recommended Steps
+
+### 0. Versioning And Changelog
+
+Status: baseline changelog added for `v0.1.0`.
+
+Guidelines:
+
+- use `v0.x.y` while the CLI is still evolving quickly
+- patch releases (`v0.1.1`) for small fixes
+- minor releases (`v0.2.0`) for backlog items that add or change behavior
+- document every merged branch in `CHANGELOG.md`
+- keep the CLI-visible version in sync with the current release tag
 
 ### 1. Extend Automated CLI Smoke Tests
 
