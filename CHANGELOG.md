@@ -1,6 +1,13 @@
 # Changelog
 
-All notable project changes are recorded here. Application releases use Git tags such as `v0.1.4`, and the CLI-visible version is kept in sync with the current release tag.
+All notable project changes are recorded here. Application releases use Git tags such as `v0.1.5`, and the CLI-visible version is kept in sync with the current release tag.
+
+## [v0.1.5] - 2026-05-16
+
+### Changed
+
+- Moved core crypto helpers into `internal/crypto`.
+- Added concise English comments around crypto boundaries and ciphertext layout.
 
 ## [v0.1.4] - 2026-05-16
 

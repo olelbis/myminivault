@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.1.4`
+- Current baseline release: `v0.1.5`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -40,6 +40,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Made `export` output shell-safe with POSIX single-quote escaping and added smoke/unit coverage.
 - Added `CHANGELOG.md` and adopted Git release tags such as `v0.1.0`, kept in sync with the CLI-visible version.
 - Added core unit coverage for crypto, token helpers, key validation, and import parsing.
+- Moved crypto helpers into `internal/crypto` with focused English comments.
 
 ## Current Verification
 
@@ -75,6 +76,9 @@ cmd/
     sync.go       main/shared vault synchronization
     token.go      token creation, validation, token commands
     types.go      shared data structures
+internal/
+  crypto/
+    crypto.go     key derivation, encryption, decryption, secure random bytes
 ```
 
 ## Next Recommended Steps
@@ -248,13 +252,12 @@ The current split keeps everything in package `main`, which was intentionally co
 
 Later, move stable areas into packages:
 
-- `internal/crypto`
 - `internal/storage`
 - `internal/token`
 - `internal/recovery`
 - `internal/config`
 
-Do this only after smoke tests exist. During the refactor, add concise English comments for non-obvious invariants and flows, especially around encryption boundaries, recovery, token validation, shared-vault sync, and file locking.
+`internal/crypto` has already been extracted. Continue only with well-covered areas. During the refactor, add concise English comments for non-obvious invariants and flows, especially around recovery, token validation, shared-vault sync, and file locking.
 
 Suggested branch:
 

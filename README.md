@@ -6,7 +6,7 @@ The main CLI lives in `cmd/vault`.
 
 ## Versioning
 
-Application releases use Git tags such as `v0.1.4` and are documented in `CHANGELOG.md`.
+Application releases use Git tags such as `v0.1.5` and are documented in `CHANGELOG.md`.
 
 The CLI-visible version is kept in sync with the current release tag. When the vault file format changes, the version should be updated together with migration notes in the changelog.
 
@@ -465,6 +465,9 @@ cmd/
     sync.go       main/shared vault synchronization
     token.go      token creation, validation, token commands
     types.go      shared data structures
+internal/
+  crypto/
+    crypto.go     key derivation, encryption, decryption, secure random bytes
 ```
 
 ## Recommended Next Hardening Work
@@ -472,4 +475,4 @@ cmd/
 Recommended follow-up tasks:
 
 - extend automated smoke tests for `change-password`
-- prepare package refactor toward `internal/...`
+- continue package refactor toward `internal/config`, `internal/storage`, `internal/recovery`, and `internal/token`
