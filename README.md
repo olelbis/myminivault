@@ -6,7 +6,7 @@ The main CLI lives in `cmd/vault`.
 
 ## Versioning
 
-Application releases use Git tags such as `v0.1.3` and are documented in `CHANGELOG.md`.
+Application releases use Git tags such as `v0.1.4` and are documented in `CHANGELOG.md`.
 
 The CLI-visible version is kept in sync with the current release tag. When the vault file format changes, the version should be updated together with migration notes in the changelog.
 
@@ -472,4 +472,4 @@ cmd/
 Recommended follow-up tasks:
 
 - extend automated smoke tests for `change-password`
-- add unit tests for crypto roundtrip, token signing, key validation, pattern matching, and import parsing
+- prepare package refactor toward `internal/...`

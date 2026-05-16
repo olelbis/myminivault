@@ -1,6 +1,14 @@
 # Changelog
 
-All notable project changes are recorded here. Application releases use Git tags such as `v0.1.3`, and the CLI-visible version is kept in sync with the current release tag.
+All notable project changes are recorded here. Application releases use Git tags such as `v0.1.4`, and the CLI-visible version is kept in sync with the current release tag.
+
+## [v0.1.4] - 2026-05-16
+
+### Added
+
+- Added unit tests for crypto roundtrip and decrypt failure cases.
+- Added unit tests for token pattern matching, token signing, and permission helper behavior.
+- Added unit tests for key validation and import parsing.
 
 ## [v0.1.3] - 2026-05-16
 

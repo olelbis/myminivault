@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.1.3`
+- Current baseline release: `v0.1.4`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -39,6 +39,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Removed the legacy `cmd/splitter` helper after the monolith split was complete.
 - Made `export` output shell-safe with POSIX single-quote escaping and added smoke/unit coverage.
 - Added `CHANGELOG.md` and adopted Git release tags such as `v0.1.0`, kept in sync with the CLI-visible version.
+- Added core unit coverage for crypto, token helpers, key validation, and import parsing.
 
 ## Current Verification
 
