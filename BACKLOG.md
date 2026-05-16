@@ -29,6 +29,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Fast-forwarded `main` to the completed split/fix/docs state and pushed it to GitHub.
 - Added inter-process file locking via `.myminivault.lock`.
 - Merged and deleted completed task branches: `codex/split-monolith` and `codex/file-locking`.
+- Added automated CLI smoke tests for basic vault commands, wrong-password rejection, and token read/write flows.
 
 ## Current Verification
 
@@ -70,29 +71,32 @@ cmd/
 
 ## Next Recommended Steps
 
-### 1. Add Automated CLI Smoke Tests
+### 1. Extend Automated CLI Smoke Tests
 
-Create a repeatable test script or Go integration test that runs in a temporary directory and checks:
+Automated smoke tests now cover:
 
 - `set`
 - `get`
 - `delete`
 - `list`
 - `backup`
-- `change-password`
 - wrong password rejection
 - token creation
 - token `get`
 - token `set`
 
-Keep all runtime files inside a temporary directory.
+Remaining coverage to add:
+
+- `change-password` through a pseudo-terminal or refactored testable input path
+- recovery setup/test/recover flow after recovery hardening
+- concurrent command smoke test for `.myminivault.lock`
 
 Suggested branch:
 
 ```bash
 git switch main
 git pull
-git switch -c codex/cli-smoke-tests
+git switch -c codex/cli-smoke-tests-extended
 ```
 
 ### 2. Hardening: Recovery
