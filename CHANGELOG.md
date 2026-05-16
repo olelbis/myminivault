@@ -2,6 +2,17 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.3.1] - 2026-05-17
+
+### Added
+
+- Added GitHub Actions CI for formatting, `go vet`, and `go test ./...`.
+- Added a real CI badge, Go Report Card badge, and Go Reference badge to the README.
+
+### Changed
+
+- Added focused Go doc comments for exported internal package types and functions.
+
 ## [v0.3.0] - 2026-05-16
 
 ### Added

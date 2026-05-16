@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.3.0`
+- Current baseline release: `v0.3.1`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -15,13 +15,14 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `8.0 / 10`.
+Current assessment score: `8.1 / 10`.
 
-`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
+`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
 Main strengths:
 
 - release discipline with Git tags, GitHub releases, and a changelog
+- GitHub CI for formatting, vetting, and automated tests
 - focused `internal/...` packages for crypto, config, model, recovery, storage, and token logic
 - automated CLI smoke coverage for critical workflows
 - explicit handling for recovery, token sync, locking, backups, export, and password changes
@@ -78,6 +79,8 @@ Strategic guidance:
 - Moved recovery key generation, validation, recovery vault decryption, and recovery file writes into `internal/recovery`.
 - Renamed `cmd/vault` CLI wrapper files so they are easier to distinguish from similarly named `internal/...` packages.
 - Added MIT license, README badges, and a project-local pixel art vault image.
+- Added GitHub Actions CI for `gofmt`, `go vet`, and `go test ./...`.
+- Added focused Go doc comments for exported internal package identifiers.
 - Split documentation into a concise README, `docs/user-manual.md`, and `docs/development.md`.
 - Added terminal-style SVG screenshots for quick start, token, and recovery workflows.
 - Expanded `docs/development.md` with practical test commands for full, package, focused, verbose, cached, and manual smoke-test runs.

@@ -23,6 +23,8 @@ type AccessToken struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
+// TokenManager stores token access grants and the signing key used to verify
+// compact token strings. It lives inside the encrypted shared token vault.
 type TokenManager struct {
 	Tokens    map[string]AccessToken `json:"tokens"`
 	SecretKey []byte                 `json:"secret_key"`
@@ -38,11 +40,15 @@ type ExtendedVault struct {
 	Metadata     VaultMetadata     `json:"metadata"`
 }
 
+// SyncMetadata tracks local best-effort update and deletion timestamps used
+// when reconciling the main vault with the shared token vault.
 type SyncMetadata struct {
 	UpdatedAt map[string]time.Time `json:"updated_at,omitempty"`
 	DeletedAt map[string]time.Time `json:"deleted_at,omitempty"`
 }
 
+// VaultMetadata records basic schema and usage information for the encrypted
+// vault payload.
 type VaultMetadata struct {
 	Version     string    `json:"version"`
 	CreatedAt   time.Time `json:"created_at"`
@@ -50,6 +56,8 @@ type VaultMetadata struct {
 	AccessCount int       `json:"access_count"`
 }
 
+// TokenRegistry maps token IDs to their shared vault location without storing
+// token secrets or decrypted vault data.
 type TokenRegistry struct {
 	VaultPath       string            `json:"vault_path"`
 	SharedVaultPath string            `json:"shared_vault_path"`

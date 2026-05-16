@@ -7,8 +7,11 @@ import (
 	"os"
 )
 
+// FileName is the local optional configuration file read from the current
+// working directory.
 const FileName = "vault-config.json"
 
+// Config contains user-tunable runtime and encryption settings.
 type Config struct {
 	ScryptN    int  `json:"scrypt_n"`
 	ScryptR    int  `json:"scrypt_r"`
@@ -18,6 +21,7 @@ type Config struct {
 	AuditLog   bool `json:"audit_log"`
 }
 
+// Default is the baseline configuration used when vault-config.json is absent.
 var Default = Config{
 	ScryptN:    32768,
 	ScryptR:    8,
@@ -54,6 +58,8 @@ func Load() (Config, error) {
 	return nextConfig, nil
 }
 
+// Validate rejects malformed or unsafe configuration values before they can be
+// used for encryption or runtime behavior.
 func Validate(cfg Config) error {
 	if cfg.ScryptN < 32768 || cfg.ScryptN > 1048576 || !IsPowerOfTwo(cfg.ScryptN) {
 		return errors.New("scrypt_n must be a power of two between 32768 and 1048576")
@@ -73,6 +79,7 @@ func Validate(cfg Config) error {
 	return nil
 }
 
+// IsPowerOfTwo reports whether value is a positive power of two.
 func IsPowerOfTwo(value int) bool {
 	return value > 0 && value&(value-1) == 0
 }

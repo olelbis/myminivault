@@ -18,6 +18,8 @@ import (
 	"github.com/olelbis/myminivault/internal/model"
 )
 
+// Options groups the files, crypto parameters, and optional key provider used
+// by token vault operations.
 type Options struct {
 	TokenKeyFile string
 	SaltSize     int
@@ -25,6 +27,7 @@ type Options struct {
 	MasterKey    func() ([]byte, error)
 }
 
+// LoadMasterKey reads the local token master key and validates its size.
 func LoadMasterKey(tokenKeyFile string) ([]byte, error) {
 	if _, err := os.Stat(tokenKeyFile); err != nil {
 		return nil, err
@@ -42,10 +45,13 @@ func LoadMasterKey(tokenKeyFile string) ([]byte, error) {
 	return key, nil
 }
 
+// SaveMasterKey writes the local token master key with owner-only permissions.
 func SaveMasterKey(tokenKeyFile string, key []byte) error {
 	return os.WriteFile(tokenKeyFile, key, 0600)
 }
 
+// LoadRegistry reads token registry metadata or returns an empty registry when
+// the registry file has not been created yet.
 func LoadRegistry(tokenRegistry, vaultFile, sharedTokenVault string) (*model.TokenRegistry, error) {
 	if _, err := os.Stat(tokenRegistry); err != nil {
 		return &model.TokenRegistry{
@@ -68,6 +74,7 @@ func LoadRegistry(tokenRegistry, vaultFile, sharedTokenVault string) (*model.Tok
 	return &registry, nil
 }
 
+// SaveRegistry persists token registry metadata without token secrets.
 func SaveRegistry(tokenRegistry string, registry *model.TokenRegistry) error {
 	data, err := json.MarshalIndent(registry, "", "  ")
 	if err != nil {
@@ -77,6 +84,7 @@ func SaveRegistry(tokenRegistry string, registry *model.TokenRegistry) error {
 	return os.WriteFile(tokenRegistry, data, 0600)
 }
 
+// SaveEncryptedVault encrypts and atomically stores the shared token vault.
 func SaveEncryptedVault(vault *model.ExtendedVault, tokenVaultPath string, opts Options) error {
 	serialized, err := json.MarshalIndent(vault, "", "  ")
 	if err != nil {
@@ -105,6 +113,7 @@ func SaveEncryptedVault(vault *model.ExtendedVault, tokenVaultPath string, opts 
 	return SaveVaultFileAtomic(tokenVaultPath, salt, ciphertext)
 }
 
+// LoadEncryptedVault decrypts and parses the shared token vault.
 func LoadEncryptedVault(tokenFilePath string, opts Options) (*model.ExtendedVault, error) {
 	f, err := os.Open(tokenFilePath)
 	if err != nil {
@@ -150,6 +159,8 @@ func LoadEncryptedVault(tokenFilePath string, opts Options) (*model.ExtendedVaul
 	return &vault, nil
 }
 
+// SaveVaultFileAtomic writes token vault data through a temporary file and
+// renames it into place.
 func SaveVaultFileAtomic(tokenVaultPath string, salt, data []byte) error {
 	tempFile := tokenVaultPath + ".tmp"
 	f, err := os.OpenFile(tempFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
@@ -185,6 +196,7 @@ func SaveVaultFileAtomic(tokenVaultPath string, salt, data []byte) error {
 	return os.Chmod(tokenVaultPath, 0600)
 }
 
+// GetOrCreateMasterKey loads the token master key or creates one when absent.
 func GetOrCreateMasterKey(opts Options) ([]byte, error) {
 	if key, err := LoadMasterKey(opts.TokenKeyFile); err == nil {
 		return key, nil
@@ -206,6 +218,7 @@ func masterKey(opts Options) ([]byte, error) {
 	return GetOrCreateMasterKey(opts)
 }
 
+// StripChecksum verifies and removes the checksum prefix from token vault data.
 func StripChecksum(decrypted []byte) ([]byte, error) {
 	if len(decrypted) <= sha256.Size {
 		return nil, errors.New("data too short")
@@ -222,6 +235,8 @@ func StripChecksum(decrypted []byte) ([]byte, error) {
 	return data, nil
 }
 
+// ParseAndValidateProductionToken verifies a compact token, loads the shared
+// vault it grants access to, and persists the incremented usage count.
 func ParseAndValidateProductionToken(tokenStr, sharedTokenVault string, opts Options) (model.AccessToken, *model.ExtendedVault, error) {
 	tokenStr = AddBase64Padding(tokenStr)
 
@@ -285,6 +300,7 @@ func ParseAndValidateProductionToken(tokenStr, sharedTokenVault string, opts Opt
 	return storedToken, vault, nil
 }
 
+// AddBase64Padding restores omitted base64 padding in compact token strings.
 func AddBase64Padding(s string) string {
 	switch len(s) % 4 {
 	case 2:
@@ -295,6 +311,7 @@ func AddBase64Padding(s string) string {
 	return s
 }
 
+// MatchKeyPattern reports whether a key matches a token's wildcard pattern.
 func MatchKeyPattern(pattern, key string) (bool, error) {
 	if pattern == "*" {
 		return true, nil
@@ -312,6 +329,7 @@ func MatchKeyPattern(pattern, key string) (bool, error) {
 	return matched, nil
 }
 
+// Contains reports whether slice contains item.
 func Contains(slice []string, item string) bool {
 	for _, s := range slice {
 		if s == item {
@@ -321,11 +339,14 @@ func Contains(slice []string, item string) bool {
 	return false
 }
 
+// GenerateShortRandomID creates a compact random ID for token records.
 func GenerateShortRandomID() string {
 	b := vaultcrypto.Random(12)
 	return strings.TrimRight(base64.URLEncoding.EncodeToString(b), "=")
 }
 
+// CreateShortSignedToken serializes and signs a token into the compact form
+// shown to users.
 func CreateShortSignedToken(token model.AccessToken, secretKey []byte) (string, error) {
 	payload := fmt.Sprintf("%s:%s:%d:%s:%d",
 		token.TokenID,
@@ -344,6 +365,8 @@ func CreateShortSignedToken(token model.AccessToken, secretKey []byte) (string, 
 	return strings.TrimRight(encoded, "="), nil
 }
 
+// IsExpiredOrUsedUp reports whether a token should be rejected for time or
+// usage-count limits.
 func IsExpiredOrUsedUp(token model.AccessToken, now time.Time) bool {
 	return now.After(token.ExpiresAt) || token.UsageCount >= token.MaxUses
 }

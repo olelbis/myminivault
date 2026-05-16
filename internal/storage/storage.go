@@ -12,6 +12,8 @@ import (
 	"github.com/olelbis/myminivault/internal/model"
 )
 
+// Options groups the storage paths, crypto parameters, and optional recovery
+// hooks needed to load and save the encrypted main vault.
 type Options struct {
 	VaultFile        string
 	SaltSize         int
@@ -21,6 +23,8 @@ type Options struct {
 	SaveRecoveryFile func(salt, recoveryCiphertext []byte) error
 }
 
+// Load opens the primary vault, falls back to a backup only when the primary is
+// missing, and creates an empty vault when no persisted vault exists.
 func Load(password string, opts Options) (*model.ExtendedVault, []byte, error) {
 	vault, salt, err := LoadFile(opts.VaultFile, password, opts)
 	if err == nil {
@@ -49,6 +53,8 @@ func Load(password string, opts Options) (*model.ExtendedVault, []byte, error) {
 	return nil, nil, err
 }
 
+// LoadFile decrypts a specific vault file and returns both the vault payload
+// and the salt needed to save it again.
 func LoadFile(file, password string, opts Options) (*model.ExtendedVault, []byte, error) {
 	salt, vaultData, err := TryLoad(file, opts.SaltSize)
 	if err != nil {
@@ -105,6 +111,8 @@ func LoadFile(file, password string, opts Options) (*model.ExtendedVault, []byte
 	return &vault, salt, nil
 }
 
+// Save encrypts the vault payload and writes it atomically. When recovery is
+// configured, it also refreshes the recovery-encrypted snapshot.
 func Save(vault *model.ExtendedVault, password string, salt []byte, opts Options) error {
 	dataWithChecksum, err := marshalWithChecksum(vault)
 	if err != nil {
@@ -181,6 +189,7 @@ func SaveFileAtomic(vaultFile string, salt, data []byte) error {
 	return os.Chmod(vaultFile, 0600)
 }
 
+// TryLoad reads the salt prefix and encrypted payload from a vault file.
 func TryLoad(file string, saltSize int) ([]byte, []byte, error) {
 	f, err := os.Open(file)
 	if err != nil {

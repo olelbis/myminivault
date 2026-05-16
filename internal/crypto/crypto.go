@@ -9,6 +9,8 @@ import (
 	"golang.org/x/crypto/scrypt"
 )
 
+// ScryptConfig contains the password-based key derivation parameters used by
+// vault, recovery, and token encryption.
 type ScryptConfig struct {
 	N       int
 	R       int
