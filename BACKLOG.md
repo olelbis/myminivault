@@ -15,15 +15,16 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `8.4 / 10`.
+Current assessment score: `8.5 / 10`.
 
-`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
+`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
 Main strengths:
 
 - release discipline with Git tags, GitHub releases, and a changelog
 - GitHub CI for formatting, vetting, and automated tests across Linux and macOS
 - release package automation for Linux amd64, Linux arm64, and macOS arm64
+- CI coverage reporting with downloadable artifacts and documented baseline coverage
 - formal threat model covering assets, attackers, trust boundaries, data flows, residual risks, and incident response
 - focused `internal/...` packages for crypto, config, model, recovery, storage, and token logic
 - automated CLI smoke coverage for critical workflows
@@ -115,14 +116,20 @@ Strategic guidance:
 - Added README and CLI help credits for `olelbis`.
 - Expanded GitHub Actions CI to run `gofmt`, `go vet`, and `go test ./...` on Linux and macOS.
 - Reworked `docs/security.md` into a formal threat model with assets, attacker assumptions, trust boundaries, data flows, residual risks, and incident response guidance.
+- Added CI coverage reporting, a downloadable coverage artifact, coverage notes, and an internal coverage badge.
 
 ## Current Verification
 
 Current automated checks:
 
 ```bash
+test -z "$(gofmt -l .)"
+go vet ./...
 go test ./...
+go test -covermode=atomic -coverprofile=coverage.out ./...
 ```
+
+GitHub Actions runs the normal checks on Linux and macOS, plus a Linux coverage job that uploads `coverage.out` and `coverage.txt` as the `coverage-report` artifact.
 
 Package-level coverage now includes:
 
@@ -226,15 +233,15 @@ git pull
 git switch -c codex/token-sync-next
 ```
 
-### 2. Quality Roadmap Toward 8.5
+### 2. Quality Roadmap Beyond 8.5
 
 Priority: medium-high.
 
-These items are the most direct path from the current `8.4 / 10` assessment toward roughly `8.5 / 10`. Prefer them before adding new product features.
+These items are the most direct path beyond the current `8.5 / 10` assessment. Prefer them before adding new product features.
 
 Recommended order:
 
-1. add coverage reporting, then decide whether to enforce a minimum threshold
+1. decide whether coverage should remain informational or eventually enforce a minimum threshold
 2. continue improving release binaries and install paths after the first package workflow
 3. continue reducing broad orchestration in `cmd/vault` only where tests already protect behavior
 
@@ -249,26 +256,26 @@ git switch -c codex/install-packaging
 ```bash
 git switch main
 git pull
-git switch -c codex/coverage-reporting
+git switch -c codex/coverage-follow-up
 ```
 
-### 3. Coverage Reporting
+### 3. Coverage Follow-Up
 
 Priority: medium.
 
-Current CI runs formatting, `go vet`, and `go test ./...` on Linux and macOS. The next quality step is to publish coverage information from CI.
+Current CI runs formatting, `go vet`, `go test ./...`, and coverage reporting. The coverage artifact is informational and not enforced as a release gate.
 
 Next actions:
 
-- add a coverage job or coverage artifact
-- decide later whether coverage should be informational only or enforce a minimum threshold
+- decide whether coverage should remain informational only or enforce a minimum threshold
+- raise `cmd/vault` coverage with focused unit tests or further extraction of command-independent logic
 
 Suggested branch:
 
 ```bash
 git switch main
 git pull
-git switch -c codex/coverage-reporting
+git switch -c codex/coverage-follow-up
 ```
 
 ### 4. Install And Release Packaging

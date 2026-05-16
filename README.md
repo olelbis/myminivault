@@ -13,6 +13,7 @@
   <img alt="Go" src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white">
   <img alt="Latest release" src="https://img.shields.io/github/v/release/olelbis/myminivault?sort=semver">
   <img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/olelbis/myminivault.svg">
+  <img alt="Internal coverage" src="https://img.shields.io/badge/internal_coverage-70.8%25-yellowgreen">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
   <img alt="Status" src="https://img.shields.io/badge/status-experimental-orange">
   <img alt="CLI" src="https://img.shields.io/badge/interface-CLI-2f3337">
@@ -109,6 +110,7 @@ Create a backup:
 - [User Manual](docs/user-manual.md)
 - [Development Guide](docs/development.md)
 - [Security Model](docs/security.md)
+- [Coverage Notes](docs/coverage.md)
 - [Recovery Policy](docs/recovery-policy.md)
 - [Token Sync Policy](docs/token-sync-policy.md)
 - [Changelog](CHANGELOG.md)
