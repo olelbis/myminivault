@@ -1,6 +1,13 @@
 # Changelog
 
-All notable project changes are recorded here. Application releases use Git tags such as `v0.1.7`, and the CLI-visible version is kept in sync with the current release tag.
+All notable project changes are recorded here. Application releases use Git tags such as `v0.1.8`, and the CLI-visible version is kept in sync with the current release tag.
+
+## [v0.1.8] - 2026-05-16
+
+### Changed
+
+- Moved shared vault, recovery, token, and metadata structs into `internal/model`.
+- Kept compatibility aliases in `cmd/vault` while the rest of the refactor continues.
 
 ## [v0.1.7] - 2026-05-16
 

@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.1.7`
+- Current baseline release: `v0.1.8`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -43,6 +43,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Moved crypto helpers into `internal/crypto` with focused English comments.
 - Moved config loading and validation into `internal/config` with focused English comments.
 - Added automated CLI smoke coverage for `change-password`.
+- Moved shared data structures into `internal/model` with compatibility aliases in `cmd/vault`.
 
 ## Current Verification
 
@@ -77,12 +78,14 @@ cmd/
     storage.go    main vault load/save
     sync.go       main/shared vault synchronization
     token.go      token creation, validation, token commands
-    types.go      shared data structures
+    types.go      compatibility aliases for shared data structures
 internal/
   config/
     config.go     config defaults, loading, and validation
   crypto/
     crypto.go     key derivation, encryption, decryption, secure random bytes
+  model/
+    model.go      vault, recovery, token, and metadata structs
 ```
 
 ## Next Recommended Steps
@@ -257,7 +260,7 @@ Later, move stable areas into packages:
 - `internal/token`
 - `internal/recovery`
 
-`internal/crypto` and `internal/config` have already been extracted. Continue only with well-covered areas. During the refactor, add concise English comments for non-obvious invariants and flows, especially around recovery, token validation, shared-vault sync, and file locking.
+`internal/crypto`, `internal/config`, and `internal/model` have already been extracted. Continue only with well-covered areas. During the refactor, add concise English comments for non-obvious invariants and flows, especially around recovery, token validation, shared-vault sync, and file locking.
 
 Suggested branch:
 

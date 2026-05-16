@@ -6,7 +6,7 @@ The main CLI lives in `cmd/vault`.
 
 ## Versioning
 
-Application releases use Git tags such as `v0.1.7` and are documented in `CHANGELOG.md`.
+Application releases use Git tags such as `v0.1.8` and are documented in `CHANGELOG.md`.
 
 The CLI-visible version is kept in sync with the current release tag. When the vault file format changes, the version should be updated together with migration notes in the changelog.
 
@@ -464,12 +464,14 @@ cmd/
     storage.go    main vault load/save
     sync.go       main/shared vault synchronization
     token.go      token creation, validation, token commands
-    types.go      shared data structures
+    types.go      compatibility aliases for shared data structures
 internal/
   config/
     config.go     config defaults, loading, and validation
   crypto/
     crypto.go     key derivation, encryption, decryption, secure random bytes
+  model/
+    model.go      vault, recovery, token, and metadata structs
 ```
 
 ## Recommended Next Hardening Work
