@@ -220,7 +220,112 @@ git pull
 git switch -c codex/token-sync-next
 ```
 
-### 2. Additional CLI Smoke Tests
+### 2. Quality Roadmap Toward 8.5
+
+Priority: medium-high.
+
+These items are the most direct path from the current `8.1 / 10` assessment toward roughly `8.5 / 10`. Prefer them before adding new product features.
+
+Recommended order:
+
+1. formalize the threat model in `docs/security.md`
+2. expand GitHub CI into an operating-system matrix for Linux and macOS
+3. add release binaries or a documented install path, starting with `go install`
+4. add coverage reporting, then decide whether to enforce a minimum threshold
+5. continue reducing broad orchestration in `cmd/vault` only where tests already protect behavior
+
+Suggested branches:
+
+```bash
+git switch main
+git pull
+git switch -c codex/threat-model
+```
+
+```bash
+git switch main
+git pull
+git switch -c codex/ci-matrix
+```
+
+```bash
+git switch main
+git pull
+git switch -c codex/install-packaging
+```
+
+```bash
+git switch main
+git pull
+git switch -c codex/coverage-reporting
+```
+
+### 3. Security Threat Model Review
+
+Priority: medium-high.
+
+The security model documents many assumptions and limits, but it should be rewritten into a more explicit threat model before the project is described as beta-ready.
+
+Cover at least:
+
+- local attacker assumptions, including same-user processes and filesystem access
+- memory exposure limits in Go and what mitigations are only best-effort
+- terminal, shell history, clipboard, and export plaintext boundaries
+- token/shared-vault trust boundaries and sync assumptions
+- backup, recovery, and stale snapshot risks
+- what the tool explicitly does not defend against
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c codex/threat-model
+```
+
+### 4. CI Matrix And Coverage
+
+Priority: medium.
+
+Current CI runs formatting, `go vet`, and `go test ./...` on Ubuntu. The next quality step is to confirm behavior on the platforms where local CLI users are likely to run it.
+
+Next actions:
+
+- run CI on `ubuntu-latest` and `macos-latest`
+- keep the existing `gofmt`, `go vet`, and `go test ./...` checks in every matrix entry
+- add a coverage job or coverage artifact after the matrix is stable
+- decide later whether coverage should be informational only or enforce a minimum threshold
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c codex/ci-matrix
+```
+
+### 5. Install And Release Packaging
+
+Priority: medium.
+
+The README currently documents local build and run commands, but public users would benefit from a clearer install story.
+
+Recommended progression:
+
+- document `go install github.com/olelbis/myminivault/cmd/vault@latest` once the module path and command name are confirmed to work as intended
+- add GitHub release binaries for common platforms after the install docs are stable
+- consider Homebrew only after release binaries and public positioning are more mature
+- keep checksums in release assets if binaries are published
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c codex/install-packaging
+```
+
+### 6. Additional CLI Smoke Tests
 
 Automated smoke tests currently cover:
 
@@ -262,7 +367,7 @@ git pull
 git switch -c codex/cli-smoke-tests-more
 ```
 
-### 3. Import/Export Format Review
+### 7. Import/Export Format Review
 
 Priority: low-medium.
 
@@ -295,7 +400,7 @@ git pull
 git switch -c codex/import-export-format
 ```
 
-### 4. Future Refactor Candidates
+### 8. Future Refactor Candidates
 
 Priority: low unless a bug or feature makes the extraction useful.
 
@@ -323,7 +428,7 @@ Future token sync simplification:
 - Per-key timestamps now exist; consider revision counters, merge-base metadata, or fuller delete tombstones before changing the policy further.
 - Document the final behavior in the user manual once the policy is stable.
 
-### 5. Memory Exposure Hardening Next Steps
+### 9. Memory Exposure Hardening Next Steps
 
 Priority: low-medium.
 
@@ -348,7 +453,7 @@ git switch -c codex/memory-exposure-next
 
 These are intentionally lower priority than the stability/security work above. Revisit them after documentation cleanup, security review, token sync policy review, and test-depth work are in better shape.
 
-### 6. `vault run -- <command>`
+### 10. `vault run -- <command>`
 
 Run a command with vault entries injected as environment variables, without printing secrets:
 
@@ -365,7 +470,7 @@ git pull
 git switch -c codex/vault-run-command
 ```
 
-### 7. Project Profiles
+### 11. Project Profiles
 
 Support separate vault contexts for different projects or environments:
 
@@ -383,7 +488,7 @@ git pull
 git switch -c codex/project-profiles
 ```
 
-### 8. Namespaces
+### 12. Namespaces
 
 Support namespaced keys for environments such as `dev`, `staging`, and `prod`:
 
@@ -400,7 +505,7 @@ git pull
 git switch -c codex/namespaces
 ```
 
-### 9. Token UX Cleanup
+### 13. Token UX Cleanup
 
 Make token commands more consistent and automation-friendly:
 
@@ -418,7 +523,7 @@ git pull
 git switch -c codex/token-ux
 ```
 
-### 10. Terminal UI
+### 14. Terminal UI
 
 Add an optional TUI for browsing/searching keys, viewing token status, editing values, and triggering copy/export flows:
 
@@ -434,7 +539,7 @@ git pull
 git switch -c codex/tui
 ```
 
-### 11. Secret Rotation Hooks
+### 15. Secret Rotation Hooks
 
 Support command-driven rotation workflows:
 
@@ -450,7 +555,7 @@ git pull
 git switch -c codex/secret-rotation
 ```
 
-### 12. Hook System
+### 16. Hook System
 
 Allow local scripts to run after selected events such as `set`, `delete`, `backup`, or `token create`:
 
@@ -471,6 +576,8 @@ git switch -c codex/hooks
 Run all checks:
 
 ```bash
+test -z "$(gofmt -l .)"
+go vet ./...
 GOCACHE=/private/tmp/myminivault-gocache go test ./...
 ```
 
