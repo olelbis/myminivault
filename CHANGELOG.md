@@ -1,6 +1,17 @@
 # Changelog
 
-All notable project changes are recorded here. Application releases use Git tags such as `v0.1.14`, and the CLI-visible version is kept in sync with the current release tag.
+All notable project changes are recorded here. Application releases use Git tags such as `v0.1.15`, and the CLI-visible version is kept in sync with the current release tag.
+
+## [v0.1.15] - 2026-05-16
+
+### Added
+
+- Added `docs/user-manual.md` and `docs/development.md`.
+- Added terminal-style SVG screenshots for quick start, token, and recovery workflows.
+
+### Changed
+
+- Reworked `README.md` into a concise project overview with links to detailed docs.
 
 ## [v0.1.14] - 2026-05-16
 

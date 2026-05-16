@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.1.14`
+- Current baseline release: `v0.1.15`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -31,7 +31,7 @@ Main risks:
 - token/shared-vault synchronization is powerful but conceptually complex
 - most high-value tests are end-to-end smoke tests; more package-level unit tests are still useful
 - `cmd/vault` still contains some orchestration and command logic that may deserve future extraction
-- the README is too large and should be split before adding more feature work
+- the README has been split into focused docs, but the security model still needs a dedicated review
 
 Strategic guidance:
 
@@ -76,6 +76,8 @@ Strategic guidance:
 - Moved recovery key generation, validation, recovery vault decryption, and recovery file writes into `internal/recovery`.
 - Renamed `cmd/vault` CLI wrapper files so they are easier to distinguish from similarly named `internal/...` packages.
 - Added MIT license, README badges, and a project-local pixel art vault image.
+- Split documentation into a concise README, `docs/user-manual.md`, and `docs/development.md`.
+- Added terminal-style SVG screenshots for quick start, token, and recovery workflows.
 
 ## Current Verification
 
@@ -102,6 +104,7 @@ Manual smoke tests were run in `/private/tmp` with fake data:
 ```text
 assets/
   myminivault-pixel.png README pixel art vault image
+  screenshots/          README terminal-style SVG screenshots
 cmd/
   vault/
     main.go             CLI dispatch and command flow
@@ -126,47 +129,16 @@ internal/
     storage.go          vault load/save, checksum, and atomic writes
   token/
     token.go            token signing, validation, registry, and shared token vault persistence
+docs/
+  user-manual.md        user-facing workflows and operational notes
+  development.md        architecture, test, and release workflow notes
 ```
 
 ## Next Recommended Steps
 
-### 1. Documentation Cleanup
+### 1. Security Review And Threat Model
 
 Priority: highest.
-
-The README is too large and mixes overview, user manual, implementation notes, and backlog-like guidance. Split it before adding new user-facing features.
-
-Target structure:
-
-- `README.md`: concise overview, build/install, quick start, common commands, release links, security caveat
-- `docs/user-manual.md`: full user-facing manual
-- `docs/development.md`: architecture notes, test workflow, branch/tag/release workflow
-- `CHANGELOG.md`: version history only
-- `BACKLOG.md`: future work, risk notes, and handoff context only
-
-User manual must cover:
-
-- basic key/value workflows
-- backups and recovery
-- password changes
-- token creation, usage, expiration, revocation, and cleanup
-- main/shared vault sync policy
-- file locking and concurrent CLI usage expectations
-- import/export behavior and shell-safety notes
-- troubleshooting common errors
-- a clear note that this is a local/personal vault, not a production password manager
-
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c codex/docs-cleanup
-```
-
-### 2. Security Review And Threat Model
-
-Priority: high.
 
 Create a focused security document before claiming stronger security properties.
 
@@ -190,7 +162,7 @@ git pull
 git switch -c codex/security-threat-model
 ```
 
-### 3. Token And Shared Vault Policy Review
+### 2. Token And Shared Vault Policy Review
 
 Priority: high.
 
@@ -221,7 +193,7 @@ git pull
 git switch -c codex/token-sync-policy-review
 ```
 
-### 4. Test Depth For `internal/...`
+### 3. Test Depth For `internal/...`
 
 Priority: medium-high.
 
@@ -243,7 +215,7 @@ git pull
 git switch -c codex/internal-unit-tests
 ```
 
-### 5. Extend Automated CLI Smoke Tests
+### 4. Extend Automated CLI Smoke Tests
 
 Priority: medium.
 
@@ -284,7 +256,7 @@ git pull
 git switch -c codex/cli-smoke-tests-extended
 ```
 
-### 6. Recovery Policy And Verifier Review
+### 5. Recovery Policy And Verifier Review
 
 Priority: medium.
 
@@ -311,7 +283,7 @@ git pull
 git switch -c codex/recovery-policy-review
 ```
 
-### 7. Import/Export Round-Trip Review
+### 6. Import/Export Round-Trip Review
 
 Priority: medium.
 
@@ -345,7 +317,7 @@ git pull
 git switch -c codex/import-export-roundtrip
 ```
 
-### 8. Runtime File Permissions And `vault doctor`
+### 7. Runtime File Permissions And `vault doctor`
 
 Priority: medium.
 
@@ -373,7 +345,7 @@ git pull
 git switch -c codex/doctor-command
 ```
 
-### 9. Future Refactor Candidates
+### 8. Future Refactor Candidates
 
 Priority: low unless a bug or feature makes the extraction useful.
 
@@ -399,7 +371,7 @@ Continue only with well-covered areas and add concise English comments for non-o
 
 These are intentionally lower priority than the stability/security work above. Revisit them after documentation cleanup, security review, token sync policy review, and test-depth work are in better shape.
 
-### 10. `vault run -- <command>`
+### 9. `vault run -- <command>`
 
 Run a command with vault entries injected as environment variables, without printing secrets:
 
@@ -416,7 +388,7 @@ git pull
 git switch -c codex/vault-run-command
 ```
 
-### 11. Project Profiles
+### 10. Project Profiles
 
 Support separate vault contexts for different projects or environments:
 
@@ -434,7 +406,7 @@ git pull
 git switch -c codex/project-profiles
 ```
 
-### 12. Namespaces
+### 11. Namespaces
 
 Support namespaced keys for environments such as `dev`, `staging`, and `prod`:
 
@@ -451,7 +423,7 @@ git pull
 git switch -c codex/namespaces
 ```
 
-### 13. Clipboard Command
+### 12. Clipboard Command
 
 Copy a secret to the system clipboard and optionally clear it after a timeout:
 
@@ -468,7 +440,7 @@ git pull
 git switch -c codex/clipboard-copy
 ```
 
-### 14. Token UX Cleanup
+### 13. Token UX Cleanup
 
 Make token commands more consistent and automation-friendly:
 
@@ -486,7 +458,7 @@ git pull
 git switch -c codex/token-ux
 ```
 
-### 15. Terminal UI
+### 14. Terminal UI
 
 Add an optional TUI for browsing/searching keys, viewing token status, editing values, and triggering copy/export flows:
 
@@ -502,7 +474,7 @@ git pull
 git switch -c codex/tui
 ```
 
-### 16. Secret Rotation Hooks
+### 15. Secret Rotation Hooks
 
 Support command-driven rotation workflows:
 
@@ -518,7 +490,7 @@ git pull
 git switch -c codex/secret-rotation
 ```
 
-### 17. Hook System
+### 16. Hook System
 
 Allow local scripts to run after selected events such as `set`, `delete`, `backup`, or `token create`:
 
