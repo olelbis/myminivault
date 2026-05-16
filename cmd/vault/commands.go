@@ -122,8 +122,12 @@ func handleImportCommand(vault map[string]string) {
 }
 
 func readSecurePassword() (string, error) {
-	fmt.Print("🔐 Password: ")
+	return readPasswordPrompt("🔐 Password: ")
+}
+
+func readPasswordPrompt(prompt string) (string, error) {
 	if term.IsTerminal(int(syscall.Stdin)) {
+		fmt.Print(prompt)
 		pwd, err := term.ReadPassword(int(syscall.Stdin))
 		fmt.Println()
 		if err == nil {
@@ -134,7 +138,7 @@ func readSecurePassword() (string, error) {
 			return password, nil
 		}
 	}
-	return readPasswordFallback()
+	return readLinePrompt(prompt)
 }
 
 func readPasswordFallback() (string, error) {
@@ -144,6 +148,30 @@ func readPasswordFallback() (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(pwd), nil
+}
+
+func readLinePrompt(prompt string) (string, error) {
+	fmt.Print(prompt)
+
+	var line strings.Builder
+	buffer := make([]byte, 1)
+	for {
+		n, err := os.Stdin.Read(buffer)
+		if n > 0 {
+			if buffer[0] == '\n' {
+				break
+			}
+			line.WriteByte(buffer[0])
+		}
+		if err != nil {
+			if line.Len() > 0 {
+				break
+			}
+			return "", err
+		}
+	}
+
+	return strings.TrimSpace(line.String()), nil
 }
 
 func validateKey(key string) error {

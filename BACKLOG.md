@@ -33,6 +33,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Added automated concurrent lock smoke coverage.
 - Hardened recovery key generation to use 32 secure random bytes encoded as grouped base32.
 - Made recovery file saves atomic and added unit tests for recovery key validation and recovery file writes.
+- Added end-to-end `recover` smoke coverage and fixed piped password input for recovery flows.
 
 ## Current Verification
 
@@ -92,7 +93,7 @@ Automated smoke tests now cover:
 Remaining coverage to add:
 
 - `change-password` through a pseudo-terminal or refactored testable input path
-- recovery setup/test/recover flow after recovery hardening
+- recovery setup/test flow after recovery hardening
 
 Suggested branch:
 
@@ -115,11 +116,12 @@ Completed:
 - recovery key generation now uses a high-entropy random secret
 - recovery file writes are atomic
 - unit tests cover recovery key validation and recovery file writes
+- end-to-end smoke coverage verifies `recover` changes the master password
 
 Remaining:
 
 - document that recovery can only recover the snapshot stored in `vault.db.recovery`
-- add end-to-end recovery setup/test/recover smoke coverage
+- add end-to-end recovery setup/test smoke coverage
 - consider whether recovery metadata should store only a stronger verifier/hash strategy over time
 
 Suggested branch:

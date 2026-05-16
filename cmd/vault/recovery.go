@@ -10,10 +10,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"golang.org/x/term"
 	"os"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -92,10 +90,10 @@ func recoverMasterPassword() error {
 		}
 	}
 
-	fmt.Print("🔑 Enter your recovery key: ")
-	reader := bufio.NewReader(os.Stdin)
-	recoveryKey, _ := reader.ReadString('\n')
-	recoveryKey = strings.TrimSpace(recoveryKey)
+	recoveryKey, err := readLinePrompt("🔑 Enter your recovery key: ")
+	if err != nil {
+		return fmt.Errorf("failed to read recovery key: %w", err)
+	}
 
 	setCurrentRecoveryKey(recoveryKey)
 
@@ -137,78 +135,63 @@ func recoverMasterPassword() error {
 		return errors.New("recovery key not found or invalid")
 	}
 
-	fmt.Print("🔐 Enter new master password: ")
-	if term.IsTerminal(int(syscall.Stdin)) {
-		pwd, err := term.ReadPassword(int(syscall.Stdin))
-		fmt.Println()
-		if err != nil {
-			return fmt.Errorf("failed to read password: %w", err)
-		}
-		newPassword := strings.TrimSpace(string(pwd))
-
-		fmt.Print("🔐 Confirm new master password: ")
-		pwd2, err := term.ReadPassword(int(syscall.Stdin))
-		fmt.Println()
-		if err != nil {
-			return fmt.Errorf("failed to read password confirmation: %w", err)
-		}
-		confirmPassword := strings.TrimSpace(string(pwd2))
-
-		if newPassword != confirmPassword {
-			return errors.New("passwords don't match")
-		}
-
-		vault.Recovery.LastUsed = time.Now()
-		vault.Recovery.UseCount++
-
-		if err := saveExtendedVault(&vault, newPassword, salt); err != nil {
-			return fmt.Errorf("failed to save vault with new password: %w", err)
-		}
-
-		fmt.Println("✅ Master password changed successfully!")
-		return nil
+	newPassword, err := readPasswordPrompt("🔐 Enter new master password: ")
+	if err != nil {
+		return fmt.Errorf("failed to read password: %w", err)
+	}
+	if len(newPassword) == 0 {
+		return errors.New("password cannot be empty")
 	}
 
-	return errors.New("secure password input not available")
+	confirmPassword, err := readPasswordPrompt("🔐 Confirm new master password: ")
+	if err != nil {
+		return fmt.Errorf("failed to read password confirmation: %w", err)
+	}
+
+	if newPassword != confirmPassword {
+		return errors.New("passwords don't match")
+	}
+
+	vault.Recovery.LastUsed = time.Now()
+	vault.Recovery.UseCount++
+
+	if err := saveExtendedVault(&vault, newPassword, salt); err != nil {
+		return fmt.Errorf("failed to save vault with new password: %w", err)
+	}
+
+	fmt.Println("✅ Master password changed successfully!")
+	return nil
 }
 
 func handleChangePassword(vault *ExtendedVault, salt []byte) {
-	fmt.Print("🔐 Enter new master password: ")
-	if term.IsTerminal(int(syscall.Stdin)) {
-		pwd, err := term.ReadPassword(int(syscall.Stdin))
-		fmt.Println()
-		if err != nil {
-			fmt.Printf("Error reading new password: %v\n", err)
-			return
-		}
-
-		newPassword := strings.TrimSpace(string(pwd))
-		if len(newPassword) == 0 {
-			fmt.Println("❌ Password cannot be empty")
-			return
-		}
-
-		fmt.Print("🔐 Confirm new master password: ")
-		pwd2, err := term.ReadPassword(int(syscall.Stdin))
-		fmt.Println()
-		if err != nil {
-			fmt.Printf("Error reading confirmation: %v\n", err)
-			return
-		}
-
-		confirmPassword := strings.TrimSpace(string(pwd2))
-		if newPassword != confirmPassword {
-			fmt.Println("❌ Passwords don't match")
-			return
-		}
-
-		if err := saveExtendedVault(vault, newPassword, salt); err != nil {
-			fmt.Printf("❌ Failed to save: %v\n", err)
-			return
-		}
-
-		fmt.Println("✅ Password changed successfully!")
+	newPassword, err := readPasswordPrompt("🔐 Enter new master password: ")
+	if err != nil {
+		fmt.Printf("Error reading new password: %v\n", err)
+		return
 	}
+
+	if len(newPassword) == 0 {
+		fmt.Println("❌ Password cannot be empty")
+		return
+	}
+
+	confirmPassword, err := readPasswordPrompt("🔐 Confirm new master password: ")
+	if err != nil {
+		fmt.Printf("Error reading confirmation: %v\n", err)
+		return
+	}
+
+	if newPassword != confirmPassword {
+		fmt.Println("❌ Passwords don't match")
+		return
+	}
+
+	if err := saveExtendedVault(vault, newPassword, salt); err != nil {
+		fmt.Printf("❌ Failed to save: %v\n", err)
+		return
+	}
+
+	fmt.Println("✅ Password changed successfully!")
 }
 
 func generateRecoveryKey() (string, error) {
