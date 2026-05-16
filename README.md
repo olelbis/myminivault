@@ -121,7 +121,7 @@ The CLI stores runtime files in the current working directory where the command 
 
 ## Versioning
 
-Application releases use Git tags such as `v0.1.19` and are documented in `CHANGELOG.md`.
+Application releases use Git tags such as `v0.1.20` and are documented in `CHANGELOG.md`.
 
 The CLI-visible version is kept in sync with the current release tag. When the vault file format changes, the version should be updated together with migration notes in the changelog.
 

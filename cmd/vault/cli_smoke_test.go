@@ -188,6 +188,77 @@ func TestCLISmokeTokenWriteImportedByMasterCommand(t *testing.T) {
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY")), "auto-imported")
 }
 
+func TestCLISmokeTokenExpiredAndUsedUpRejected(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "API_KEY", "hello"))
+
+	expiredOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=API_*", "--duration=1ns", "--permissions=read", "--max-uses=10"))
+	expiredToken := extractCompactToken(t, expiredOutput)
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", expiredToken, "get", "API_KEY")), "token has expired")
+
+	limitedOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=API_*", "--duration=1h", "--permissions=read", "--max-uses=2"))
+	limitedToken := extractCompactToken(t, limitedOutput)
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", limitedToken, "get", "API_KEY")), "hello")
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", limitedToken, "get", "API_KEY")), "token usage limit exceeded")
+}
+
+func TestCLISmokeTokenInfoListAndRevoke(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "API_KEY", "hello"))
+
+	createOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=API_*", "--duration=1h", "--permissions=read", "--max-uses=10"))
+	token := extractCompactToken(t, createOutput)
+	tokenID := extractTokenID(t, createOutput)
+
+	listOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "list-tokens"))
+	requireContains(t, listOutput, tokenID)
+	requireContains(t, listOutput, "Pattern: API_*")
+	requireContains(t, listOutput, "Usage: 0/10")
+
+	infoOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "token-info", tokenID))
+	requireContains(t, infoOutput, "Token Information")
+	requireContains(t, infoOutput, "ID: "+tokenID)
+	requireContains(t, infoOutput, "Permissions: read")
+
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "revoke-token", tokenID)), "revoked and removed")
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", token, "get", "API_KEY")), "token not found or has been revoked")
+}
+
+func TestCLISmokeMalformedConfigRejected(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(dir, configFile), []byte(`{"scrypt_n":`), 0600); err != nil {
+		t.Fatalf("write malformed config: %v", err)
+	}
+
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "config")), "Config error")
+}
+
+func TestCLISmokeImportExportRoundTrip(t *testing.T) {
+	bin := buildVaultBinary(t)
+	sourceDir := t.TempDir()
+	targetDir := t.TempDir()
+
+	requireOK(t, runVault(t, bin, sourceDir, "pass\n", "set", "API_KEY", "hello"))
+	requireOK(t, runVault(t, bin, sourceDir, "pass\n", "set", "DB_KEY", "world"))
+
+	exportOutput := requireOK(t, runVault(t, bin, sourceDir, "pass\n", "export"))
+	exportOutput = onlyExportLines(exportOutput)
+	importFile := filepath.Join(targetDir, "vault.env")
+	if err := os.WriteFile(importFile, []byte(exportOutput), 0600); err != nil {
+		t.Fatalf("write import file: %v", err)
+	}
+
+	requireContains(t, requireOK(t, runVault(t, bin, targetDir, "pass\n", "import", importFile)), "Imported 2 entries")
+	requireContains(t, requireOK(t, runVault(t, bin, targetDir, "pass\n", "get", "API_KEY")), "hello")
+	requireContains(t, requireOK(t, runVault(t, bin, targetDir, "pass\n", "get", "DB_KEY")), "world")
+}
+
 func TestCLISmokeConcurrentSetUsesFileLock(t *testing.T) {
 	bin := buildVaultBinary(t)
 	dir := t.TempDir()
@@ -366,6 +437,32 @@ func extractCompactToken(t *testing.T, output string) string {
 	matches := re.FindStringSubmatch(output)
 	if len(matches) != 2 {
 		t.Fatalf("could not extract compact token from output:\n%s", output)
+	}
+
+	return matches[1]
+}
+
+func onlyExportLines(output string) string {
+	lines := strings.Split(output, "\n")
+	var exports []string
+	for _, line := range lines {
+		if idx := strings.Index(line, "export "); idx >= 0 {
+			line = line[idx:]
+		}
+		if strings.HasPrefix(line, "export ") {
+			exports = append(exports, line)
+		}
+	}
+	return strings.Join(exports, "\n") + "\n"
+}
+
+func extractTokenID(t *testing.T, output string) string {
+	t.Helper()
+
+	re := regexp.MustCompile(`Token ID:\s*([A-Za-z0-9_-]+)`)
+	matches := re.FindStringSubmatch(output)
+	if len(matches) != 2 {
+		t.Fatalf("could not extract token ID from output:\n%s", output)
 	}
 
 	return matches[1]

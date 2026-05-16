@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.1.19`
+- Current baseline release: `v0.1.20`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -85,6 +85,9 @@ Strategic guidance:
 - Added package-level tests for `internal/storage`, `internal/token`, and `internal/recovery`.
 - Added crypto coverage for tampered ciphertext rejection.
 - Fixed legacy vault loading for old JSON payloads longer than the checksum prefix size.
+- Added CLI smoke coverage for expired tokens, used-up tokens, token revocation, `list-tokens`, and `token-info`.
+- Added CLI smoke coverage for malformed config handling.
+- Added a basic import/export round-trip smoke test.
 
 ## Current Verification
 
@@ -112,6 +115,14 @@ Manual smoke tests were run in `/private/tmp` with fake data:
 - old password rejected after password change
 - new password accepted after password change
 - concurrent `set` commands serialized correctly through `.myminivault.lock`
+
+Automated CLI smoke coverage includes:
+
+- basic vault commands, backup, wrong password rejection, and `change-password`
+- token create/get/set, automatic token-write import, expired token rejection, used-up token rejection, revocation rejection, `list-tokens`, and `token-info`
+- recovery setup, recovery validation, and master password recovery
+- shell-safe export output and basic import/export round-trip behavior
+- malformed config handling and concurrent command serialization through `.myminivault.lock`
 
 ## Current Project Layout
 
@@ -152,48 +163,7 @@ docs/
 
 ## Next Recommended Steps
 
-### 1. Extend Automated CLI Smoke Tests
-
-Priority: medium-high.
-
-Automated smoke tests currently cover:
-
-- `set`
-- `get`
-- `delete`
-- `list`
-- `backup`
-- wrong password rejection
-- `change-password`
-- token creation
-- token `get`
-- token `set`
-- automatic import of token writes by master-password commands
-- shell-safe `export` output
-- recovery `setup-recovery`
-- recovery `test-recovery`
-- recovery `recover`
-- concurrent command serialization through `.myminivault.lock`
-
-Additional smoke coverage to consider:
-
-- token expiration and max-use cleanup
-- token revocation followed by failed use
-- `token-info` and `list-tokens`
-- `security-audit`
-- malformed config from the CLI
-- backup/restore expectations if restore is added later
-- import/export round-trip expectations
-
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c codex/cli-smoke-tests-extended
-```
-
-### 2. Recovery Policy And Verifier Review
+### 1. Recovery Policy And Verifier Review
 
 Priority: medium.
 
@@ -218,6 +188,47 @@ Suggested branch:
 git switch main
 git pull
 git switch -c codex/recovery-policy-review
+```
+
+### 2. Additional CLI Smoke Tests
+
+Automated smoke tests currently cover:
+
+- `set`
+- `get`
+- `delete`
+- `list`
+- `backup`
+- wrong password rejection
+- `change-password`
+- token creation
+- token `get`
+- token `set`
+- automatic import of token writes by master-password commands
+- expired token rejection
+- used-up token rejection
+- token revocation followed by failed use
+- `token-info` and `list-tokens`
+- shell-safe `export` output
+- basic import/export round-trip behavior
+- malformed config from the CLI
+- recovery `setup-recovery`
+- recovery `test-recovery`
+- recovery `recover`
+- concurrent command serialization through `.myminivault.lock`
+
+Additional smoke coverage to consider:
+
+- `security-audit`
+- backup/restore expectations if restore is added later
+- exact import/export round-trip expectations for shell-escaped special values
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c codex/cli-smoke-tests-more
 ```
 
 ### 3. Import/Export Round-Trip Review

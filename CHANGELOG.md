@@ -1,6 +1,14 @@
 # Changelog
 
-All notable project changes are recorded here. Application releases use Git tags such as `v0.1.19`, and the CLI-visible version is kept in sync with the current release tag.
+All notable project changes are recorded here. Application releases use Git tags such as `v0.1.20`, and the CLI-visible version is kept in sync with the current release tag.
+
+## [v0.1.20] - 2026-05-16
+
+### Added
+
+- Added CLI smoke coverage for expired tokens, used-up tokens, token revocation, `list-tokens`, and `token-info`.
+- Added CLI smoke coverage for malformed config handling.
+- Added a basic import/export round-trip smoke test.
 
 ## [v0.1.19] - 2026-05-16
 
