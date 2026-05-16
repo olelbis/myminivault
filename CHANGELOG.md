@@ -1,6 +1,20 @@
 # Changelog
 
-All notable project changes are recorded here. Application releases use Git tags such as `v0.2.2`, and the CLI-visible version is kept in sync with the current release tag.
+All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
+
+## [v0.3.0] - 2026-05-16
+
+### Added
+
+- Added `copy <key> [--ttl=30s]` to copy secrets to the clipboard without printing them.
+- Added `export --output <file>` to write shell-safe exports directly to a `0600` file.
+- Added best-effort core dump disabling on supported Unix-like systems.
+- Added tests for safe export file output and clipboard clear behavior.
+
+### Changed
+
+- `export` prints a plaintext warning to stderr when writing directly to an interactive terminal.
+- Updated security and user documentation for clipboard, export, and runtime memory exposure limits.
 
 ## [v0.2.2] - 2026-05-16
 

@@ -100,6 +100,14 @@ Shows vault metadata, recovery status, token summary, access count, and timestam
 
 Prints entries as shell-safe `export KEY='value'` lines. Export uses POSIX single-quote escaping, so values containing quotes, `$`, backticks, backslashes, and newlines are printed without triggering shell expansion.
 
+Printing exports to a terminal exposes plaintext secrets in terminal scrollback. Prefer writing directly to a file when you need an export artifact:
+
+```bash
+./bin/vault export --output secrets.env
+```
+
+The output file is written with `0600` permissions.
+
 ### Import
 
 ```bash
@@ -114,6 +122,19 @@ export API_KEY="secret-value"
 ```
 
 Blank lines and lines starting with `#` are ignored.
+
+## Clipboard Copy
+
+```bash
+./bin/vault copy API_KEY
+./bin/vault copy API_KEY --ttl=30s
+```
+
+Copies a single secret to the system clipboard without printing it to the terminal. The CLI warns that other local apps or clipboard managers may read clipboard contents.
+
+By default, the command waits for the TTL and clears the clipboard if it still contains the copied secret. Use `--ttl=0` to skip automatic clearing.
+
+Clipboard copy avoids terminal scrollback, but it is not a hard security boundary. Clipboard managers, remote desktop tools, malware, or other local apps may still observe clipboard contents.
 
 ## Backup
 

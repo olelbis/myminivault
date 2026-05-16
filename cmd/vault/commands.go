@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"sort"
 	"strings"
 	"syscall"
@@ -61,15 +62,45 @@ func handleDeleteCommand(vault map[string]string) {
 }
 
 func handleExportCommand(vault map[string]string) {
+	outputPath := ""
+	if len(os.Args) == 4 && os.Args[2] == "--output" {
+		outputPath = os.Args[3]
+	} else if len(os.Args) == 3 && strings.HasPrefix(os.Args[2], "--output=") {
+		outputPath = strings.TrimPrefix(os.Args[2], "--output=")
+	} else if len(os.Args) != 2 {
+		fmt.Println("Usage: vault export [--output <file>]")
+		return
+	}
+
+	output := renderExport(vault)
+	if outputPath != "" {
+		if err := os.WriteFile(outputPath, []byte(output), 0600); err != nil {
+			fmt.Printf("❌ Export failed: %v\n", err)
+			return
+		}
+		_ = os.Chmod(outputPath, 0600)
+		fmt.Printf("✅ Export written to %s with mode 0600\n", outputPath)
+		return
+	}
+
+	if term.IsTerminal(int(os.Stdout.Fd())) {
+		fmt.Fprintln(os.Stderr, "⚠️  Export prints plaintext secrets. Prefer 'vault export --output <file>' for safer file export.")
+	}
+	fmt.Print(output)
+}
+
+func renderExport(vault map[string]string) string {
 	keys := make([]string, 0, len(vault))
 	for key := range vault {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
 
+	var output strings.Builder
 	for _, key := range keys {
-		fmt.Printf("export %s=%s\n", key, shellQuote(vault[key]))
+		fmt.Fprintf(&output, "export %s=%s\n", key, shellQuote(vault[key]))
 	}
+	return output.String()
 }
 
 func shellQuote(value string) string {
@@ -91,6 +122,59 @@ func handleListCommand(vault map[string]string) {
 	}
 }
 
+func handleCopyCommand(vault map[string]string) {
+	if len(os.Args) < 3 || len(os.Args) > 4 {
+		fmt.Println("Usage: vault copy <key> [--ttl=30s]")
+		return
+	}
+
+	key := os.Args[2]
+	ttl := 30 * time.Second
+	if len(os.Args) == 4 {
+		if !strings.HasPrefix(os.Args[3], "--ttl=") {
+			fmt.Println("Usage: vault copy <key> [--ttl=30s]")
+			return
+		}
+		parsedTTL, err := time.ParseDuration(strings.TrimPrefix(os.Args[3], "--ttl="))
+		if err != nil || parsedTTL < 0 {
+			fmt.Println("❌ Invalid clipboard TTL")
+			return
+		}
+		ttl = parsedTTL
+	}
+
+	value, exists := vault[key]
+	if !exists {
+		fmt.Printf("❌ Key '%s' not found\n", key)
+		return
+	}
+
+	fmt.Println("⚠️  Clipboard can be read by other local apps or clipboard managers.")
+	manager, err := detectClipboardManager()
+	if err != nil {
+		fmt.Printf("❌ Clipboard unavailable: %v\n", err)
+		return
+	}
+	if err := manager.write(value); err != nil {
+		fmt.Printf("❌ Clipboard copy failed: %v\n", err)
+		return
+	}
+
+	if ttl == 0 {
+		fmt.Println("✅ Secret copied to clipboard.")
+		fmt.Println("⚠️  Automatic clipboard clearing disabled by --ttl=0.")
+		return
+	}
+
+	fmt.Printf("✅ Secret copied to clipboard. It will be cleared in %s if supported.\n", ttl)
+	time.Sleep(ttl)
+	if err := manager.clearIfUnchanged(value); err != nil {
+		fmt.Printf("⚠️  Automatic clipboard clearing failed: %v\n", err)
+		return
+	}
+	fmt.Println("🧹 Clipboard cleared.")
+}
+
 func handleSearchCommand(vault map[string]string) {
 	if len(os.Args) != 3 {
 		fmt.Println("Usage: vault search <pattern>")
@@ -109,6 +193,64 @@ func handleSearchCommand(vault map[string]string) {
 	if !found {
 		fmt.Printf("No keys found matching '%s'\n", pattern)
 	}
+}
+
+type clipboardManager struct {
+	name  string
+	read  func() (string, error)
+	write func(string) error
+}
+
+func detectClipboardManager() (clipboardManager, error) {
+	if _, err := exec.LookPath("pbcopy"); err == nil {
+		if _, pasteErr := exec.LookPath("pbpaste"); pasteErr == nil {
+			return clipboardManager{
+				name:  "pbcopy",
+				read:  func() (string, error) { return commandOutput("pbpaste") },
+				write: func(value string) error { return commandInput(value, "pbcopy") },
+			}, nil
+		}
+	}
+
+	if _, err := exec.LookPath("wl-copy"); err == nil {
+		return clipboardManager{
+			name:  "wl-copy",
+			read:  func() (string, error) { return commandOutput("wl-paste", "--no-newline") },
+			write: func(value string) error { return commandInput(value, "wl-copy") },
+		}, nil
+	}
+
+	if _, err := exec.LookPath("xclip"); err == nil {
+		return clipboardManager{
+			name:  "xclip",
+			read:  func() (string, error) { return commandOutput("xclip", "-selection", "clipboard", "-out") },
+			write: func(value string) error { return commandInput(value, "xclip", "-selection", "clipboard", "-in") },
+		}, nil
+	}
+
+	return clipboardManager{}, errors.New("no supported clipboard command found")
+}
+
+func (manager clipboardManager) clearIfUnchanged(expected string) error {
+	current, err := manager.read()
+	if err != nil {
+		return err
+	}
+	if current != expected {
+		return nil
+	}
+	return manager.write("")
+}
+
+func commandOutput(name string, args ...string) (string, error) {
+	out, err := exec.Command(name, args...).Output()
+	return string(out), err
+}
+
+func commandInput(value, name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	cmd.Stdin = strings.NewReader(value)
+	return cmd.Run()
 }
 
 func handleClearCommand(vault *ExtendedVault) {

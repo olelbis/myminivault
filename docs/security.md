@@ -142,7 +142,7 @@ Current behavior:
 
 This is a powerful but complex model. The current policy is documented in [Token Sync Policy](token-sync-policy.md): automatic import remains the default, `sync-tokens` remains available for explicit import, and conflicts use per-key timestamps when metadata is available.
 
-## Backups And Export
+## Backups, Export, And Clipboard
 
 Backups are encrypted but still sensitive because they may contain old secrets.
 
@@ -153,6 +153,16 @@ Export output is intentionally shell-friendly, but exported values are plaintext
 - copied output
 - logs
 - redirected files
+
+Use `vault export --output <file>` when you need an export artifact. The file is written with restrictive permissions, but it still contains plaintext shell snippets and must be protected.
+
+Use `vault copy <key>` when you need one secret without printing it. Clipboard copy avoids terminal scrollback, but clipboard contents may still be visible to clipboard managers, local apps, remote desktop tooling, or malware. The command clears the clipboard after a TTL when supported.
+
+## Runtime Memory
+
+The CLI disables core dumps on supported Unix-like systems as a best-effort mitigation. This reduces accidental plaintext exposure in crash dump files, but it is not a defense against malware, debuggers, process inspection, terminal capture, or a compromised local user account.
+
+Go strings are immutable and managed by the runtime, so memory zeroing cannot be treated as a complete guarantee. Future hardening may reduce plaintext lifetime further where `[]byte` buffers can be used meaningfully.
 
 ## Logging
 

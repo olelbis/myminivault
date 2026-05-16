@@ -11,6 +11,8 @@ import (
 )
 
 func main() {
+	disableCoreDumps()
+
 	if len(os.Args) < 2 {
 		showUsage()
 		return
@@ -127,6 +129,9 @@ func runPasswordCommand(command, password string) error {
 	case "export":
 		handleExportCommand(extendedVault.Data)
 		return nil
+	case "copy":
+		handleCopyCommand(extendedVault.Data)
+		return nil
 	case "list":
 		handleListCommand(extendedVault.Data)
 		return nil
@@ -222,7 +227,7 @@ func shouldMirrorMainVaultToShared(command string) bool {
 
 func showUsage() {
 	fmt.Println("Usage: vault <command> [args]")
-	fmt.Println("Basic: set, get, delete, export, list, search, clear, import, backup, stats")
+	fmt.Println("Basic: set, get, copy, delete, export, list, search, clear, import, backup, stats")
 	fmt.Println("Recovery: setup-recovery, recover, test-recovery, change-password")
 	fmt.Println("Tokens: create-token, list-tokens, revoke-token, use-token, token-info, cleanup-tokens")
 	fmt.Println("Sync: sync-tokens")
@@ -230,15 +235,16 @@ func showUsage() {
 }
 
 func showHelp() {
-	fmt.Println(`🔐 myminivault CLI v0.2.2
+	fmt.Println(`🔐 myminivault CLI v0.3.0
 
 BASIC COMMANDS:
   set <key> <value>     Set a key-value pair
   get <key>             Get value for a key
+  copy <key> [--ttl=30s] Copy value to clipboard and clear it when supported
   delete <key>          Delete a key
   list                  List all keys
   search <pattern>      Search keys by pattern
-  export                Export as shell variables
+  export [--output file] Export as shell variables
   clear                 Clear all data
   import <file>         Import from file
   backup                Create backup

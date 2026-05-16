@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.2.2`
+- Current baseline release: `v0.3.0`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -15,9 +15,9 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `7.8 / 10`.
+Current assessment score: `8.0 / 10`.
 
-`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, a clearer package structure than the original monolith, stronger local security checks, and timestamp-aware token sync metadata. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
+`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
 Main strengths:
 
@@ -102,6 +102,10 @@ Strategic guidance:
 - Added per-key sync metadata for main/shared vault updates and delete markers.
 - Changed token sync so older shared-vault values do not overwrite newer main-vault values when both sides have metadata.
 - Added tests for sync metadata conflict decisions.
+- Added `copy <key>` with clipboard warning and TTL-based clearing when supported.
+- Added `export --output <file>` to write shell-safe exports directly to a `0600` file.
+- Added best-effort core dump disabling on supported Unix-like systems.
+- Documented clipboard, export, and runtime memory exposure limits.
 
 ## Current Verification
 
@@ -136,6 +140,7 @@ Automated CLI smoke coverage includes:
 - token create/get/set, automatic token-write import, expired token rejection, used-up token rejection, revocation rejection, `list-tokens`, and `token-info`
 - recovery setup, recovery validation, and master password recovery
 - shell-safe export output and export/import round-trip behavior for apostrophes and embedded newlines
+- export to `0600` files and clipboard clear behavior
 - audit-log redaction, disabled audit logging, malformed config handling, `vault doctor`, and concurrent command serialization through `.myminivault.lock`
 
 ## Current Project Layout
@@ -149,6 +154,8 @@ cmd/
     main.go             CLI dispatch and command flow
     commands.go         basic key/value commands, import/export, stats
     config_cli.go       config loading/display
+    core_dump_unix.go   best-effort core dump disabling on Unix-like systems
+    core_dump_other.go  no-op core dump hook for unsupported systems
     crypto.go           encryption, decryption, random bytes, key derivation
     doctor_cli.go       local runtime health checks
     recovery_cli.go     recovery and password-change flows
@@ -313,28 +320,25 @@ Future token sync simplification:
 - Per-key timestamps now exist; consider revision counters, merge-base metadata, or fuller delete tombstones before changing the policy further.
 - Document the final behavior in the user manual once the policy is stable.
 
-### 5. Memory Exposure Hardening
+### 5. Memory Exposure Hardening Next Steps
 
 Priority: low-medium.
 
-The project cannot fully prevent memory dumps or same-user process inspection on a normal desktop, especially in Go. The goal is mitigation rather than a hard guarantee.
+The project now disables core dumps on supported Unix-like systems as a best-effort mitigation. It still cannot fully prevent memory dumps or same-user process inspection on a normal desktop, especially in Go. The goal is mitigation rather than a hard guarantee.
 
 Ideas to revisit:
 
-- disable core dumps at process startup where supported, for example with `RLIMIT_CORE=0`
 - reduce plaintext lifetime in memory where practical
 - prefer `[]byte` over `string` for password/secret handling where the code can zero buffers afterward
 - add best-effort zeroing for derived keys and password buffers where Go semantics make that meaningful
-- document Go/runtime limitations around immutable strings, garbage collection, terminal output, clipboard, and process inspection
 - evaluate macOS Keychain for protecting `vault-token.key` or a future local wrapping key at rest
-- keep the security model explicit that malware or same-user process inspection remains out of scope
 
 Suggested branch:
 
 ```bash
 git switch main
 git pull
-git switch -c codex/memory-exposure-hardening
+git switch -c codex/memory-exposure-next
 ```
 
 ## Product Ideas After Hardening
@@ -393,24 +397,7 @@ git pull
 git switch -c codex/namespaces
 ```
 
-### 9. Clipboard Command
-
-Copy a secret to the system clipboard and optionally clear it after a timeout:
-
-```bash
-vault copy API_KEY
-vault copy API_KEY --ttl 30s
-```
-
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c codex/clipboard-copy
-```
-
-### 10. Token UX Cleanup
+### 9. Token UX Cleanup
 
 Make token commands more consistent and automation-friendly:
 
@@ -428,7 +415,7 @@ git pull
 git switch -c codex/token-ux
 ```
 
-### 11. Terminal UI
+### 10. Terminal UI
 
 Add an optional TUI for browsing/searching keys, viewing token status, editing values, and triggering copy/export flows:
 
@@ -444,7 +431,7 @@ git pull
 git switch -c codex/tui
 ```
 
-### 12. Secret Rotation Hooks
+### 11. Secret Rotation Hooks
 
 Support command-driven rotation workflows:
 
@@ -460,7 +447,7 @@ git pull
 git switch -c codex/secret-rotation
 ```
 
-### 13. Hook System
+### 12. Hook System
 
 Allow local scripts to run after selected events such as `set`, `delete`, `backup`, or `token create`:
 

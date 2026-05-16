@@ -76,11 +76,12 @@ Create a backup:
 | --- | --- |
 | `set <key> <value>` | Store or update a value |
 | `get <key>` | Print a stored value |
+| `copy <key>` | Copy a value to the clipboard without printing it |
 | `delete <key>` | Delete a key |
 | `list` | List key names |
 | `search <pattern>` | Search keys |
 | `backup` | Create a timestamped backup |
-| `export` | Print shell-safe export lines |
+| `export` | Print shell-safe export lines or write them to a file |
 | `import <file>` | Import values from a file |
 | `setup-recovery` | Create a recovery key |
 | `recover` | Reset the master password with the recovery key |
@@ -123,7 +124,7 @@ The CLI stores runtime files in the current working directory where the command 
 
 ## Versioning
 
-Application releases use Git tags such as `v0.2.2` and are documented in `CHANGELOG.md`.
+Application releases use Git tags such as `v0.3.0` and are documented in `CHANGELOG.md`.
 
 The CLI-visible version is kept in sync with the current release tag. When the vault file format changes, the version should be updated together with migration notes in the changelog.
 

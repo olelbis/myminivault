@@ -153,6 +153,22 @@ func TestCLISmokeExportShellQuotesValues(t *testing.T) {
 
 	exportOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "export"))
 	requireContains(t, exportOutput, "export SPECIAL='quote\" dollar$ backtick` slash\\ line\nnext apostrophe'\\''s'")
+
+	exportFile := filepath.Join(dir, "vault.env")
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "export", "--output", exportFile)), "Export written")
+	requireFileExists(t, exportFile)
+	data, err := os.ReadFile(exportFile)
+	if err != nil {
+		t.Fatalf("read export file: %v", err)
+	}
+	requireContains(t, string(data), "export SPECIAL='quote\" dollar$ backtick` slash\\ line\nnext apostrophe'\\''s'")
+	info, err := os.Stat(exportFile)
+	if err != nil {
+		t.Fatalf("stat export file: %v", err)
+	}
+	if info.Mode().Perm() != 0600 {
+		t.Fatalf("export file mode = %v, want 0600", info.Mode().Perm())
+	}
 }
 
 func TestCLISmokeTokenReadAndWrite(t *testing.T) {

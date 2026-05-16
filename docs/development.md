@@ -13,6 +13,8 @@ cmd/
     main.go             CLI dispatch and top-level command flow
     commands.go         basic key/value commands, import/export, stats
     config_cli.go       config loading/display
+    core_dump_unix.go   best-effort core dump disabling on Unix-like systems
+    core_dump_other.go  no-op core dump hook for unsupported systems
     crypto.go           compatibility wrappers for internal crypto
     doctor_cli.go       local runtime health checks
     recovery_cli.go     recovery and password-change CLI flows
@@ -132,7 +134,7 @@ printf 'oldpass\n' | ./vault get TEST_KEY
 
 The automated CLI smoke tests create temporary directories and fake data. Do not run manual smoke commands in a directory that contains real vault files unless that is intentional.
 
-Current automated checks cover CLI smoke flows, token lifecycle behavior, config error handling, `vault doctor`, shell-safe import/export round trips, audit-log redaction, disabled audit logging, token sync metadata decisions, core unit behavior, and package-level coverage for `internal/storage`, `internal/token`, and `internal/recovery`.
+Current automated checks cover CLI smoke flows, token lifecycle behavior, config error handling, `vault doctor`, shell-safe import/export round trips, export-to-file behavior, clipboard clear behavior, audit-log redaction, disabled audit logging, token sync metadata decisions, core unit behavior, and package-level coverage for `internal/storage`, `internal/token`, and `internal/recovery`.
 
 ## Branch Workflow
 
@@ -168,8 +170,8 @@ For each completed branch:
 Current versioning style:
 
 - use `v0.x.y` while the CLI is evolving quickly
-- patch releases such as `v0.2.2` for docs, tests, fixes, and small refactors after `v0.2.0`
-- reserve minor releases such as `v0.2.0` for user-facing behavior changes
+- patch releases such as `v0.3.1` for docs, tests, fixes, and small refactors after `v0.3.0`
+- reserve minor releases such as `v0.3.0` for user-facing behavior changes
 
 ## Runtime Files
 
