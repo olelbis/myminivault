@@ -403,7 +403,7 @@ Use `main` as the stable base branch. Create a focused branch for each backlog i
 ```bash
 git switch main
 git pull
-git switch -c codex/cli-smoke-tests
+git switch -c codex/recovery-hardening
 ```
 
 Run all package checks:
@@ -450,7 +450,7 @@ cmd/
 
 Recommended follow-up tasks:
 
-- add automated smoke tests for the CLI
+- extend automated smoke tests for `change-password` and recovery flows
 - strengthen recovery key generation
 - make recovery file updates explicit and reliable
 - make `export` shell-safe

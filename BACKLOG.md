@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Last committed milestone: `9e92d9b Add inter-process vault file locking`
+- Last committed milestone: `8051211 Add concurrent CLI lock smoke test`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -28,8 +28,9 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Updated `go.mod` to Go `1.26`.
 - Fast-forwarded `main` to the completed split/fix/docs state and pushed it to GitHub.
 - Added inter-process file locking via `.myminivault.lock`.
-- Merged and deleted completed task branches: `codex/split-monolith` and `codex/file-locking`.
+- Merged and deleted completed task branches: `codex/split-monolith`, `codex/file-locking`, and `codex/cli-smoke-tests`.
 - Added automated CLI smoke tests for basic vault commands, wrong-password rejection, and token read/write flows.
+- Added automated concurrent lock smoke coverage.
 
 ## Current Verification
 
