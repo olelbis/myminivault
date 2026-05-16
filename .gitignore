@@ -6,3 +6,4 @@ shared-token-vault.json
 vault.log
 bin/
 test.txt
+.myminivault.lock

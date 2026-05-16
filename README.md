@@ -44,6 +44,7 @@ The CLI stores runtime files in the current working directory where the command 
 | `vault-tokens.json` | Token registry metadata |
 | `vault.log` | Audit log |
 | `vault-config.json` | Optional config override |
+| `.myminivault.lock` | Inter-process lock file used while vault commands run |
 
 These files are ignored by Git because they may contain encrypted secrets, keys, logs, or local runtime state.
 

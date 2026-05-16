@@ -34,12 +34,12 @@ func main() {
 		}
 		return
 	case "use-token":
-		if err := executeWithToken(); err != nil {
+		if err := withVaultLock(executeWithToken); err != nil {
 			fmt.Printf("❌ Token access failed: %v\n", err)
 		}
 		return
 	case "recover":
-		if err := recoverMasterPassword(); err != nil {
+		if err := withVaultLock(recoverMasterPassword); err != nil {
 			fmt.Printf("❌ Recovery failed: %v\n", err)
 		}
 		return
@@ -48,8 +48,10 @@ func main() {
 		reader := bufio.NewReader(os.Stdin)
 		confirm, _ := reader.ReadString('\n')
 		if strings.TrimSpace(strings.ToLower(confirm)) == "yes" {
-			key := generateRandom(32)
-			if err := saveTokenMasterKey(key); err != nil {
+			if err := withVaultLock(func() error {
+				key := generateRandom(32)
+				return saveTokenMasterKey(key)
+			}); err != nil {
 				fmt.Printf("❌ Failed: %v\n", err)
 			} else {
 				fmt.Println("✅ New token master key generated")
@@ -65,10 +67,17 @@ func main() {
 		return
 	}
 
+	if err := withVaultLock(func() error {
+		return runPasswordCommand(command, password)
+	}); err != nil {
+		fmt.Printf("%v\n", err)
+	}
+}
+
+func runPasswordCommand(command, password string) error {
 	extendedVault, salt, err := loadAndDecryptExtendedVault(password)
 	if err != nil {
-		fmt.Printf("Error loading vault: %v\n", err)
-		return
+		return fmt.Errorf("error loading vault: %w", err)
 	}
 
 	if err := syncSharedVaultToMainVault(extendedVault); err != nil {
@@ -95,18 +104,18 @@ func main() {
 		handleSetCommand(extendedVault.Data)
 	case "get":
 		handleGetCommand(extendedVault.Data)
-		return
+		return nil
 	case "delete":
 		handleDeleteCommand(extendedVault.Data)
 	case "export":
 		handleExportCommand(extendedVault.Data)
-		return
+		return nil
 	case "list":
 		handleListCommand(extendedVault.Data)
-		return
+		return nil
 	case "search":
 		handleSearchCommand(extendedVault.Data)
-		return
+		return nil
 	case "clear":
 		handleClearCommand(extendedVault)
 	case "import":
@@ -117,30 +126,30 @@ func main() {
 		} else {
 			fmt.Println("✅ Manual backup created successfully")
 		}
-		return
+		return nil
 	case "stats":
 		showStats(extendedVault)
-		return
+		return nil
 
 	case "setup-recovery":
 		handleSetupRecovery(extendedVault)
 	case "test-recovery":
 		handleTestRecovery(extendedVault)
-		return
+		return nil
 	case "change-password":
 		handleChangePassword(extendedVault, salt)
-		return
+		return nil
 
 	case "create-token":
 		handleCreateToken(extendedVault)
 	case "list-tokens":
 		handleListTokens(extendedVault)
-		return
+		return nil
 	case "revoke-token":
 		handleRevokeToken(extendedVault)
 	case "token-info":
 		handleTokenInfo(extendedVault)
-		return
+		return nil
 	case "cleanup-tokens":
 		if err := cleanupExpiredTokens(extendedVault); err != nil {
 			fmt.Printf("❌ Cleanup failed: %v\n", err)
@@ -156,17 +165,16 @@ func main() {
 
 	case "security-audit":
 		handleSecurityAudit(extendedVault)
-		return
+		return nil
 
 	default:
 		fmt.Printf("❌ Unknown command: %s\n", command)
 		showUsage()
-		return
+		return nil
 	}
 
 	if err := saveExtendedVault(extendedVault, password, salt); err != nil {
-		fmt.Printf("❌ Error saving vault: %v\n", err)
-		return
+		return fmt.Errorf("❌ Error saving vault: %w", err)
 	}
 
 	if shouldMirrorMainVaultToShared(command) {
@@ -174,6 +182,8 @@ func main() {
 			log.Printf("Warning: failed to mirror main vault to shared vault: %v", err)
 		}
 	}
+
+	return nil
 }
 
 func shouldMirrorMainVaultToShared(command string) bool {

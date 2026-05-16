@@ -27,6 +27,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Added `BACKLOG.md` as a handoff file for future sessions.
 - Updated `go.mod` to Go `1.26`.
 - Fast-forwarded `main` to the completed split/fix/docs state and pushed it to GitHub.
+- Added inter-process file locking via `.myminivault.lock` on branch `codex/file-locking`.
 
 ## Current Verification
 
@@ -136,26 +137,7 @@ git pull
 git switch -c codex/token-sync-policy
 ```
 
-### 4. Add File Locking
-
-The Go mutex only protects a single process. Two separate CLI processes can still write at the same time.
-
-Add file locking around writes to:
-
-- `vault.db`
-- `shared-token-vault.json`
-- `vault-token.key`
-- `vault-tokens.json`
-
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c codex/file-locking
-```
-
-### 5. Make Export Shell-Safe
+### 4. Make Export Shell-Safe
 
 Current export output is simple:
 
@@ -179,7 +161,7 @@ git pull
 git switch -c codex/export-shell-safe
 ```
 
-### 6. Reduce Token Side Effects
+### 5. Reduce Token Side Effects
 
 Currently ordinary password commands can create token runtime files because sync initializes the shared token vault.
 
@@ -195,7 +177,7 @@ git pull
 git switch -c codex/token-side-effects
 ```
 
-### 7. Validate Configuration
+### 6. Validate Configuration
 
 `vault-config.json` is loaded without validation.
 
@@ -214,7 +196,7 @@ git pull
 git switch -c codex/config-validation
 ```
 
-### 8. Decide Fate Of `cmd/splitter`
+### 7. Decide Fate Of `cmd/splitter`
 
 Options:
 
@@ -230,7 +212,7 @@ git pull
 git switch -c codex/remove-splitter
 ```
 
-### 9. Later Refactor To `internal/...`
+### 8. Later Refactor To `internal/...`
 
 The current split keeps everything in package `main`, which was intentionally conservative.
 
