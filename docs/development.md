@@ -32,6 +32,11 @@ internal/
     storage.go          vault load/save, checksum, and atomic writes
   token/
     token.go            token signing, validation, registry, and shared token vault persistence
+docs/
+  user-manual.md        user-facing workflows and operational notes
+  development.md        architecture, test, and release workflow notes
+  security.md           security model, assumptions, limits, and compromise guidance
+  token-sync-policy.md  main/shared token vault sync policy and deferred decisions
 ```
 
 ## Architecture Notes
@@ -161,7 +166,7 @@ For each completed branch:
 Current versioning style:
 
 - use `v0.x.y` while the CLI is evolving quickly
-- patch releases such as `v0.1.17` for docs, tests, fixes, and small refactors
+- patch releases such as `v0.1.18` for docs, tests, fixes, and small refactors
 - reserve minor releases such as `v0.2.0` for user-facing behavior changes
 
 ## Runtime Files

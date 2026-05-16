@@ -210,8 +210,8 @@ func executeTokenSet(vault *ExtendedVault, token AccessToken, key, value string)
 		return fmt.Errorf("failed to save changes: %w", err)
 	}
 
-	fmt.Printf("✅ Key '%s' set via token and synchronized across all tokens\n", key)
-	fmt.Printf("💡 Use 'vault sync-tokens' or restart vault to sync to main vault\n")
+	fmt.Printf("✅ Key '%s' set via token in the shared token vault\n", key)
+	fmt.Printf("💡 Run 'vault sync-tokens' or any master-password command to import it into the main vault\n")
 	return nil
 }
 

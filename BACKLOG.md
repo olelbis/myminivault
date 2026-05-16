@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.1.17`
+- Current baseline release: `v0.1.18`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -80,6 +80,8 @@ Strategic guidance:
 - Added terminal-style SVG screenshots for quick start, token, and recovery workflows.
 - Expanded `docs/development.md` with practical test commands for full, package, focused, verbose, cached, and manual smoke-test runs.
 - Added `docs/security.md` with the current security model, non-goals, sensitive assets, runtime-file risks, recovery limits, token boundaries, and compromise guidance.
+- Added `docs/token-sync-policy.md` documenting the current automatic token-write import policy, `sync-tokens`, conflict behavior, delete semantics, and deferred decisions.
+- Clarified token command output and help text around staged token writes and main-vault import.
 
 ## Current Verification
 
@@ -135,44 +137,14 @@ docs/
   user-manual.md        user-facing workflows and operational notes
   development.md        architecture, test, and release workflow notes
   security.md           security model, assumptions, limits, and compromise guidance
+  token-sync-policy.md  main/shared token vault sync policy and deferred decisions
 ```
 
 ## Next Recommended Steps
 
-### 1. Token And Shared Vault Policy Review
+### 1. Test Depth For `internal/...`
 
 Priority: highest.
-
-The token/shared-vault model is the most complex behavior in the project and needs an explicit policy decision.
-
-Current policy:
-
-- `vault.db` is the source of truth after master-password commands save
-- token writes are staged in `shared-token-vault.json`
-- master commands import staged token writes before executing
-- master mutations mirror the full main vault back to the shared vault after saving
-- deletes remain authoritative because mirroring replaces shared vault data with main vault data
-- conflict handling is currently last-writer-wins at the vault-key level
-
-Decisions to make:
-
-- keep automatic import on master commands, or require explicit `sync-tokens`
-- keep last-writer-wins, or add per-key timestamps/revisions
-- add delete tombstones, or keep full mirror replacement semantics
-- make token write behavior more explicit in command output
-- document exact behavior in `docs/user-manual.md`
-
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c codex/token-sync-policy-review
-```
-
-### 2. Test Depth For `internal/...`
-
-Priority: medium-high.
 
 Smoke tests protect real workflows, but package-level tests should cover internal behavior directly.
 
@@ -192,7 +164,7 @@ git pull
 git switch -c codex/internal-unit-tests
 ```
 
-### 3. Extend Automated CLI Smoke Tests
+### 2. Extend Automated CLI Smoke Tests
 
 Priority: medium.
 
@@ -233,7 +205,7 @@ git pull
 git switch -c codex/cli-smoke-tests-extended
 ```
 
-### 4. Recovery Policy And Verifier Review
+### 3. Recovery Policy And Verifier Review
 
 Priority: medium.
 
@@ -260,7 +232,7 @@ git pull
 git switch -c codex/recovery-policy-review
 ```
 
-### 5. Import/Export Round-Trip Review
+### 4. Import/Export Round-Trip Review
 
 Priority: medium.
 
@@ -294,7 +266,7 @@ git pull
 git switch -c codex/import-export-roundtrip
 ```
 
-### 6. Runtime File Permissions And `vault doctor`
+### 5. Runtime File Permissions And `vault doctor`
 
 Priority: medium.
 
@@ -322,7 +294,7 @@ git pull
 git switch -c codex/doctor-command
 ```
 
-### 7. Future Refactor Candidates
+### 6. Future Refactor Candidates
 
 Priority: low unless a bug or feature makes the extraction useful.
 
@@ -344,11 +316,17 @@ Possible future extractions:
 
 Continue only with well-covered areas and add concise English comments for non-obvious invariants.
 
+Future token sync simplification:
+
+- If `sync-tokens` should become mandatory instead of automatic import, first separate token writes from the shared vault mirror into a pending-write log.
+- Add per-key revision/timestamp metadata and delete tombstones before changing the policy, otherwise a later master-vault mirror can overwrite unsynced token writes.
+- Document the final behavior in the user manual once the policy is stable.
+
 ## Product Ideas After Hardening
 
 These are intentionally lower priority than the stability/security work above. Revisit them after documentation cleanup, security review, token sync policy review, and test-depth work are in better shape.
 
-### 8. `vault run -- <command>`
+### 7. `vault run -- <command>`
 
 Run a command with vault entries injected as environment variables, without printing secrets:
 
@@ -365,7 +343,7 @@ git pull
 git switch -c codex/vault-run-command
 ```
 
-### 9. Project Profiles
+### 8. Project Profiles
 
 Support separate vault contexts for different projects or environments:
 
@@ -383,7 +361,7 @@ git pull
 git switch -c codex/project-profiles
 ```
 
-### 10. Namespaces
+### 9. Namespaces
 
 Support namespaced keys for environments such as `dev`, `staging`, and `prod`:
 
@@ -400,7 +378,7 @@ git pull
 git switch -c codex/namespaces
 ```
 
-### 11. Clipboard Command
+### 10. Clipboard Command
 
 Copy a secret to the system clipboard and optionally clear it after a timeout:
 
@@ -417,7 +395,7 @@ git pull
 git switch -c codex/clipboard-copy
 ```
 
-### 12. Token UX Cleanup
+### 11. Token UX Cleanup
 
 Make token commands more consistent and automation-friendly:
 
@@ -435,7 +413,7 @@ git pull
 git switch -c codex/token-ux
 ```
 
-### 13. Terminal UI
+### 12. Terminal UI
 
 Add an optional TUI for browsing/searching keys, viewing token status, editing values, and triggering copy/export flows:
 
@@ -451,7 +429,7 @@ git pull
 git switch -c codex/tui
 ```
 
-### 14. Secret Rotation Hooks
+### 13. Secret Rotation Hooks
 
 Support command-driven rotation workflows:
 
@@ -467,7 +445,7 @@ git pull
 git switch -c codex/secret-rotation
 ```
 
-### 15. Hook System
+### 14. Hook System
 
 Allow local scripts to run after selected events such as `set`, `delete`, `backup`, or `token create`:
 

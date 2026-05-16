@@ -1,6 +1,16 @@
 # Changelog
 
-All notable project changes are recorded here. Application releases use Git tags such as `v0.1.17`, and the CLI-visible version is kept in sync with the current release tag.
+All notable project changes are recorded here. Application releases use Git tags such as `v0.1.18`, and the CLI-visible version is kept in sync with the current release tag.
+
+## [v0.1.18] - 2026-05-16
+
+### Added
+
+- Added `docs/token-sync-policy.md` documenting the current main/shared vault sync policy, conflict behavior, delete semantics, and deferred decisions.
+
+### Changed
+
+- Clarified token command output and help text around staged token writes and `sync-tokens`.
 
 ## [v0.1.17] - 2026-05-16
 

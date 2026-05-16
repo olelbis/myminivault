@@ -204,7 +204,7 @@ func showUsage() {
 }
 
 func showHelp() {
-	fmt.Println(`🔐 myminivault CLI v0.1.17
+	fmt.Println(`🔐 myminivault CLI v0.1.18
 
 BASIC COMMANDS:
   set <key> <value>     Set a key-value pair
@@ -226,7 +226,7 @@ RECOVERY COMMANDS:
 
 SYNCHRONIZED TOKEN SYSTEM:
   create-token --keys="PATTERN" --duration="2h" [--permissions="read,write"] [--max-uses=N]
-    Creates encrypted tokens with explicit main/shared sync
+    Creates encrypted tokens with automatic main/shared import policy
   
   list-tokens           Show all tokens with status
   revoke-token <id>     Revoke token 
@@ -239,7 +239,7 @@ SYNCHRONIZED TOKEN SYSTEM:
   cleanup-tokens        Remove expired/used tokens
 
 SYNCHRONIZATION:
-  sync-tokens           Manual sync of token changes to main vault
+  sync-tokens           Import staged token writes to main vault
 
 SECURITY:
   security-audit        Comprehensive security audit
@@ -250,7 +250,7 @@ ENTERPRISE FEATURES:
   🔒 AES-256-GCM encryption for all data
   🔑 Scrypt key derivation (32768 iterations)
   🎫 Compact tokens with shared vault architecture
-  🔄 Bidirectional synchronization (main ↔ tokens)
+  🔄 Automatic token-write import into master workflows
   ⏰ Automatic cleanup of expired tokens
   🔐 Unique token master key per vault
   📝 Complete audit logging

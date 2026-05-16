@@ -6,6 +6,8 @@
 
 Read the [Security Model](security.md) before using real secrets.
 
+Token synchronization behavior is documented in [Token Sync Policy](token-sync-policy.md).
+
 ## Build And Run
 
 Build the CLI from the repository root:

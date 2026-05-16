@@ -140,7 +140,7 @@ Current behavior:
 - master mutations mirror the main vault back to the shared token vault after saving when token runtime exists
 - deletes remain authoritative because mirroring replaces shared vault data with main vault data
 
-This is a powerful but complex model. Future work should decide whether automatic import remains the right default or whether token writes should require explicit `sync-tokens`.
+This is a powerful but complex model. The current policy is documented in [Token Sync Policy](token-sync-policy.md): automatic import remains the default, `sync-tokens` remains available for explicit import, and conflicts are last-writer-wins for now.
 
 ## Backups And Export
 
