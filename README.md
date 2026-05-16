@@ -98,6 +98,7 @@ Create a backup:
 
 - [User Manual](docs/user-manual.md)
 - [Development Guide](docs/development.md)
+- [Security Model](docs/security.md)
 - [Changelog](CHANGELOG.md)
 - [Backlog](BACKLOG.md)
 
@@ -119,7 +120,7 @@ The CLI stores runtime files in the current working directory where the command 
 
 ## Versioning
 
-Application releases use Git tags such as `v0.1.16` and are documented in `CHANGELOG.md`.
+Application releases use Git tags such as `v0.1.17` and are documented in `CHANGELOG.md`.
 
 The CLI-visible version is kept in sync with the current release tag. When the vault file format changes, the version should be updated together with migration notes in the changelog.
 

@@ -1,6 +1,16 @@
 # Changelog
 
-All notable project changes are recorded here. Application releases use Git tags such as `v0.1.16`, and the CLI-visible version is kept in sync with the current release tag.
+All notable project changes are recorded here. Application releases use Git tags such as `v0.1.17`, and the CLI-visible version is kept in sync with the current release tag.
+
+## [v0.1.17] - 2026-05-16
+
+### Added
+
+- Added `docs/security.md` with the current security model, non-goals, sensitive assets, runtime-file risks, recovery limits, token boundaries, and compromise guidance.
+
+### Changed
+
+- Linked the security model from README and docs.
 
 ## [v0.1.16] - 2026-05-16
 

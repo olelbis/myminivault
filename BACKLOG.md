@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.1.16`
+- Current baseline release: `v0.1.17`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -79,6 +79,7 @@ Strategic guidance:
 - Split documentation into a concise README, `docs/user-manual.md`, and `docs/development.md`.
 - Added terminal-style SVG screenshots for quick start, token, and recovery workflows.
 - Expanded `docs/development.md` with practical test commands for full, package, focused, verbose, cached, and manual smoke-test runs.
+- Added `docs/security.md` with the current security model, non-goals, sensitive assets, runtime-file risks, recovery limits, token boundaries, and compromise guidance.
 
 ## Current Verification
 
@@ -133,39 +134,14 @@ internal/
 docs/
   user-manual.md        user-facing workflows and operational notes
   development.md        architecture, test, and release workflow notes
+  security.md           security model, assumptions, limits, and compromise guidance
 ```
 
 ## Next Recommended Steps
 
-### 1. Security Review And Threat Model
+### 1. Token And Shared Vault Policy Review
 
 Priority: highest.
-
-Create a focused security document before claiming stronger security properties.
-
-Cover at least:
-
-- assets: master password, vault contents, recovery key, token master key, token strings, backups
-- attacker assumptions: local filesystem read, local process race, shell history, logs, copied tokens, stolen runtime files
-- non-goals: remote sync security, multi-user access control, hardened enterprise password manager behavior
-- file permissions for `vault.db`, `.bak`, `.recovery`, `vault-token.key`, `shared-token-vault.json`, `vault-tokens.json`, logs, backups
-- what metadata is visible without decrypting files
-- recovery limitations and snapshot behavior
-- token/shared-vault trust boundaries
-- logging policy and whether token/key identifiers can leak sensitive context
-- migration guidance if a runtime file is compromised
-
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c codex/security-threat-model
-```
-
-### 2. Token And Shared Vault Policy Review
-
-Priority: high.
 
 The token/shared-vault model is the most complex behavior in the project and needs an explicit policy decision.
 
@@ -194,7 +170,7 @@ git pull
 git switch -c codex/token-sync-policy-review
 ```
 
-### 3. Test Depth For `internal/...`
+### 2. Test Depth For `internal/...`
 
 Priority: medium-high.
 
@@ -216,7 +192,7 @@ git pull
 git switch -c codex/internal-unit-tests
 ```
 
-### 4. Extend Automated CLI Smoke Tests
+### 3. Extend Automated CLI Smoke Tests
 
 Priority: medium.
 
@@ -257,7 +233,7 @@ git pull
 git switch -c codex/cli-smoke-tests-extended
 ```
 
-### 5. Recovery Policy And Verifier Review
+### 4. Recovery Policy And Verifier Review
 
 Priority: medium.
 
@@ -284,7 +260,7 @@ git pull
 git switch -c codex/recovery-policy-review
 ```
 
-### 6. Import/Export Round-Trip Review
+### 5. Import/Export Round-Trip Review
 
 Priority: medium.
 
@@ -318,7 +294,7 @@ git pull
 git switch -c codex/import-export-roundtrip
 ```
 
-### 7. Runtime File Permissions And `vault doctor`
+### 6. Runtime File Permissions And `vault doctor`
 
 Priority: medium.
 
@@ -346,7 +322,7 @@ git pull
 git switch -c codex/doctor-command
 ```
 
-### 8. Future Refactor Candidates
+### 7. Future Refactor Candidates
 
 Priority: low unless a bug or feature makes the extraction useful.
 
@@ -372,7 +348,7 @@ Continue only with well-covered areas and add concise English comments for non-o
 
 These are intentionally lower priority than the stability/security work above. Revisit them after documentation cleanup, security review, token sync policy review, and test-depth work are in better shape.
 
-### 9. `vault run -- <command>`
+### 8. `vault run -- <command>`
 
 Run a command with vault entries injected as environment variables, without printing secrets:
 
@@ -389,7 +365,7 @@ git pull
 git switch -c codex/vault-run-command
 ```
 
-### 10. Project Profiles
+### 9. Project Profiles
 
 Support separate vault contexts for different projects or environments:
 
@@ -407,7 +383,7 @@ git pull
 git switch -c codex/project-profiles
 ```
 
-### 11. Namespaces
+### 10. Namespaces
 
 Support namespaced keys for environments such as `dev`, `staging`, and `prod`:
 
@@ -424,7 +400,7 @@ git pull
 git switch -c codex/namespaces
 ```
 
-### 12. Clipboard Command
+### 11. Clipboard Command
 
 Copy a secret to the system clipboard and optionally clear it after a timeout:
 
@@ -441,7 +417,7 @@ git pull
 git switch -c codex/clipboard-copy
 ```
 
-### 13. Token UX Cleanup
+### 12. Token UX Cleanup
 
 Make token commands more consistent and automation-friendly:
 
@@ -459,7 +435,7 @@ git pull
 git switch -c codex/token-ux
 ```
 
-### 14. Terminal UI
+### 13. Terminal UI
 
 Add an optional TUI for browsing/searching keys, viewing token status, editing values, and triggering copy/export flows:
 
@@ -475,7 +451,7 @@ git pull
 git switch -c codex/tui
 ```
 
-### 15. Secret Rotation Hooks
+### 14. Secret Rotation Hooks
 
 Support command-driven rotation workflows:
 
@@ -491,7 +467,7 @@ git pull
 git switch -c codex/secret-rotation
 ```
 
-### 16. Hook System
+### 15. Hook System
 
 Allow local scripts to run after selected events such as `set`, `delete`, `backup`, or `token create`:
 

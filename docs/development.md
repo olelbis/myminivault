@@ -60,7 +60,9 @@ The vault currently uses:
 - random salt per vault encryption
 - random nonce per AES-GCM encryption
 
-This project is not security-audited. Security claims should stay conservative until a threat model and review exist.
+This project is not security-audited. Security claims should stay conservative until an external review exists.
+
+See [Security Model](security.md) for current assumptions, non-goals, sensitive runtime files, and known limitations.
 
 ## Test Workflow
 
@@ -159,7 +161,7 @@ For each completed branch:
 Current versioning style:
 
 - use `v0.x.y` while the CLI is evolving quickly
-- patch releases such as `v0.1.16` for docs, tests, fixes, and small refactors
+- patch releases such as `v0.1.17` for docs, tests, fixes, and small refactors
 - reserve minor releases such as `v0.2.0` for user-facing behavior changes
 
 ## Runtime Files

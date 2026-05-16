@@ -4,6 +4,8 @@
 
 > Experimental personal project. Not audited. Do not rely on it as a production password manager.
 
+Read the [Security Model](security.md) before using real secrets.
+
 ## Build And Run
 
 Build the CLI from the repository root:
