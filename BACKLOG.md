@@ -236,6 +236,163 @@ git pull
 git switch -c codex/internal-packages
 ```
 
+## Product Ideas After Hardening
+
+These are intentionally lower priority than the stability/security work above. Revisit them after smoke tests, recovery hardening, sync policy, shell-safe export, config validation, and package cleanup are in place.
+
+### 9. `vault run -- <command>`
+
+Run a command with vault entries injected as environment variables, without printing secrets:
+
+```bash
+vault run -- npm start
+vault run -- go test ./...
+```
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c codex/vault-run-command
+```
+
+### 10. Project Profiles
+
+Support separate vault contexts for different projects or environments:
+
+```bash
+vault profile create myapp
+vault profile use myapp
+vault profile list
+```
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c codex/project-profiles
+```
+
+### 11. Namespaces
+
+Support namespaced keys for environments such as `dev`, `staging`, and `prod`:
+
+```bash
+vault set prod.DB_PASSWORD ...
+vault list prod.*
+```
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c codex/namespaces
+```
+
+### 12. Clipboard Command
+
+Copy a secret to the system clipboard and optionally clear it after a timeout:
+
+```bash
+vault copy API_KEY
+vault copy API_KEY --ttl 30s
+```
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c codex/clipboard-copy
+```
+
+### 13. Token UX Cleanup
+
+Make token commands more consistent and automation-friendly:
+
+```bash
+vault token create --read "API_*" --ttl 30m
+vault token inspect <id>
+vault token revoke <id>
+```
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c codex/token-ux
+```
+
+### 14. `vault doctor`
+
+Add a health-check command for local setup and runtime files:
+
+```bash
+vault doctor
+```
+
+Checks could include file permissions, lock file behavior, config validity, token state, backup presence, and recovery status.
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c codex/doctor-command
+```
+
+### 15. Terminal UI
+
+Add an optional TUI for browsing/searching keys, viewing token status, editing values, and triggering copy/export flows:
+
+```bash
+vault ui
+```
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c codex/tui
+```
+
+### 16. Secret Rotation Hooks
+
+Support command-driven rotation workflows:
+
+```bash
+vault rotate API_KEY --cmd './scripts/regenerate-api-key'
+```
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c codex/secret-rotation
+```
+
+### 17. Hook System
+
+Allow local scripts to run after selected events such as `set`, `delete`, `backup`, or `token create`:
+
+```bash
+vault hook add after-set ./scripts/audit.sh
+```
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c codex/hooks
+```
+
 ## Useful Commands
 
 Run all checks:
