@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"os"
@@ -6,13 +6,13 @@ import (
 	"testing"
 )
 
-func TestValidateConfigAcceptsDefaults(t *testing.T) {
-	if err := validateConfig(defaultConfig); err != nil {
-		t.Fatalf("validateConfig(defaultConfig): %v", err)
+func TestValidateAcceptsDefaults(t *testing.T) {
+	if err := Validate(Default); err != nil {
+		t.Fatalf("Validate(Default): %v", err)
 	}
 }
 
-func TestValidateConfigRejectsUnsafeValues(t *testing.T) {
+func TestValidateRejectsUnsafeValues(t *testing.T) {
 	tests := map[string]Config{
 		"scrypt_n too low":     {ScryptN: 16384, ScryptR: 8, ScryptP: 1, KeySize: 32, MaxBackups: 5},
 		"scrypt_n not power":   {ScryptN: 65535, ScryptR: 8, ScryptP: 1, KeySize: 32, MaxBackups: 5},
@@ -25,48 +25,48 @@ func TestValidateConfigRejectsUnsafeValues(t *testing.T) {
 
 	for name, cfg := range tests {
 		t.Run(name, func(t *testing.T) {
-			if err := validateConfig(cfg); err == nil {
+			if err := Validate(cfg); err == nil {
 				t.Fatal("expected validation error")
 			}
 		})
 	}
 }
 
-func TestLoadConfigUsesDefaultsWhenFileIsMissing(t *testing.T) {
+func TestLoadUsesDefaultsWhenFileIsMissing(t *testing.T) {
 	withTempWorkingDir(t, func() {
-		config = Config{}
-
-		if err := loadConfig(); err != nil {
-			t.Fatalf("loadConfig: %v", err)
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("Load: %v", err)
 		}
-		if config != defaultConfig {
-			t.Fatalf("config = %+v, want %+v", config, defaultConfig)
+		if cfg != Default {
+			t.Fatalf("config = %+v, want %+v", cfg, Default)
 		}
 	})
 }
 
-func TestLoadConfigAppliesValidOverride(t *testing.T) {
+func TestLoadAppliesValidOverride(t *testing.T) {
 	withTempWorkingDir(t, func() {
 		writeConfigFile(t, `{"scrypt_n":65536,"scrypt_r":8,"scrypt_p":2,"key_size":24,"max_backups":10}`)
 
-		if err := loadConfig(); err != nil {
-			t.Fatalf("loadConfig: %v", err)
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("Load: %v", err)
 		}
 
 		want := Config{ScryptN: 65536, ScryptR: 8, ScryptP: 2, KeySize: 24, MaxBackups: 10}
-		if config != want {
-			t.Fatalf("config = %+v, want %+v", config, want)
+		if cfg != want {
+			t.Fatalf("config = %+v, want %+v", cfg, want)
 		}
 	})
 }
 
-func TestLoadConfigRejectsMalformedJSON(t *testing.T) {
+func TestLoadRejectsMalformedJSON(t *testing.T) {
 	withTempWorkingDir(t, func() {
 		writeConfigFile(t, `{"scrypt_n":`)
 
-		err := loadConfig()
+		_, err := Load()
 		if err == nil {
-			t.Fatal("expected loadConfig error")
+			t.Fatal("expected Load error")
 		}
 		if !strings.Contains(err.Error(), "invalid vault-config.json") {
 			t.Fatalf("error = %q, want invalid config file message", err)
@@ -74,13 +74,13 @@ func TestLoadConfigRejectsMalformedJSON(t *testing.T) {
 	})
 }
 
-func TestLoadConfigRejectsUnsafeValues(t *testing.T) {
+func TestLoadRejectsUnsafeValues(t *testing.T) {
 	withTempWorkingDir(t, func() {
 		writeConfigFile(t, `{"scrypt_n":1024,"scrypt_r":8,"scrypt_p":1,"key_size":32,"max_backups":5}`)
 
-		err := loadConfig()
+		_, err := Load()
 		if err == nil {
-			t.Fatal("expected loadConfig error")
+			t.Fatal("expected Load error")
 		}
 		if !strings.Contains(err.Error(), "scrypt_n") {
 			t.Fatalf("error = %q, want scrypt_n validation message", err)
@@ -96,7 +96,6 @@ func withTempWorkingDir(t *testing.T, fn func()) {
 		t.Fatalf("getwd: %v", err)
 	}
 	t.Cleanup(func() {
-		config = defaultConfig
 		if err := os.Chdir(originalDir); err != nil {
 			t.Fatalf("restore working dir: %v", err)
 		}
@@ -111,7 +110,7 @@ func withTempWorkingDir(t *testing.T, fn func()) {
 func writeConfigFile(t *testing.T, content string) {
 	t.Helper()
 
-	if err := os.WriteFile(configFile, []byte(content), 0600); err != nil {
+	if err := os.WriteFile(FileName, []byte(content), 0600); err != nil {
 		t.Fatalf("write config file: %v", err)
 	}
 }

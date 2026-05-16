@@ -1,6 +1,13 @@
 # Changelog
 
-All notable project changes are recorded here. Application releases use Git tags such as `v0.1.5`, and the CLI-visible version is kept in sync with the current release tag.
+All notable project changes are recorded here. Application releases use Git tags such as `v0.1.6`, and the CLI-visible version is kept in sync with the current release tag.
+
+## [v0.1.6] - 2026-05-16
+
+### Changed
+
+- Moved config loading and validation into `internal/config`.
+- Added concise English comments around config default/override behavior.
 
 ## [v0.1.5] - 2026-05-16
 

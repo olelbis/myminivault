@@ -1,42 +1,23 @@
-// Code split from myminivault.go; behavior intentionally unchanged.
 package main
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
-	"os"
+
+	vaultconfig "github.com/olelbis/myminivault/internal/config"
 )
 
-// Configurazione del vault
-type Config struct {
-	ScryptN    int `json:"scrypt_n"`
-	ScryptR    int `json:"scrypt_r"`
-	ScryptP    int `json:"scrypt_p"`
-	KeySize    int `json:"key_size"`
-	MaxBackups int `json:"max_backups"`
-}
-
-var defaultConfig = Config{
-	ScryptN:    32768,
-	ScryptR:    8,
-	ScryptP:    1,
-	KeySize:    32,
-	MaxBackups: 5,
-}
-
 // Parametri per cifratura e derivazione della chiave
-var config = defaultConfig
+var config = vaultconfig.Default
 
 const (
 	vaultFile        = "vault.db"
-	configFile       = "vault-config.json"
+	configFile       = vaultconfig.FileName
 	logFile          = "vault.log"
 	tokenRegistry    = "vault-tokens.json"
 	tokenKeyFile     = "vault-token.key"
 	sharedTokenVault = "shared-token-vault.json" // ⭐ VAULT CONDIVISO
 	saltSize         = 16
-	vaultVersion     = "0.1.5"
+	vaultVersion     = "0.1.6"
 )
 
 func showConfig() {
@@ -53,51 +34,10 @@ func handleConfigCommand() error {
 }
 
 func loadConfig() error {
-	if _, err := os.Stat(configFile); err != nil {
-		if os.IsNotExist(err) {
-			config = defaultConfig
-			return nil
-		}
-		return err
-	}
-
-	data, err := os.ReadFile(configFile)
+	loadedConfig, err := vaultconfig.Load()
 	if err != nil {
 		return err
 	}
-
-	nextConfig := defaultConfig
-	if err := json.Unmarshal(data, &nextConfig); err != nil {
-		return fmt.Errorf("invalid %s: %w", configFile, err)
-	}
-
-	if err := validateConfig(nextConfig); err != nil {
-		return fmt.Errorf("invalid %s: %w", configFile, err)
-	}
-
-	config = nextConfig
+	config = loadedConfig
 	return nil
-}
-
-func validateConfig(cfg Config) error {
-	if cfg.ScryptN < 32768 || cfg.ScryptN > 1048576 || !isPowerOfTwo(cfg.ScryptN) {
-		return errors.New("scrypt_n must be a power of two between 32768 and 1048576")
-	}
-	if cfg.ScryptR < 1 || cfg.ScryptR > 16 {
-		return errors.New("scrypt_r must be between 1 and 16")
-	}
-	if cfg.ScryptP < 1 || cfg.ScryptP > 8 {
-		return errors.New("scrypt_p must be between 1 and 8")
-	}
-	if cfg.KeySize != 16 && cfg.KeySize != 24 && cfg.KeySize != 32 {
-		return errors.New("key_size must be 16, 24, or 32")
-	}
-	if cfg.MaxBackups < 1 || cfg.MaxBackups > 100 {
-		return errors.New("max_backups must be between 1 and 100")
-	}
-	return nil
-}
-
-func isPowerOfTwo(value int) bool {
-	return value > 0 && value&(value-1) == 0
 }

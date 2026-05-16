@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.1.5`
+- Current baseline release: `v0.1.6`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -41,6 +41,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Added `CHANGELOG.md` and adopted Git release tags such as `v0.1.0`, kept in sync with the CLI-visible version.
 - Added core unit coverage for crypto, token helpers, key validation, and import parsing.
 - Moved crypto helpers into `internal/crypto` with focused English comments.
+- Moved config loading and validation into `internal/config` with focused English comments.
 
 ## Current Verification
 
@@ -77,6 +78,8 @@ cmd/
     token.go      token creation, validation, token commands
     types.go      shared data structures
 internal/
+  config/
+    config.go     config defaults, loading, and validation
   crypto/
     crypto.go     key derivation, encryption, decryption, secure random bytes
 ```
@@ -255,9 +258,8 @@ Later, move stable areas into packages:
 - `internal/storage`
 - `internal/token`
 - `internal/recovery`
-- `internal/config`
 
-`internal/crypto` has already been extracted. Continue only with well-covered areas. During the refactor, add concise English comments for non-obvious invariants and flows, especially around recovery, token validation, shared-vault sync, and file locking.
+`internal/crypto` and `internal/config` have already been extracted. Continue only with well-covered areas. During the refactor, add concise English comments for non-obvious invariants and flows, especially around recovery, token validation, shared-vault sync, and file locking.
 
 Suggested branch:
 
