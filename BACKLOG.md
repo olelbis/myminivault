@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.1.10`
+- Current baseline release: `v0.1.11`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -46,6 +46,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Moved shared data structures into `internal/model` with compatibility aliases in `cmd/vault`.
 - Moved vault load/save, checksum, and atomic write helpers into `internal/storage`.
 - Moved token signing, validation, registry, and encrypted shared token vault helpers into `internal/token`.
+- Moved recovery key generation, validation, recovery vault decryption, and recovery file writes into `internal/recovery`.
 
 ## Current Verification
 
@@ -88,6 +89,8 @@ internal/
     crypto.go     key derivation, encryption, decryption, secure random bytes
   model/
     model.go      vault, recovery, token, and metadata structs
+  recovery/
+    recovery.go   recovery keys, recovery vault decryption, and recovery file writes
   storage/
     storage.go    vault load/save, checksum, and atomic writes
   token/
@@ -260,11 +263,16 @@ git switch -c codex/user-manual
 
 The current split keeps everything in package `main`, which was intentionally conservative.
 
-Later, move stable areas into packages:
+Stable internal packages already extracted:
 
+- `internal/config`
+- `internal/crypto`
+- `internal/model`
 - `internal/recovery`
+- `internal/storage`
+- `internal/token`
 
-`internal/crypto`, `internal/config`, `internal/model`, `internal/storage`, and `internal/token` have already been extracted. Continue only with well-covered areas. During the refactor, add concise English comments for non-obvious invariants and flows, especially around recovery, shared-vault sync, and file locking.
+Continue only if another well-covered area emerges. During any future refactor, add concise English comments for non-obvious invariants and flows, especially around shared-vault sync and file locking.
 
 Suggested branch:
 

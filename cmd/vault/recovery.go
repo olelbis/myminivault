@@ -3,19 +3,15 @@ package main
 
 import (
 	"bufio"
-	"crypto/hmac"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/base32"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
 	"time"
-)
 
-const recoveryKeyBytes = 32
+	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
+	vaultrecovery "github.com/olelbis/myminivault/internal/recovery"
+)
 
 func handleSetupRecovery(vault *ExtendedVault) {
 	if vault.Recovery != nil {
@@ -97,42 +93,9 @@ func recoverMasterPassword() error {
 
 	setCurrentRecoveryKey(recoveryKey)
 
-	key, err := deriveKey([]byte(recoveryKey), salt)
+	vault, err := vaultrecovery.DecryptVault(salt, encryptedData, recoveryKey, recoveryOptions())
 	if err != nil {
-		return fmt.Errorf("key derivation failed: %w", err)
-	}
-
-	decrypted, err := decrypt(encryptedData, key)
-	if err != nil {
-		return errors.New("invalid recovery key or corrupted vault")
-	}
-
-	if len(decrypted) <= 32 {
-		return errors.New("vault data too short")
-	}
-
-	expectedChecksum := decrypted[:32]
-	data := decrypted[32:]
-	actualChecksum := sha256.Sum256(data)
-
-	checksumMatch := true
-	for i := range expectedChecksum {
-		if expectedChecksum[i] != actualChecksum[i] {
-			checksumMatch = false
-		}
-	}
-
-	if !checksumMatch {
-		return errors.New("data integrity check failed")
-	}
-
-	var vault ExtendedVault
-	if err := json.Unmarshal(data, &vault); err != nil {
-		return fmt.Errorf("failed to parse vault data: %w", err)
-	}
-
-	if vault.Recovery == nil || !validateRecoveryKey(vault.Recovery, recoveryKey) {
-		return errors.New("recovery key not found or invalid")
+		return err
 	}
 
 	newPassword, err := readPasswordPrompt("🔐 Enter new master password: ")
@@ -155,7 +118,7 @@ func recoverMasterPassword() error {
 	vault.Recovery.LastUsed = time.Now()
 	vault.Recovery.UseCount++
 
-	if err := saveExtendedVault(&vault, newPassword, salt); err != nil {
+	if err := saveExtendedVault(vault, newPassword, salt); err != nil {
 		return fmt.Errorf("failed to save vault with new password: %w", err)
 	}
 
@@ -195,36 +158,19 @@ func handleChangePassword(vault *ExtendedVault, salt []byte) {
 }
 
 func generateRecoveryKey() (string, error) {
-	keyBytes := make([]byte, recoveryKeyBytes)
-	if _, err := rand.Read(keyBytes); err != nil {
-		return "", fmt.Errorf("secure random failed: %w", err)
-	}
-
-	encoded := strings.TrimRight(base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(keyBytes), "=")
-	return groupRecoveryKey(encoded), nil
+	return vaultrecovery.GenerateKey()
 }
 
 func groupRecoveryKey(encoded string) string {
-	const groupSize = 5
-	groups := make([]string, 0, (len(encoded)+groupSize-1)/groupSize)
-	for len(encoded) > groupSize {
-		groups = append(groups, encoded[:groupSize])
-		encoded = encoded[groupSize:]
-	}
-	if encoded != "" {
-		groups = append(groups, encoded)
-	}
-	return strings.Join(groups, "-")
+	return vaultrecovery.GroupKey(encoded)
 }
 
 func validateRecoveryKey(recovery *RecoveryData, key string) bool {
-	hash := sha256.Sum256([]byte(key))
-	return hmac.Equal(recovery.RecoveryKeyHash, hash[:])
+	return vaultrecovery.ValidateKey(recovery, key)
 }
 
 func hashRecoveryKey(recovery *RecoveryData, key string) {
-	hash := sha256.Sum256([]byte(key))
-	recovery.RecoveryKeyHash = hash[:]
+	vaultrecovery.HashKey(recovery, key)
 }
 
 func setCurrentRecoveryKey(key string) {
@@ -236,40 +182,16 @@ func getCurrentRecoveryKey() string {
 }
 
 func saveRecoveryFile(salt, recoveryCiphertext []byte) error {
-	recoveryFile := vaultFile + ".recovery"
-	tempFile := recoveryFile + ".tmp"
-	f, err := os.OpenFile(tempFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
-	if err != nil {
-		return fmt.Errorf("failed to create recovery file: %w", err)
-	}
+	return vaultrecovery.SaveFile(vaultFile, salt, recoveryCiphertext)
+}
 
-	if _, err := f.Write(salt); err != nil {
-		f.Close()
-		os.Remove(tempFile)
-		return fmt.Errorf("failed to write salt to recovery file: %w", err)
+func recoveryOptions() vaultrecovery.Options {
+	return vaultrecovery.Options{
+		Scrypt: vaultcrypto.ScryptConfig{
+			N:       config.ScryptN,
+			R:       config.ScryptR,
+			P:       config.ScryptP,
+			KeySize: config.KeySize,
+		},
 	}
-
-	if _, err := f.Write(recoveryCiphertext); err != nil {
-		f.Close()
-		os.Remove(tempFile)
-		return fmt.Errorf("failed to write data to recovery file: %w", err)
-	}
-
-	if err := f.Sync(); err != nil {
-		f.Close()
-		os.Remove(tempFile)
-		return fmt.Errorf("failed to sync recovery file: %w", err)
-	}
-
-	if err := f.Close(); err != nil {
-		os.Remove(tempFile)
-		return fmt.Errorf("failed to close recovery file: %w", err)
-	}
-
-	if err := os.Rename(tempFile, recoveryFile); err != nil {
-		os.Remove(tempFile)
-		return fmt.Errorf("failed to finalize recovery file: %w", err)
-	}
-
-	return nil
 }

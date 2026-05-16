@@ -1,6 +1,13 @@
 # Changelog
 
-All notable project changes are recorded here. Application releases use Git tags such as `v0.1.10`, and the CLI-visible version is kept in sync with the current release tag.
+All notable project changes are recorded here. Application releases use Git tags such as `v0.1.11`, and the CLI-visible version is kept in sync with the current release tag.
+
+## [v0.1.11] - 2026-05-16
+
+### Changed
+
+- Moved recovery key generation, validation, recovery vault decryption, and recovery file writes into `internal/recovery`.
+- Kept recovery prompts and password-change CLI output in `cmd/vault`.
 
 ## [v0.1.10] - 2026-05-16
 
