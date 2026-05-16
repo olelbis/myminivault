@@ -38,6 +38,9 @@ func TestImportFromFile(t *testing.T) {
 		"API_KEY=secret-value",
 		`export DB_PASSWORD="db-secret"`,
 		`SINGLE_QUOTED='single-secret'`,
+		`APOSTROPHE='secret'\''value'`,
+		"NEWLINE='line",
+		"next'",
 		"INVALID LINE",
 		"BAD KEY=value",
 	}, "\n")
@@ -55,6 +58,8 @@ func TestImportFromFile(t *testing.T) {
 		"API_KEY":       "secret-value",
 		"DB_PASSWORD":   "db-secret",
 		"SINGLE_QUOTED": "single-secret",
+		"APOSTROPHE":    "secret'value",
+		"NEWLINE":       "line\nnext",
 	}
 	if len(vault) != len(want) {
 		t.Fatalf("imported %d entries, want %d: %+v", len(vault), len(want), vault)

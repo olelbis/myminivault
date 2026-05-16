@@ -210,7 +210,7 @@ func showUsage() {
 }
 
 func showHelp() {
-	fmt.Println(`🔐 myminivault CLI v0.2.0
+	fmt.Println(`🔐 myminivault CLI v0.2.1
 
 BASIC COMMANDS:
   set <key> <value>     Set a key-value pair
@@ -260,6 +260,6 @@ ENTERPRISE FEATURES:
   🔄 Automatic token-write import into master workflows
   ⏰ Automatic cleanup of expired tokens
   🔐 Unique token master key per vault
-  📝 Complete audit logging
+  📝 Minimal configurable audit logging
   ✅ Data integrity verification`)
 }

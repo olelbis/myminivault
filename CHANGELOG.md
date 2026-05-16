@@ -1,6 +1,19 @@
 # Changelog
 
-All notable project changes are recorded here. Application releases use Git tags such as `v0.2.0`, and the CLI-visible version is kept in sync with the current release tag.
+All notable project changes are recorded here. Application releases use Git tags such as `v0.2.1`, and the CLI-visible version is kept in sync with the current release tag.
+
+## [v0.2.1] - 2026-05-16
+
+### Added
+
+- Added `audit_log` config support so audit logging can be disabled.
+- Added `vault doctor` freshness warnings for stale recovery snapshots and shared token vaults newer than the main vault.
+- Added tests for exact shell-safe export/import round trips, audit-log redaction, disabled audit logging, and doctor freshness output.
+
+### Changed
+
+- Reduced audit-log metadata leakage by no longer logging key names or token identifiers by default.
+- Improved import parsing for shell-safe export output with apostrophes and embedded newlines.
 
 ## [v0.2.0] - 2026-05-16
 

@@ -21,6 +21,8 @@ func handleDoctorCommand() {
 		checkConfigHealth(),
 		checkLockFileHealth(),
 		checkBackupHealth(),
+		checkRecoveryFreshness(),
+		checkSharedVaultFreshness(),
 	}
 	checks = append(checks, checkRuntimeFileHealth()...)
 
@@ -65,7 +67,7 @@ func checkConfigHealth() doctorCheck {
 		check.name = "config permissions"
 		return check
 	}
-	return doctorCheck{name: "config", status: "OK", detail: fmt.Sprintf("valid, max_backups=%d", cfg.MaxBackups)}
+	return doctorCheck{name: "config", status: "OK", detail: fmt.Sprintf("valid, max_backups=%d, audit_log=%t", cfg.MaxBackups, cfg.AuditLog)}
 }
 
 func checkRuntimeFileHealth() []doctorCheck {
@@ -153,6 +155,51 @@ func checkBackupHealth() doctorCheck {
 		return doctorCheck{name: "timestamped backups", status: "WARN", detail: "unsafe permissions: " + strings.Join(insecure, ", ")}
 	}
 	return doctorCheck{name: "timestamped backups", status: "OK", detail: fmt.Sprintf("%d found", len(backups))}
+}
+
+func checkRecoveryFreshness() doctorCheck {
+	mainInfo, mainErr := os.Stat(vaultFile)
+	recoveryInfo, recoveryErr := os.Stat(vaultFile + ".recovery")
+	if os.IsNotExist(mainErr) && os.IsNotExist(recoveryErr) {
+		return doctorCheck{name: "recovery freshness", status: "OK", detail: "not configured"}
+	}
+	if mainErr != nil {
+		if os.IsNotExist(mainErr) {
+			return doctorCheck{name: "recovery freshness", status: "WARN", detail: "recovery exists but main vault is missing"}
+		}
+		return doctorCheck{name: "recovery freshness", status: "FAIL", detail: mainErr.Error()}
+	}
+	if recoveryErr != nil {
+		if os.IsNotExist(recoveryErr) {
+			return doctorCheck{name: "recovery freshness", status: "WARN", detail: "no recovery snapshot"}
+		}
+		return doctorCheck{name: "recovery freshness", status: "FAIL", detail: recoveryErr.Error()}
+	}
+	if recoveryInfo.ModTime().Before(mainInfo.ModTime()) {
+		return doctorCheck{name: "recovery freshness", status: "WARN", detail: "snapshot older than main vault"}
+	}
+	return doctorCheck{name: "recovery freshness", status: "OK", detail: "snapshot is current or newer"}
+}
+
+func checkSharedVaultFreshness() doctorCheck {
+	mainInfo, mainErr := os.Stat(vaultFile)
+	sharedInfo, sharedErr := os.Stat(sharedTokenVault)
+	if os.IsNotExist(sharedErr) {
+		return doctorCheck{name: "token sync freshness", status: "OK", detail: "shared token vault not present"}
+	}
+	if sharedErr != nil {
+		return doctorCheck{name: "token sync freshness", status: "FAIL", detail: sharedErr.Error()}
+	}
+	if mainErr != nil {
+		if os.IsNotExist(mainErr) {
+			return doctorCheck{name: "token sync freshness", status: "WARN", detail: "shared token vault exists but main vault is missing"}
+		}
+		return doctorCheck{name: "token sync freshness", status: "FAIL", detail: mainErr.Error()}
+	}
+	if sharedInfo.ModTime().After(mainInfo.ModTime()) {
+		return doctorCheck{name: "token sync freshness", status: "WARN", detail: "shared token vault newer than main vault; run vault sync-tokens or a master-password command"}
+	}
+	return doctorCheck{name: "token sync freshness", status: "OK", detail: "shared token vault not newer than main vault"}
 }
 
 func doctorIcon(status string) string {

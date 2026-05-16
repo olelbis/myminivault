@@ -17,7 +17,7 @@ const (
 	tokenKeyFile     = "vault-token.key"
 	sharedTokenVault = "shared-token-vault.json"
 	saltSize         = 16
-	vaultVersion     = "0.2.0"
+	vaultVersion     = "0.2.1"
 )
 
 func showConfig() {
@@ -27,6 +27,7 @@ func showConfig() {
 	fmt.Printf("  scrypt_p: %d\n", config.ScryptP)
 	fmt.Printf("  key_size: %d\n", config.KeySize)
 	fmt.Printf("  max_backups: %d\n", config.MaxBackups)
+	fmt.Printf("  audit_log: %t\n", config.AuditLog)
 }
 
 func handleConfigCommand() error {

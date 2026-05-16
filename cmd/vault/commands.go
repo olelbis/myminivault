@@ -203,17 +203,14 @@ func validateKey(key string) error {
 }
 
 func importFromFile(vault map[string]string, filename string) error {
-	file, err := os.Open(filename)
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
 	imported := 0
-
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+	for _, line := range splitImportLines(string(data)) {
+		line = strings.TrimSpace(line)
 		if len(line) == 0 || strings.HasPrefix(line, "#") {
 			continue
 		}
@@ -228,7 +225,10 @@ func importFromFile(vault map[string]string, filename string) error {
 		}
 
 		key := strings.TrimSpace(parts[0])
-		value := strings.Trim(strings.TrimSpace(parts[1]), "\"'")
+		value, err := parseImportValue(strings.TrimSpace(parts[1]))
+		if err != nil {
+			continue
+		}
 
 		if err := validateKey(key); err != nil {
 			continue
@@ -239,7 +239,74 @@ func importFromFile(vault map[string]string, filename string) error {
 	}
 
 	fmt.Printf("Imported %d entries\n", imported)
-	return scanner.Err()
+	return nil
+}
+
+func splitImportLines(content string) []string {
+	lines := make([]string, 0)
+	var current strings.Builder
+	inSingleQuote := false
+
+	for i := 0; i < len(content); i++ {
+		if inSingleQuote && i+3 < len(content) && content[i] == '\'' && content[i+1] == '\\' && content[i+2] == '\'' && content[i+3] == '\'' {
+			current.WriteString("'\\''")
+			i += 3
+			continue
+		}
+
+		switch content[i] {
+		case '\'':
+			inSingleQuote = !inSingleQuote
+			current.WriteByte(content[i])
+		case '\n':
+			if inSingleQuote {
+				current.WriteByte(content[i])
+				continue
+			}
+			lines = append(lines, current.String())
+			current.Reset()
+		default:
+			current.WriteByte(content[i])
+		}
+	}
+
+	if current.Len() > 0 {
+		lines = append(lines, current.String())
+	}
+	return lines
+}
+
+func parseImportValue(value string) (string, error) {
+	if value == "" {
+		return "", nil
+	}
+	if value[0] != '\'' {
+		return strings.Trim(value, "\""), nil
+	}
+
+	var parsed strings.Builder
+	for len(value) > 0 {
+		if value[0] != '\'' {
+			return "", errors.New("unsupported shell value")
+		}
+		value = value[1:]
+
+		end := strings.IndexByte(value, '\'')
+		if end < 0 {
+			return "", errors.New("unterminated quoted value")
+		}
+		parsed.WriteString(value[:end])
+		value = value[end+1:]
+
+		if strings.HasPrefix(value, "\\''") {
+			parsed.WriteByte('\'')
+			value = value[2:]
+			continue
+		}
+		value = strings.TrimSpace(value)
+	}
+
+	return parsed.String(), nil
 }
 
 func createTimestampedBackup() error {
@@ -314,6 +381,9 @@ func getKeyFromArgs() string {
 }
 
 func logAccess(action, key string) {
+	if !config.AuditLog {
+		return
+	}
 	file, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return
@@ -322,9 +392,5 @@ func logAccess(action, key string) {
 	_ = os.Chmod(logFile, 0600)
 
 	logger := log.New(file, "", log.LstdFlags)
-	if key != "" {
-		logger.Printf("%s: %s", action, key)
-	} else {
-		logger.Printf("%s", action)
-	}
+	logger.Printf("%s", action)
 }

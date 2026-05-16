@@ -132,7 +132,7 @@ printf 'oldpass\n' | ./vault get TEST_KEY
 
 The automated CLI smoke tests create temporary directories and fake data. Do not run manual smoke commands in a directory that contains real vault files unless that is intentional.
 
-Current automated checks cover CLI smoke flows, token lifecycle behavior, config error handling, `vault doctor`, basic import/export round trips, core unit behavior, and package-level coverage for `internal/storage`, `internal/token`, and `internal/recovery`.
+Current automated checks cover CLI smoke flows, token lifecycle behavior, config error handling, `vault doctor`, shell-safe import/export round trips, audit-log redaction, disabled audit logging, core unit behavior, and package-level coverage for `internal/storage`, `internal/token`, and `internal/recovery`.
 
 ## Branch Workflow
 

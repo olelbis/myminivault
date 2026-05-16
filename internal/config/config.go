@@ -10,11 +10,12 @@ import (
 const FileName = "vault-config.json"
 
 type Config struct {
-	ScryptN    int `json:"scrypt_n"`
-	ScryptR    int `json:"scrypt_r"`
-	ScryptP    int `json:"scrypt_p"`
-	KeySize    int `json:"key_size"`
-	MaxBackups int `json:"max_backups"`
+	ScryptN    int  `json:"scrypt_n"`
+	ScryptR    int  `json:"scrypt_r"`
+	ScryptP    int  `json:"scrypt_p"`
+	KeySize    int  `json:"key_size"`
+	MaxBackups int  `json:"max_backups"`
+	AuditLog   bool `json:"audit_log"`
 }
 
 var Default = Config{
@@ -23,6 +24,7 @@ var Default = Config{
 	ScryptP:    1,
 	KeySize:    32,
 	MaxBackups: 5,
+	AuditLog:   true,
 }
 
 // Load returns defaults when the config file is absent, but rejects malformed

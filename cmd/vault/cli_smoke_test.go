@@ -255,6 +255,8 @@ func TestCLISmokeDoctorChecksRuntimeHealth(t *testing.T) {
 	requireContains(t, doctorOutput, "main vault")
 	requireContains(t, doctorOutput, "mode 0600")
 	requireContains(t, doctorOutput, "timestamped backups")
+	requireContains(t, doctorOutput, "recovery freshness")
+	requireContains(t, doctorOutput, "token sync freshness")
 	requireContains(t, doctorOutput, "Status: usable with warnings")
 
 	if err := os.Chmod(filepath.Join(dir, vaultFile), 0644); err != nil {
@@ -265,13 +267,38 @@ func TestCLISmokeDoctorChecksRuntimeHealth(t *testing.T) {
 	requireContains(t, insecureOutput, "mode 0644")
 }
 
+func TestCLISmokeAuditLogOmitsKeyNamesAndCanBeDisabled(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "SECRET_KEY_NAME", "hello"))
+
+	logData, err := os.ReadFile(filepath.Join(dir, logFile))
+	if err != nil {
+		t.Fatalf("read log file: %v", err)
+	}
+	if strings.Contains(string(logData), "SECRET_KEY_NAME") {
+		t.Fatalf("log should not contain key names:\n%s", logData)
+	}
+	requireContains(t, string(logData), "set")
+
+	noLogDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(noLogDir, configFile), []byte(`{"audit_log":false}`), 0600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	requireOK(t, runVault(t, bin, noLogDir, "pass\n", "set", "NO_LOG_KEY", "hello"))
+	requireFileNotExists(t, filepath.Join(noLogDir, logFile))
+}
+
 func TestCLISmokeImportExportRoundTrip(t *testing.T) {
 	bin := buildVaultBinary(t)
 	sourceDir := t.TempDir()
 	targetDir := t.TempDir()
+	specialValue := "quote\" dollar$ backtick` slash\\ line\nnext apostrophe's"
 
 	requireOK(t, runVault(t, bin, sourceDir, "pass\n", "set", "API_KEY", "hello"))
 	requireOK(t, runVault(t, bin, sourceDir, "pass\n", "set", "DB_KEY", "world"))
+	requireOK(t, runVault(t, bin, sourceDir, "pass\n", "set", "SPECIAL", specialValue))
 
 	exportOutput := requireOK(t, runVault(t, bin, sourceDir, "pass\n", "export"))
 	exportOutput = onlyExportLines(exportOutput)
@@ -280,9 +307,10 @@ func TestCLISmokeImportExportRoundTrip(t *testing.T) {
 		t.Fatalf("write import file: %v", err)
 	}
 
-	requireContains(t, requireOK(t, runVault(t, bin, targetDir, "pass\n", "import", importFile)), "Imported 2 entries")
+	requireContains(t, requireOK(t, runVault(t, bin, targetDir, "pass\n", "import", importFile)), "Imported 3 entries")
 	requireContains(t, requireOK(t, runVault(t, bin, targetDir, "pass\n", "get", "API_KEY")), "hello")
 	requireContains(t, requireOK(t, runVault(t, bin, targetDir, "pass\n", "get", "DB_KEY")), "world")
+	requireContains(t, requireOK(t, runVault(t, bin, targetDir, "pass\n", "get", "SPECIAL")), "quote\" dollar$ backtick` slash\\ line\nnext apostrophe's")
 }
 
 func TestCLISmokeConcurrentSetUsesFileLock(t *testing.T) {
@@ -469,9 +497,8 @@ func extractCompactToken(t *testing.T, output string) string {
 }
 
 func onlyExportLines(output string) string {
-	lines := strings.Split(output, "\n")
 	var exports []string
-	for _, line := range lines {
+	for _, line := range splitImportLines(output) {
 		if idx := strings.Index(line, "export "); idx >= 0 {
 			line = line[idx:]
 		}

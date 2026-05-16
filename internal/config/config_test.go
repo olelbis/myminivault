@@ -53,9 +53,23 @@ func TestLoadAppliesValidOverride(t *testing.T) {
 			t.Fatalf("Load: %v", err)
 		}
 
-		want := Config{ScryptN: 65536, ScryptR: 8, ScryptP: 2, KeySize: 24, MaxBackups: 10}
+		want := Config{ScryptN: 65536, ScryptR: 8, ScryptP: 2, KeySize: 24, MaxBackups: 10, AuditLog: true}
 		if cfg != want {
 			t.Fatalf("config = %+v, want %+v", cfg, want)
+		}
+	})
+}
+
+func TestLoadAppliesAuditLogOverride(t *testing.T) {
+	withTempWorkingDir(t, func() {
+		writeConfigFile(t, `{"audit_log":false}`)
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		if cfg.AuditLog {
+			t.Fatal("audit_log = true, want false")
 		}
 	})
 }

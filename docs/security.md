@@ -156,13 +156,15 @@ Export output is intentionally shell-friendly, but exported values are plaintext
 
 ## Logging
 
-`vault.log` can reveal operational metadata such as token IDs, actions, and key names. Key names may be sensitive even when values are encrypted.
+`vault.log` can reveal operational metadata such as command names and token actions. Key names and token identifiers may be sensitive even when values are encrypted.
 
-Future review should decide:
+Current behavior:
 
-- whether token IDs should be truncated further
-- whether key names should be logged
-- whether logs should be optional, rotated, or permission-checked
+- audit logging is enabled by default
+- set `"audit_log": false` in `vault-config.json` to disable audit logging
+- key names are not logged by default
+- token identifiers are not logged by default
+- log writes use restrictive file permissions
 
 ## Locking
 
@@ -186,6 +188,5 @@ Planned or recommended:
 - keep expanding `vault doctor` checks as runtime behavior grows
 - decide token sync conflict policy
 - decide whether delete tombstones or per-key revisions are needed
-- review logging behavior
-- consider making logging configurable or less revealing by default
+- consider log rotation or retention controls if logs become more detailed
 - avoid claiming production security without an external audit

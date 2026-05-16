@@ -421,6 +421,9 @@ func handleRevokeToken(vault *ExtendedVault) {
 }
 
 func logTokenAccess(tokenID, action, key string) {
+	if !config.AuditLog {
+		return
+	}
 	file, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return
@@ -429,11 +432,7 @@ func logTokenAccess(tokenID, action, key string) {
 	_ = os.Chmod(logFile, 0600)
 
 	logger := log.New(file, "", log.LstdFlags)
-	if key != "" {
-		logger.Printf("TOKEN[%s] Action: %s, Key: %s", tokenID[:8], action, key)
-	} else {
-		logger.Printf("TOKEN[%s] Action: %s", tokenID[:8], action)
-	}
+	logger.Printf("TOKEN Action: %s", action)
 }
 
 func getKeyFromTokenArgs() string {

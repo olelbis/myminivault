@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.2.0`
+- Current baseline release: `v0.2.1`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -15,7 +15,9 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment: `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, and a clearer package structure than the original monolith. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
+Current assessment score: `7.6 / 10`.
+
+`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, a clearer package structure than the original monolith, and better local security checks than the first `v0.2.0` release. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
 Main strengths:
 
@@ -93,6 +95,10 @@ Strategic guidance:
 - Added `vault doctor` for local runtime health checks covering config validity, file permissions, locks, backups, recovery files, token files, and logs.
 - Hardened sensitive runtime writes to prefer `0600` permissions for main vaults, backups, shared token vaults, and logs.
 - Added automated CLI smoke coverage for `vault doctor`.
+- Added `audit_log` config support so audit logging can be disabled.
+- Reduced audit-log metadata leakage by omitting key names and token identifiers by default.
+- Improved import parsing for shell-safe export output with apostrophes and embedded newlines.
+- Added `vault doctor` freshness warnings for stale recovery snapshots and shared token vaults newer than the main vault.
 
 ## Current Verification
 
@@ -126,8 +132,8 @@ Automated CLI smoke coverage includes:
 - basic vault commands, backup, wrong password rejection, and `change-password`
 - token create/get/set, automatic token-write import, expired token rejection, used-up token rejection, revocation rejection, `list-tokens`, and `token-info`
 - recovery setup, recovery validation, and master password recovery
-- shell-safe export output and basic import/export round-trip behavior
-- malformed config handling, `vault doctor`, and concurrent command serialization through `.myminivault.lock`
+- shell-safe export output and export/import round-trip behavior for apostrophes and embedded newlines
+- audit-log redaction, disabled audit logging, malformed config handling, `vault doctor`, and concurrent command serialization through `.myminivault.lock`
 
 ## Current Project Layout
 
@@ -170,32 +176,33 @@ docs/
 
 ## Next Recommended Steps
 
-### 1. Logging Cleanup
+### 1. Token Sync Hardening
 
 Priority: medium.
 
-Reduce metadata leakage from `vault.log`.
+Reduce the complexity and risk around main/shared vault synchronization.
 
 Current concerns:
 
-- logs can reveal command names, key names, and token ID prefixes
-- key names may be sensitive even when values are encrypted
-- logging is not currently configurable
+- token writes are staged in `shared-token-vault.json`
+- master commands import token-side writes automatically
+- conflicts are last-writer-wins
+- delete semantics depend on full mirror replacement
 
 Possible directions:
 
-- add a config flag to disable audit logging
-- stop logging key names by default
-- further truncate or hash token IDs in logs
-- keep log writes at `0600`
-- document the chosen default in the security model and user manual
+- introduce pending-write metadata before making sync explicit-only
+- add per-key revision/timestamp metadata
+- add delete tombstones before changing delete semantics
+- keep `vault doctor` warnings for shared-token-vault freshness
+- document any policy change before changing command behavior
 
 Suggested branch:
 
 ```bash
 git switch main
 git pull
-git switch -c codex/logging-cleanup
+git switch -c codex/token-sync-hardening
 ```
 
 ### 2. Additional CLI Smoke Tests
@@ -218,8 +225,10 @@ Automated smoke tests currently cover:
 - token revocation followed by failed use
 - `token-info` and `list-tokens`
 - shell-safe `export` output
-- basic import/export round-trip behavior
+- export/import round-trip behavior for shell-escaped special values
 - malformed config from the CLI
+- `vault doctor`
+- audit-log redaction and disabled audit logging
 - recovery `setup-recovery`
 - recovery `test-recovery`
 - recovery `recover`
@@ -229,7 +238,6 @@ Additional smoke coverage to consider:
 
 - `security-audit`
 - backup/restore expectations if restore is added later
-- exact import/export round-trip expectations for shell-escaped special values
 
 Suggested branch:
 
@@ -239,11 +247,11 @@ git pull
 git switch -c codex/cli-smoke-tests-more
 ```
 
-### 3. Import/Export Round-Trip Review
+### 3. Import/Export Format Review
 
-Priority: medium.
+Priority: low-medium.
 
-Status: export is implemented with POSIX single-quote escaping and smoke/unit coverage.
+Status: export is implemented with POSIX single-quote escaping, and import now round-trips that output for quotes, apostrophes, backslashes, `$`, backticks, and embedded newlines.
 
 Current export output is shell-safe:
 
@@ -261,16 +269,15 @@ Covered export cases:
 
 Remaining:
 
-- decide whether imported files must round-trip every shell-escaped export exactly
-- improve `import` parsing if exact round-trip behavior becomes a requirement
-- document safe shell usage and shell history caveats
+- document safe shell usage and shell history caveats in more detail
+- decide whether a future non-shell JSON export format should exist for safer machine round-trips
 
 Suggested branch:
 
 ```bash
 git switch main
 git pull
-git switch -c codex/import-export-roundtrip
+git switch -c codex/import-export-format
 ```
 
 ### 4. Future Refactor Candidates

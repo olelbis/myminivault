@@ -321,6 +321,7 @@ Default values:
 | `scrypt_p` | `1` |
 | `key_size` | `32` |
 | `max_backups` | `5` |
+| `audit_log` | `true` |
 
 The program can load `vault-config.json` from the current working directory.
 
@@ -333,6 +334,14 @@ Config validation:
 - `max_backups` must be between `1` and `100`
 
 If `vault-config.json` is malformed or unsafe, the CLI stops with a config error.
+
+Audit logging is enabled by default but intentionally avoids key names and token identifiers. To disable audit logging:
+
+```json
+{
+  "audit_log": false
+}
+```
 
 ## Runtime Files
 
