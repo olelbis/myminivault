@@ -215,7 +215,7 @@ Uses the recovery key to decrypt the recovery vault copy and set a new master pa
 
 Prompts for the current master password first, then asks for the new password and confirmation.
 
-Operational note: recovery uses a high-entropy recovery key and writes the recovery file atomically. Recovery should still get broader end-to-end CLI coverage before it is treated as fully hardened.
+Operational note: recovery uses a high-entropy recovery key, writes the recovery file atomically, and has end-to-end `recover` smoke coverage. Recovery setup/test flows should still get broader CLI coverage before recovery is treated as fully hardened.
 
 ## Token System
 
@@ -450,8 +450,7 @@ cmd/
 
 Recommended follow-up tasks:
 
-- extend automated smoke tests for `change-password` and recovery flows
-- add end-to-end recovery setup/test/recover smoke coverage
+- extend automated smoke tests for `change-password` and recovery setup/test flows
 - make `export` shell-safe
 - create token runtime files only when token functionality is used
 - validate `vault-config.json`
