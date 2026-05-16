@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -215,6 +217,88 @@ func TestCLISmokeRecoverMasterPassword(t *testing.T) {
 	}
 	requireContains(t, oldPasswordResult.output, "error loading vault")
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "newpass\n", "get", "API_KEY")), "hello")
+}
+
+func TestCLISmokeSetupAndTestRecovery(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "API_KEY", "hello"))
+
+	setupOutput, recoveryKey := runSetupRecovery(t, bin, dir, "pass")
+	requireContains(t, setupOutput, "Recovery key setup complete")
+	requireFileExists(t, filepath.Join(dir, vaultFile+".recovery"))
+
+	validOutput := requireOK(t, runVault(t, bin, dir, "pass\n"+recoveryKey+"\n", "test-recovery"))
+	requireContains(t, validOutput, "Recovery key is valid")
+
+	invalidOutput := requireOK(t, runVault(t, bin, dir, "pass\nWRONG-RECOVERY-KEY\n", "test-recovery"))
+	requireContains(t, invalidOutput, "Invalid recovery key")
+}
+
+func runSetupRecovery(t *testing.T, bin, dir, password string) (string, string) {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, bin, "setup-recovery")
+	cmd.Dir = dir
+
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		t.Fatalf("setup-recovery stdin pipe: %v", err)
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		t.Fatalf("setup-recovery stdout pipe: %v", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start setup-recovery: %v", err)
+	}
+
+	if _, err := stdin.Write([]byte(password + "\n")); err != nil {
+		t.Fatalf("write setup-recovery password: %v", err)
+	}
+
+	var output strings.Builder
+	buffer := make([]byte, 256)
+	recoveryKeyPattern := regexp.MustCompile(`[A-Z2-7]{5}(?:-[A-Z2-7]{5}){9}-[A-Z2-7]{2}`)
+	recoveryKey := ""
+
+	for recoveryKey == "" {
+		n, err := stdout.Read(buffer)
+		if n > 0 {
+			output.Write(buffer[:n])
+			recoveryKey = recoveryKeyPattern.FindString(output.String())
+		}
+		if err != nil {
+			t.Fatalf("read setup-recovery output before key: %v\n%s", err, output.String())
+		}
+	}
+
+	if _, err := stdin.Write([]byte(recoveryKey + "\n")); err != nil {
+		t.Fatalf("write setup-recovery confirmation: %v", err)
+	}
+	if err := stdin.Close(); err != nil {
+		t.Fatalf("close setup-recovery stdin: %v", err)
+	}
+
+	remaining, err := io.ReadAll(stdout)
+	if err != nil {
+		t.Fatalf("read setup-recovery remaining output: %v", err)
+	}
+	output.Write(remaining)
+
+	if err := cmd.Wait(); err != nil {
+		t.Fatalf("setup-recovery failed: %v\n%s", err, output.String())
+	}
+	if ctx.Err() != nil {
+		t.Fatalf("setup-recovery timed out: %v\n%s", ctx.Err(), output.String())
+	}
+
+	return output.String(), recoveryKey
 }
 
 func seedRecoverableVault(t *testing.T, dir, password string) string {

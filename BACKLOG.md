@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.1.2`
+- Current baseline release: `v0.1.3`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -105,12 +105,14 @@ Automated smoke tests now cover:
 - token `set`
 - automatic import of token writes by master-password commands
 - shell-safe `export` output
+- recovery `setup-recovery`
+- recovery `test-recovery`
+- recovery `recover`
 - concurrent command serialization through `.myminivault.lock`
 
 Remaining coverage to add:
 
 - `change-password` through a pseudo-terminal or refactored testable input path
-- recovery setup/test flow after recovery hardening
 
 Suggested branch:
 
@@ -124,21 +126,17 @@ git switch -c codex/cli-smoke-tests-extended
 
 Recovery is the highest-priority security area.
 
-Known concerns:
-
-- recovery setup/test flow should have automated smoke coverage
-
 Completed:
 
 - recovery key generation now uses a high-entropy random secret
 - recovery file writes are atomic
 - unit tests cover recovery key validation and recovery file writes
 - end-to-end smoke coverage verifies `recover` changes the master password
+- end-to-end smoke coverage verifies `setup-recovery` and `test-recovery`
 
 Remaining:
 
 - document that recovery can only recover the snapshot stored in `vault.db.recovery`
-- add end-to-end recovery setup/test smoke coverage
 - consider whether recovery metadata should store only a stronger verifier/hash strategy over time
 
 Suggested branch:

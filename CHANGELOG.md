@@ -1,6 +1,12 @@
 # Changelog
 
-All notable project changes are recorded here. Application releases use Git tags such as `v0.1.2`, and the CLI-visible version is kept in sync with the current release tag.
+All notable project changes are recorded here. Application releases use Git tags such as `v0.1.3`, and the CLI-visible version is kept in sync with the current release tag.
+
+## [v0.1.3] - 2026-05-16
+
+### Added
+
+- Added end-to-end CLI smoke coverage for `setup-recovery` and `test-recovery`.
 
 ## [v0.1.2] - 2026-05-16
 

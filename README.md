@@ -6,7 +6,7 @@ The main CLI lives in `cmd/vault`.
 
 ## Versioning
 
-Application releases use Git tags such as `v0.1.2` and are documented in `CHANGELOG.md`.
+Application releases use Git tags such as `v0.1.3` and are documented in `CHANGELOG.md`.
 
 The CLI-visible version is kept in sync with the current release tag. When the vault file format changes, the version should be updated together with migration notes in the changelog.
 
@@ -221,7 +221,7 @@ Uses the recovery key to decrypt the recovery vault copy and set a new master pa
 
 Prompts for the current master password first, then asks for the new password and confirmation.
 
-Operational note: recovery uses a high-entropy recovery key, writes the recovery file atomically, and has end-to-end `recover` smoke coverage. Recovery setup/test flows should still get broader CLI coverage before recovery is treated as fully hardened.
+Operational note: recovery uses a high-entropy recovery key, writes the recovery file atomically, and has end-to-end smoke coverage for `setup-recovery`, `test-recovery`, and `recover`.
 
 ## Token System
 
@@ -471,5 +471,5 @@ cmd/
 
 Recommended follow-up tasks:
 
-- extend automated smoke tests for `change-password` and recovery setup/test flows
+- extend automated smoke tests for `change-password`
 - add unit tests for crypto roundtrip, token signing, key validation, pattern matching, and import parsing
