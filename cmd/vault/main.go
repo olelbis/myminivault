@@ -84,8 +84,8 @@ func runPasswordCommand(command, password string) error {
 		log.Printf("Warning: failed to sync from shared vault: %v", err)
 	}
 
-	if err := syncTokenVaultWithMainVault(extendedVault); err != nil {
-		log.Printf("Warning: failed to sync token vault: %v", err)
+	if err := ensureSharedVaultExists(extendedVault); err != nil {
+		log.Printf("Warning: failed to initialize shared token vault: %v", err)
 	}
 
 	if err := cleanupExpiredTokens(extendedVault); err != nil {
@@ -227,7 +227,7 @@ RECOVERY COMMANDS:
 
 SYNCHRONIZED TOKEN SYSTEM:
   create-token --keys="PATTERN" --duration="2h" [--permissions="read,write"] [--max-uses=N]
-    Creates encrypted tokens with bidirectional sync
+    Creates encrypted tokens with explicit main/shared sync
   
   list-tokens           Show all tokens with status
   revoke-token <id>     Revoke token 

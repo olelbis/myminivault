@@ -7,9 +7,7 @@ import (
 	"os"
 )
 
-// ⭐ NUOVA FUNZIONE: Sincronizza dal vault condiviso al main vault
 func syncSharedVaultToMainVault(mainVault *ExtendedVault) error {
-
 	if _, err := os.Stat(sharedTokenVault); err != nil {
 		return nil
 	}
@@ -36,58 +34,15 @@ func syncSharedVaultToMainVault(mainVault *ExtendedVault) error {
 	return nil
 }
 
-// ⭐ MODIFICA: Sincronizzazione BIDIREZIONALE
-func syncTokenVaultWithMainVault(vault *ExtendedVault) error {
+func ensureSharedVaultExists(vault *ExtendedVault) error {
 	tokenVaultMutex.Lock()
 	defer tokenVaultMutex.Unlock()
 
-	if _, err := os.Stat(sharedTokenVault); err != nil {
-		sharedVault := &ExtendedVault{
-			Data:         make(map[string]string),
-			TokenManager: vault.TokenManager,
-			Metadata:     vault.Metadata,
-		}
-
-		for k, v := range vault.Data {
-			sharedVault.Data[k] = v
-		}
-
-		return saveTokenVaultEncrypted(sharedVault, sharedTokenVault)
+	if _, err := os.Stat(sharedTokenVault); err == nil {
+		return nil
 	}
 
-	sharedVault, err := loadVaultFromTokenFileEncrypted(sharedTokenVault)
-	if err != nil {
-		return err
-	}
-
-	mainToSharedCount := 0
-	for k, v := range vault.Data {
-		if sharedVault.Data[k] != v {
-			sharedVault.Data[k] = v
-			mainToSharedCount++
-		}
-	}
-
-	sharedToMainCount := 0
-	for k, v := range sharedVault.Data {
-		if vault.Data[k] != v {
-			vault.Data[k] = v
-			sharedToMainCount++
-		}
-	}
-
-	if mainToSharedCount > 0 {
-		log.Printf("Synced %d keys from main to shared vault", mainToSharedCount)
-	}
-	if sharedToMainCount > 0 {
-		log.Printf("Synced %d keys from shared to main vault", sharedToMainCount)
-	}
-
-	if vault.TokenManager != nil {
-		sharedVault.TokenManager = vault.TokenManager
-	}
-
-	return saveTokenVaultEncrypted(sharedVault, sharedTokenVault)
+	return saveTokenVaultEncrypted(newSharedVaultFromMain(vault, vault.TokenManager), sharedTokenVault)
 }
 
 func syncMainVaultToSharedVault(vault *ExtendedVault) error {
@@ -95,7 +50,6 @@ func syncMainVaultToSharedVault(vault *ExtendedVault) error {
 	defer tokenVaultMutex.Unlock()
 
 	sharedVault := &ExtendedVault{
-		Data:         make(map[string]string),
 		TokenManager: vault.TokenManager,
 		Metadata:     vault.Metadata,
 	}
@@ -111,9 +65,23 @@ func syncMainVaultToSharedVault(vault *ExtendedVault) error {
 		}
 	}
 
-	for key, value := range vault.Data {
-		sharedVault.Data[key] = value
-	}
+	sharedVault.Data = copyVaultData(vault.Data)
 
 	return saveTokenVaultEncrypted(sharedVault, sharedTokenVault)
+}
+
+func newSharedVaultFromMain(vault *ExtendedVault, tokenManager *TokenManager) *ExtendedVault {
+	return &ExtendedVault{
+		Data:         copyVaultData(vault.Data),
+		TokenManager: tokenManager,
+		Metadata:     vault.Metadata,
+	}
+}
+
+func copyVaultData(data map[string]string) map[string]string {
+	copied := make(map[string]string, len(data))
+	for key, value := range data {
+		copied[key] = value
+	}
+	return copied
 }

@@ -337,13 +337,21 @@ The CLI keeps a main vault and a shared token vault:
 
 Commands that mutate the main vault, such as `set`, `delete`, `clear`, and `import`, mirror the main vault back to the shared token vault after saving.
 
-Token write operations save immediately to the shared token vault. The main vault synchronizes token-side changes at startup or when running:
+Token write operations save immediately to the shared token vault. Master-password commands import token-side changes from the shared vault before running, and you can also import them explicitly with:
 
 ```bash
 ./bin/vault sync-tokens
 ```
 
 Operational note: vault commands use `.myminivault.lock` to serialize separate CLI processes while they access runtime vault files. This reduces cross-process write races around `vault.db`, token files, and the shared token vault.
+
+Sync policy:
+
+- `vault.db` is the master-password source of truth after a master command saves.
+- token writes are staged in `shared-token-vault.json`.
+- master commands import staged token writes before they execute.
+- master mutations mirror the full main vault back to the shared vault after saving, so deletes remain deleted.
+- conflict handling is currently last-writer-wins at the vault-key level.
 
 ## Security Audit
 
@@ -442,8 +450,6 @@ cmd/
     sync.go       main/shared vault synchronization
     token.go      token creation, validation, token commands
     types.go      shared data structures
-  splitter/
-    splitter.go   legacy helper for splitting older monolithic sources
 ```
 
 ## Recommended Next Hardening Work

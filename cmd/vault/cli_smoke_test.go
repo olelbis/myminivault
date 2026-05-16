@@ -109,6 +109,20 @@ func TestCLISmokeTokenReadAndWrite(t *testing.T) {
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY")), "updated")
 }
 
+func TestCLISmokeTokenWriteImportedByMasterCommand(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "API_KEY", "hello"))
+
+	createOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=API_*", "--duration=1h", "--permissions=read,write", "--max-uses=10"))
+	requireContains(t, createOutput, "Secure synchronized token created")
+
+	token := extractCompactToken(t, createOutput)
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", token, "set", "API_KEY", "auto-imported")), "set via token")
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY")), "auto-imported")
+}
+
 func TestCLISmokeConcurrentSetUsesFileLock(t *testing.T) {
 	bin := buildVaultBinary(t)
 	dir := t.TempDir()

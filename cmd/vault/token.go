@@ -81,8 +81,9 @@ func cleanupExpiredTokens(vault *ExtendedVault) error {
 	}
 
 	if cleanedCount > 0 {
-
-		syncTokenVaultWithMainVault(vault)
+		if err := syncMainVaultToSharedVault(vault); err != nil {
+			return err
+		}
 		fmt.Printf("🧹 Auto-cleaned %d expired/used tokens\n", cleanedCount)
 	}
 
@@ -577,7 +578,7 @@ func handleCreateToken(vault *ExtendedVault) {
 
 	vault.TokenManager.Tokens[tokenID] = token
 
-	if err := syncTokenVaultWithMainVault(vault); err != nil {
+	if err := syncMainVaultToSharedVault(vault); err != nil {
 		fmt.Printf("❌ Failed to sync with shared token vault: %v\n", err)
 		return
 	}
@@ -605,7 +606,7 @@ func handleCreateToken(vault *ExtendedVault) {
 	fmt.Printf("┌─────────────────────────────────────────────┐\n")
 	fmt.Printf("│ %s │\n", signedToken)
 	fmt.Printf("└─────────────────────────────────────────────┘\n")
-	fmt.Printf("\n🔄 All tokens share synchronized data with bidirectional sync!\n")
+	fmt.Printf("\n🔄 Token writes are stored in the shared token vault and imported by master commands.\n")
 }
 
 // ⭐ NUOVO: Genera token ID più corto
@@ -654,7 +655,10 @@ func handleRevokeToken(vault *ExtendedVault) {
 
 	delete(vault.TokenManager.Tokens, tokenID)
 
-	syncTokenVaultWithMainVault(vault)
+	if err := syncMainVaultToSharedVault(vault); err != nil {
+		fmt.Printf("❌ Failed to sync token revocation: %v\n", err)
+		return
+	}
 
 	fmt.Printf("✅ Token %s revoked and removed from shared vault\n", tokenID)
 }
@@ -792,7 +796,7 @@ func handleSecurityAudit(vault *ExtendedVault) {
 		}
 
 		fmt.Printf("🎫 Tokens: %d active, %d expired\n", activeTokens, expiredTokens)
-		fmt.Println("🔄 Token architecture: bidirectional sync with main vault")
+		fmt.Println("🔄 Token architecture: shared token vault imported by master commands")
 		fmt.Println("🔒 Token files: AES-256-GCM encrypted with unique keys")
 		if expiredTokens > 0 {
 			fmt.Println("💡 Consider running 'vault cleanup-tokens'")
@@ -818,6 +822,6 @@ func handleSecurityAudit(vault *ExtendedVault) {
 	}
 
 	if _, err := os.Stat(sharedTokenVault); err == nil {
-		fmt.Println("🔄 Shared token vault: present with bidirectional sync")
+		fmt.Println("🔄 Shared token vault: present")
 	}
 }

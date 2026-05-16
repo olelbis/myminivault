@@ -69,8 +69,6 @@ cmd/
     sync.go       main/shared vault synchronization
     token.go      token creation, validation, token commands
     types.go      shared data structures
-  splitter/
-    splitter.go   legacy split helper; likely removable later
 ```
 
 ## Next Recommended Steps
@@ -134,21 +132,30 @@ git switch -c codex/recovery-setup-test
 
 ### 3. Hardening: Token/Shared Vault Sync
 
-The current sync is better after the delete fix, but the design should be clarified.
+The sync policy is now explicit in code and docs.
 
-Questions to answer:
+Current policy:
 
-- Is `vault.db` always the main source of truth?
-- Should token writes be merged into main immediately or only by explicit `sync-tokens`?
-- How should conflicts be resolved?
-- Should deletes have tombstones or should mirroring remain authoritative?
+- `vault.db` is the source of truth after master-password commands save.
+- token writes are staged in `shared-token-vault.json`.
+- master commands import staged token writes before executing.
+- master mutations mirror the full main vault back to the shared vault after saving.
+- deletes remain authoritative because mirroring replaces shared vault data with main vault data.
+- conflict handling is currently last-writer-wins at the vault-key level.
+
+Remaining questions:
+
+- Should token writes require explicit `sync-tokens` instead of automatic import on master commands?
+- Should conflicts use timestamps or per-key revision metadata?
+- Should delete tombstones be added for more precise conflict handling?
+- Document this area thoroughly in a future user manual, including the main/shared vault model, automatic imports, explicit `sync-tokens`, conflict behavior, and delete semantics.
 
 Suggested branch:
 
 ```bash
 git switch main
 git pull
-git switch -c codex/token-sync-policy
+git switch -c codex/token-sync-conflicts
 ```
 
 ### 4. Make Export Shell-Safe
@@ -210,20 +217,27 @@ git pull
 git switch -c codex/config-validation
 ```
 
-### 7. Decide Fate Of `cmd/splitter`
+### 7. Draft User Manual
 
-Options:
+The README is enough for development, but the CLI should eventually have a user-facing manual.
 
-- remove it because the monolith has already been split
-- keep it as a development helper and document it
-- move it under a tools directory
+Cover at least:
+
+- basic key/value workflows
+- backups and recovery
+- password changes
+- token creation, usage, expiration, revocation, and cleanup
+- main/shared vault sync policy
+- file locking and concurrent CLI usage expectations
+- import/export behavior and shell-safety notes
+- troubleshooting common errors
 
 Suggested branch:
 
 ```bash
 git switch main
 git pull
-git switch -c codex/remove-splitter
+git switch -c codex/user-manual
 ```
 
 ### 8. Later Refactor To `internal/...`
@@ -238,7 +252,7 @@ Later, move stable areas into packages:
 - `internal/recovery`
 - `internal/config`
 
-Do this only after smoke tests exist.
+Do this only after smoke tests exist. During the refactor, add concise English comments for non-obvious invariants and flows, especially around encryption boundaries, recovery, token validation, shared-vault sync, and file locking.
 
 Suggested branch:
 
