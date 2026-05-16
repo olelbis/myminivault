@@ -6,7 +6,7 @@ The main CLI lives in `cmd/vault`.
 
 ## Versioning
 
-Application releases use Git tags such as `v0.1.1` and are documented in `CHANGELOG.md`.
+Application releases use Git tags such as `v0.1.2` and are documented in `CHANGELOG.md`.
 
 The CLI-visible version is kept in sync with the current release tag. When the vault file format changes, the version should be updated together with migration notes in the changelog.
 
@@ -398,7 +398,15 @@ Default values:
 
 The program can load `vault-config.json` from the current working directory.
 
-Operational note: config editing/validation is minimal today. Invalid or unsafe config values should be guarded by future validation.
+Config validation:
+
+- `scrypt_n` must be a power of two between `32768` and `1048576`
+- `scrypt_r` must be between `1` and `16`
+- `scrypt_p` must be between `1` and `8`
+- `key_size` must be `16`, `24`, or `32`
+- `max_backups` must be between `1` and `100`
+
+If `vault-config.json` is malformed or unsafe, the CLI stops with a config error.
 
 ## Cryptography
 
@@ -464,6 +472,4 @@ cmd/
 Recommended follow-up tasks:
 
 - extend automated smoke tests for `change-password` and recovery setup/test flows
-- create token runtime files only when token functionality is used
-- validate `vault-config.json`
 - add unit tests for crypto roundtrip, token signing, key validation, pattern matching, and import parsing

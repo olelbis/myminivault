@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.1.1`
+- Current baseline release: `v0.1.2`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -209,22 +209,16 @@ Current behavior:
 
 ### 6. Validate Configuration
 
-`vault-config.json` is loaded without validation.
+Status: implemented with unit coverage.
 
-Add guards for:
+Current behavior:
 
-- minimum/maximum scrypt parameters
-- key size
-- backup count
-- malformed JSON
-
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c codex/config-validation
-```
+- malformed `vault-config.json` is rejected
+- `scrypt_n` must be a power of two between `32768` and `1048576`
+- `scrypt_r` must be between `1` and `16`
+- `scrypt_p` must be between `1` and `8`
+- `key_size` must be `16`, `24`, or `32`
+- `max_backups` must be between `1` and `100`
 
 ### 7. Draft User Manual
 

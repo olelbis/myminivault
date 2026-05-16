@@ -11,7 +11,10 @@ import (
 )
 
 func main() {
-	loadConfig()
+	if err := loadConfig(); err != nil {
+		fmt.Printf("Config error: %v\n", err)
+		return
+	}
 
 	if len(os.Args) < 2 {
 		showUsage()
@@ -201,7 +204,7 @@ func showUsage() {
 }
 
 func showHelp() {
-	fmt.Println(`🔐 myminivault CLI v0.1.1
+	fmt.Println(`🔐 myminivault CLI v0.1.2
 
 BASIC COMMANDS:
   set <key> <value>     Set a key-value pair

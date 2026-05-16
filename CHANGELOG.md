@@ -1,6 +1,13 @@
 # Changelog
 
-All notable project changes are recorded here. Application releases use Git tags such as `v0.1.1`, and the CLI-visible version is kept in sync with the current release tag.
+All notable project changes are recorded here. Application releases use Git tags such as `v0.1.2`, and the CLI-visible version is kept in sync with the current release tag.
+
+## [v0.1.2] - 2026-05-16
+
+### Added
+
+- Added validation for `vault-config.json`, including malformed JSON, scrypt bounds, AES key size, and backup count.
+- Added unit tests for config validation and loading.
 
 ## [v0.1.1] - 2026-05-16
 
