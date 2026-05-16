@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.1.15`
+- Current baseline release: `v0.1.16`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -78,6 +78,7 @@ Strategic guidance:
 - Added MIT license, README badges, and a project-local pixel art vault image.
 - Split documentation into a concise README, `docs/user-manual.md`, and `docs/development.md`.
 - Added terminal-style SVG screenshots for quick start, token, and recovery workflows.
+- Expanded `docs/development.md` with practical test commands for full, package, focused, verbose, cached, and manual smoke-test runs.
 
 ## Current Verification
 

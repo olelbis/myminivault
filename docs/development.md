@@ -64,9 +64,44 @@ This project is not security-audited. Security claims should stay conservative u
 
 ## Test Workflow
 
-Run all checks:
+Run the full test suite from the repository root:
 
 ```bash
+go test ./...
+```
+
+Use an isolated Go build cache when you want repeatable local checks that do not touch the default user cache:
+
+```bash
+GOCACHE=/private/tmp/myminivault-gocache go test ./...
+```
+
+Run tests for a single package:
+
+```bash
+go test ./cmd/vault
+go test ./internal/crypto
+go test ./internal/config
+```
+
+Run one focused test by name:
+
+```bash
+go test ./cmd/vault -run TestCLISmokeTokenReadAndWrite
+go test ./cmd/vault -run TestCLISmokeSetupAndTestRecovery
+go test ./cmd/vault -run TestCreateShortSignedTokenRoundTrip
+```
+
+Run with verbose output when diagnosing a failure:
+
+```bash
+go test -v ./cmd/vault -run TestCLISmokeTokenReadAndWrite
+```
+
+Clear the Go test cache if a cached result is hiding a behavior change:
+
+```bash
+go clean -testcache
 go test ./...
 ```
 
@@ -76,7 +111,7 @@ Build the vault command:
 go build -o bin/vault ./cmd/vault
 ```
 
-Suggested isolated smoke-test pattern:
+Suggested manual smoke-test pattern in an isolated temporary directory:
 
 ```bash
 tmpdir=$(mktemp -d /tmp/myminivault-smoke-XXXXXX)
@@ -85,6 +120,8 @@ cd "$tmpdir"
 printf 'oldpass\n' | ./vault set TEST_KEY hello
 printf 'oldpass\n' | ./vault get TEST_KEY
 ```
+
+The automated CLI smoke tests create temporary directories and fake data. Do not run manual smoke commands in a directory that contains real vault files unless that is intentional.
 
 Current automated checks cover CLI smoke flows and selected unit behavior. The next useful testing work is deeper unit coverage for `internal/storage`, `internal/token`, and `internal/recovery`.
 
@@ -122,7 +159,7 @@ For each completed branch:
 Current versioning style:
 
 - use `v0.x.y` while the CLI is evolving quickly
-- patch releases such as `v0.1.15` for docs, tests, fixes, and small refactors
+- patch releases such as `v0.1.16` for docs, tests, fixes, and small refactors
 - reserve minor releases such as `v0.2.0` for user-facing behavior changes
 
 ## Runtime Files

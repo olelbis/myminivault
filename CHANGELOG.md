@@ -1,6 +1,12 @@
 # Changelog
 
-All notable project changes are recorded here. Application releases use Git tags such as `v0.1.15`, and the CLI-visible version is kept in sync with the current release tag.
+All notable project changes are recorded here. Application releases use Git tags such as `v0.1.16`, and the CLI-visible version is kept in sync with the current release tag.
+
+## [v0.1.16] - 2026-05-16
+
+### Changed
+
+- Expanded `docs/development.md` with practical commands for running the full suite, package tests, focused tests, verbose tests, cache-cleared tests, and manual smoke checks.
 
 ## [v0.1.15] - 2026-05-16
 
