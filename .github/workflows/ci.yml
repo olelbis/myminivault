@@ -6,8 +6,15 @@ on:
 
 jobs:
   test:
-    name: Go checks
-    runs-on: ubuntu-latest
+    name: Go checks (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
 
     steps:
       - name: Checkout

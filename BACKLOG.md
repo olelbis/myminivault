@@ -15,14 +15,14 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `8.2 / 10`.
+Current assessment score: `8.3 / 10`.
 
-`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI, release packaging for common Linux/macOS targets, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
+`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
 Main strengths:
 
 - release discipline with Git tags, GitHub releases, and a changelog
-- GitHub CI for formatting, vetting, and automated tests
+- GitHub CI for formatting, vetting, and automated tests across Linux and macOS
 - release package automation for Linux amd64, Linux arm64, and macOS arm64
 - focused `internal/...` packages for crypto, config, model, recovery, storage, and token logic
 - automated CLI smoke coverage for critical workflows
@@ -112,6 +112,7 @@ Strategic guidance:
 - Documented clipboard, export, and runtime memory exposure limits.
 - Added GitHub Actions release packaging for Linux amd64, Linux arm64, and macOS arm64 archives.
 - Added README and CLI help credits for `olelbis`.
+- Expanded GitHub Actions CI to run `gofmt`, `go vet`, and `go test ./...` on Linux and macOS.
 
 ## Current Verification
 
@@ -232,10 +233,9 @@ These items are the most direct path from the current `8.2 / 10` assessment towa
 Recommended order:
 
 1. formalize the threat model in `docs/security.md`
-2. expand GitHub CI into an operating-system matrix for Linux and macOS
+2. add coverage reporting, then decide whether to enforce a minimum threshold
 3. continue improving release binaries and install paths after the first package workflow
-4. add coverage reporting, then decide whether to enforce a minimum threshold
-5. continue reducing broad orchestration in `cmd/vault` only where tests already protect behavior
+4. continue reducing broad orchestration in `cmd/vault` only where tests already protect behavior
 
 Suggested branches:
 
@@ -286,17 +286,15 @@ git pull
 git switch -c codex/threat-model
 ```
 
-### 4. CI Matrix And Coverage
+### 4. Coverage Reporting
 
 Priority: medium.
 
-Current CI runs formatting, `go vet`, and `go test ./...` on Ubuntu. The next quality step is to confirm behavior on the platforms where local CLI users are likely to run it.
+Current CI runs formatting, `go vet`, and `go test ./...` on Linux and macOS. The next quality step is to publish coverage information from CI.
 
 Next actions:
 
-- run CI on `ubuntu-latest` and `macos-latest`
-- keep the existing `gofmt`, `go vet`, and `go test ./...` checks in every matrix entry
-- add a coverage job or coverage artifact after the matrix is stable
+- add a coverage job or coverage artifact
 - decide later whether coverage should be informational only or enforce a minimum threshold
 
 Suggested branch:
@@ -304,7 +302,7 @@ Suggested branch:
 ```bash
 git switch main
 git pull
-git switch -c codex/ci-matrix
+git switch -c codex/coverage-reporting
 ```
 
 ### 5. Install And Release Packaging

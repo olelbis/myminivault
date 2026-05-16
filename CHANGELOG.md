@@ -2,6 +2,12 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [Unreleased]
+
+### Changed
+
+- Expanded GitHub Actions CI to run formatting, `go vet`, and tests on Linux and macOS.
+
 ## [v0.3.2] - 2026-05-17
 
 ### Added
