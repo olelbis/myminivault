@@ -36,6 +36,7 @@ docs/
   user-manual.md        user-facing workflows and operational notes
   development.md        architecture, test, and release workflow notes
   security.md           security model, assumptions, limits, and compromise guidance
+  recovery-policy.md    recovery snapshot, verifier, divergence, and rotation policy
   token-sync-policy.md  main/shared token vault sync policy and deferred decisions
 ```
 
@@ -67,7 +68,7 @@ The vault currently uses:
 
 This project is not security-audited. Security claims should stay conservative until an external review exists.
 
-See [Security Model](security.md) for current assumptions, non-goals, sensitive runtime files, and known limitations.
+See [Security Model](security.md) for current assumptions, non-goals, sensitive runtime files, and known limitations. See [Recovery Policy](recovery-policy.md) for recovery snapshot and rotation semantics.
 
 ## Test Workflow
 
@@ -166,7 +167,7 @@ For each completed branch:
 Current versioning style:
 
 - use `v0.x.y` while the CLI is evolving quickly
-- patch releases such as `v0.1.20` for docs, tests, fixes, and small refactors
+- patch releases such as `v0.1.21` for docs, tests, fixes, and small refactors
 - reserve minor releases such as `v0.2.0` for user-facing behavior changes
 
 ## Runtime Files

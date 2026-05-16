@@ -1,6 +1,16 @@
 # Changelog
 
-All notable project changes are recorded here. Application releases use Git tags such as `v0.1.20`, and the CLI-visible version is kept in sync with the current release tag.
+All notable project changes are recorded here. Application releases use Git tags such as `v0.1.21`, and the CLI-visible version is kept in sync with the current release tag.
+
+## [v0.1.21] - 2026-05-16
+
+### Added
+
+- Added `docs/recovery-policy.md` documenting recovery snapshot behavior, divergence semantics, verifier policy, and rotation caveats.
+
+### Changed
+
+- Linked the recovery policy from README, user manual, security model, and development docs.
 
 ## [v0.1.20] - 2026-05-16
 

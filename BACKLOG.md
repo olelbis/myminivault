@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.1.20`
+- Current baseline release: `v0.1.21`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -88,6 +88,8 @@ Strategic guidance:
 - Added CLI smoke coverage for expired tokens, used-up tokens, token revocation, `list-tokens`, and `token-info`.
 - Added CLI smoke coverage for malformed config handling.
 - Added a basic import/export round-trip smoke test.
+- Added `docs/recovery-policy.md` documenting recovery snapshot behavior, divergence semantics, verifier policy, and rotation caveats.
+- Linked the recovery policy from README, user manual, security model, and development docs.
 
 ## Current Verification
 
@@ -158,36 +160,39 @@ docs/
   user-manual.md        user-facing workflows and operational notes
   development.md        architecture, test, and release workflow notes
   security.md           security model, assumptions, limits, and compromise guidance
+  recovery-policy.md    recovery snapshot, verifier, divergence, and rotation policy
   token-sync-policy.md  main/shared token vault sync policy and deferred decisions
 ```
 
 ## Next Recommended Steps
 
-### 1. Recovery Policy And Verifier Review
+### 1. Runtime File Permissions And `vault doctor`
 
 Priority: medium.
 
-Completed:
+Add a health-check command for local setup and runtime files:
 
-- recovery key generation uses a high-entropy random secret
-- recovery file writes are atomic
-- tests cover recovery key validation and recovery file writes
-- end-to-end smoke coverage verifies `recover` changes the master password
-- end-to-end smoke coverage verifies `setup-recovery` and `test-recovery`
+```bash
+vault doctor
+```
 
-Remaining:
+Checks could include:
 
-- document that recovery can recover only the snapshot stored in `vault.db.recovery`
-- decide whether recovery metadata should use a stronger verifier strategy over time
-- document what happens when the main vault and recovery snapshot diverge
-- document operational guidance for rotating/replacing a recovery key
+- file permissions for vault, token key, shared vault, registry, recovery file, backups, and logs
+- stale lock file behavior
+- config validity
+- token runtime state
+- backup presence
+- recovery status
+- warnings for files that should not be committed
+- recovery snapshot freshness compared with the main vault, if a reliable timestamp/check is available
 
 Suggested branch:
 
 ```bash
 git switch main
 git pull
-git switch -c codex/recovery-policy-review
+git switch -c codex/doctor-command
 ```
 
 ### 2. Additional CLI Smoke Tests
@@ -265,35 +270,7 @@ git pull
 git switch -c codex/import-export-roundtrip
 ```
 
-### 4. Runtime File Permissions And `vault doctor`
-
-Priority: medium.
-
-Add a health-check command for local setup and runtime files:
-
-```bash
-vault doctor
-```
-
-Checks could include:
-
-- file permissions for vault, token key, shared vault, registry, recovery file, backups, and logs
-- stale lock file behavior
-- config validity
-- token runtime state
-- backup presence
-- recovery status
-- warnings for files that should not be committed
-
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c codex/doctor-command
-```
-
-### 5. Future Refactor Candidates
+### 4. Future Refactor Candidates
 
 Priority: low unless a bug or feature makes the extraction useful.
 
@@ -325,7 +302,7 @@ Future token sync simplification:
 
 These are intentionally lower priority than the stability/security work above. Revisit them after documentation cleanup, security review, token sync policy review, and test-depth work are in better shape.
 
-### 6. `vault run -- <command>`
+### 5. `vault run -- <command>`
 
 Run a command with vault entries injected as environment variables, without printing secrets:
 
@@ -342,7 +319,7 @@ git pull
 git switch -c codex/vault-run-command
 ```
 
-### 7. Project Profiles
+### 6. Project Profiles
 
 Support separate vault contexts for different projects or environments:
 
@@ -360,7 +337,7 @@ git pull
 git switch -c codex/project-profiles
 ```
 
-### 8. Namespaces
+### 7. Namespaces
 
 Support namespaced keys for environments such as `dev`, `staging`, and `prod`:
 
@@ -377,7 +354,7 @@ git pull
 git switch -c codex/namespaces
 ```
 
-### 9. Clipboard Command
+### 8. Clipboard Command
 
 Copy a secret to the system clipboard and optionally clear it after a timeout:
 
@@ -394,7 +371,7 @@ git pull
 git switch -c codex/clipboard-copy
 ```
 
-### 10. Token UX Cleanup
+### 9. Token UX Cleanup
 
 Make token commands more consistent and automation-friendly:
 
@@ -412,7 +389,7 @@ git pull
 git switch -c codex/token-ux
 ```
 
-### 11. Terminal UI
+### 10. Terminal UI
 
 Add an optional TUI for browsing/searching keys, viewing token status, editing values, and triggering copy/export flows:
 
@@ -428,7 +405,7 @@ git pull
 git switch -c codex/tui
 ```
 
-### 12. Secret Rotation Hooks
+### 11. Secret Rotation Hooks
 
 Support command-driven rotation workflows:
 
@@ -444,7 +421,7 @@ git pull
 git switch -c codex/secret-rotation
 ```
 
-### 13. Hook System
+### 12. Hook System
 
 Allow local scripts to run after selected events such as `set`, `delete`, `backup`, or `token create`:
 

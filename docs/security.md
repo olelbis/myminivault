@@ -100,7 +100,7 @@ Risks:
 
 ## Recovery Key
 
-Recovery uses a high-entropy recovery key and a recovery-encrypted snapshot stored in `vault.db.recovery`.
+Recovery uses a high-entropy recovery key and a recovery-encrypted snapshot stored in `vault.db.recovery`. See [Recovery Policy](recovery-policy.md) for the full snapshot, divergence, verifier, and rotation policy.
 
 Important limitations:
 
@@ -108,7 +108,7 @@ Important limitations:
 - if the main vault and recovery snapshot diverge, recovery follows the recovery snapshot
 - anyone with the recovery key and recovery file can attempt recovery
 - losing the recovery key means recovery is not available
-- replacing or rotating recovery should be documented carefully before relying on it operationally
+- replacing or rotating recovery does not rewrite historical backups that may contain older recovery snapshots
 
 ## Token System
 

@@ -133,6 +133,8 @@ The normal save path also keeps `vault.db.bak` as the previous version of the va
 
 ## Password Recovery
 
+For the exact snapshot, divergence, verifier, and rotation policy, see [Recovery Policy](recovery-policy.md).
+
 ### Setup Recovery
 
 ```bash
@@ -140,6 +142,8 @@ The normal save path also keeps `vault.db.bak` as the previous version of the va
 ```
 
 Generates a high-entropy recovery key and asks you to retype it to confirm that you saved it. The key is a grouped base32 string derived from 32 secure random bytes.
+
+Setup writes a recovery-encrypted snapshot to `vault.db.recovery`.
 
 ### Test Recovery
 
@@ -157,7 +161,23 @@ Checks whether a recovery key matches the configured recovery data.
 
 Uses the recovery key to decrypt the recovery vault copy and set a new master password.
 
-Recovery can recover only the snapshot stored in `vault.db.recovery`. If the main vault and recovery snapshot diverge, recovery behavior follows the recovery snapshot.
+Recovery can recover only the snapshot stored in `vault.db.recovery`. If the main vault and recovery snapshot diverge, recovery behavior follows the recovery snapshot. Keys added after the latest recovery snapshot may be missing after recovery, and keys deleted after the latest recovery snapshot may reappear.
+
+### Rotate Recovery
+
+There is no dedicated `rotate-recovery` command yet. To replace the recovery key, run:
+
+```bash
+./bin/vault setup-recovery
+```
+
+Confirm replacement when prompted, save the new key securely, then run:
+
+```bash
+./bin/vault test-recovery
+```
+
+Older backups may still contain recovery snapshots encrypted for older recovery keys. Rotate or remove historical backup files according to your own security needs.
 
 ### Change Master Password
 
