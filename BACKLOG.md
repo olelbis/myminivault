@@ -84,12 +84,12 @@ Automated smoke tests now cover:
 - token creation
 - token `get`
 - token `set`
+- concurrent command serialization through `.myminivault.lock`
 
 Remaining coverage to add:
 
 - `change-password` through a pseudo-terminal or refactored testable input path
 - recovery setup/test/recover flow after recovery hardening
-- concurrent command smoke test for `.myminivault.lock`
 
 Suggested branch:
 

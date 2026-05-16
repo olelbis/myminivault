@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -105,6 +106,37 @@ func TestCLISmokeTokenReadAndWrite(t *testing.T) {
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", token, "set", "API_KEY", "updated")), "set via token")
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "sync-tokens")), "synchronized")
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY")), "updated")
+}
+
+func TestCLISmokeConcurrentSetUsesFileLock(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "BASE_KEY", "base"))
+
+	var wg sync.WaitGroup
+	results := make(chan cliResult, 2)
+	for _, args := range [][]string{
+		{"set", "PARALLEL_A", "one"},
+		{"set", "PARALLEL_B", "two"},
+	} {
+		args := args
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			results <- runVault(t, bin, dir, "pass\n", args...)
+		}()
+	}
+
+	wg.Wait()
+	close(results)
+
+	for result := range results {
+		requireContains(t, requireOK(t, result), "Key 'PARALLEL_")
+	}
+
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "PARALLEL_A")), "one")
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "PARALLEL_B")), "two")
 }
 
 func extractCompactToken(t *testing.T, output string) string {
