@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.2.1`
+- Current baseline release: `v0.2.2`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -15,9 +15,9 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `7.6 / 10`.
+Current assessment score: `7.8 / 10`.
 
-`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, a clearer package structure than the original monolith, and better local security checks than the first `v0.2.0` release. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
+`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, a clearer package structure than the original monolith, stronger local security checks, and timestamp-aware token sync metadata. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
 Main strengths:
 
@@ -30,7 +30,7 @@ Main strengths:
 Main risks:
 
 - the project handles real secrets, so security assumptions must be documented and reviewed carefully
-- token/shared-vault synchronization is powerful but conceptually complex
+- token/shared-vault synchronization is better guarded than before, but still conceptually complex
 - package-level unit coverage is improving, but more edge-case coverage is still useful as behavior grows
 - `cmd/vault` still contains some orchestration and command logic that may deserve future extraction
 - the README has been split into focused docs, but the security model still needs a dedicated review
@@ -99,6 +99,9 @@ Strategic guidance:
 - Reduced audit-log metadata leakage by omitting key names and token identifiers by default.
 - Improved import parsing for shell-safe export output with apostrophes and embedded newlines.
 - Added `vault doctor` freshness warnings for stale recovery snapshots and shared token vaults newer than the main vault.
+- Added per-key sync metadata for main/shared vault updates and delete markers.
+- Changed token sync so older shared-vault values do not overwrite newer main-vault values when both sides have metadata.
+- Added tests for sync metadata conflict decisions.
 
 ## Current Verification
 
@@ -151,6 +154,7 @@ cmd/
     recovery_cli.go     recovery and password-change flows
     storage_bridge.go   main vault load/save wrappers
     sync.go             main/shared vault synchronization
+    sync_metadata.go    per-key sync update/delete metadata helpers
     token_cli.go        token creation, validation, token commands
     types.go            compatibility aliases for shared data structures
 internal/
@@ -176,24 +180,25 @@ docs/
 
 ## Next Recommended Steps
 
-### 1. Token Sync Hardening
+### 1. Token Sync Policy Next Steps
 
-Priority: medium.
+Priority: low-medium unless sync behavior changes again.
 
-Reduce the complexity and risk around main/shared vault synchronization.
+Token sync is now timestamp-aware when both vaults have metadata, but it is still not a distributed merge system.
 
-Current concerns:
+Remaining concerns:
 
-- token writes are staged in `shared-token-vault.json`
 - master commands import token-side writes automatically
-- conflicts are last-writer-wins
-- delete semantics depend on full mirror replacement
+- legacy vaults without metadata fall back to simple import behavior
+- there is no revision counter or merge-base record
+- delete markers are timestamp metadata, not a full distributed tombstone system
+- sync is still local-file oriented, not multi-device oriented
 
 Possible directions:
 
 - introduce pending-write metadata before making sync explicit-only
-- add per-key revision/timestamp metadata
-- add delete tombstones before changing delete semantics
+- add revision counters or merge-base records if conflict handling grows
+- upgrade delete markers into explicit tombstones if sync becomes more distributed
 - keep `vault doctor` warnings for shared-token-vault freshness
 - document any policy change before changing command behavior
 
@@ -202,7 +207,7 @@ Suggested branch:
 ```bash
 git switch main
 git pull
-git switch -c codex/token-sync-hardening
+git switch -c codex/token-sync-next
 ```
 
 ### 2. Additional CLI Smoke Tests
@@ -305,14 +310,38 @@ Continue only with well-covered areas and add concise English comments for non-o
 Future token sync simplification:
 
 - If `sync-tokens` should become mandatory instead of automatic import, first separate token writes from the shared vault mirror into a pending-write log.
-- Add per-key revision/timestamp metadata and delete tombstones before changing the policy, otherwise a later master-vault mirror can overwrite unsynced token writes.
+- Per-key timestamps now exist; consider revision counters, merge-base metadata, or fuller delete tombstones before changing the policy further.
 - Document the final behavior in the user manual once the policy is stable.
+
+### 5. Memory Exposure Hardening
+
+Priority: low-medium.
+
+The project cannot fully prevent memory dumps or same-user process inspection on a normal desktop, especially in Go. The goal is mitigation rather than a hard guarantee.
+
+Ideas to revisit:
+
+- disable core dumps at process startup where supported, for example with `RLIMIT_CORE=0`
+- reduce plaintext lifetime in memory where practical
+- prefer `[]byte` over `string` for password/secret handling where the code can zero buffers afterward
+- add best-effort zeroing for derived keys and password buffers where Go semantics make that meaningful
+- document Go/runtime limitations around immutable strings, garbage collection, terminal output, clipboard, and process inspection
+- evaluate macOS Keychain for protecting `vault-token.key` or a future local wrapping key at rest
+- keep the security model explicit that malware or same-user process inspection remains out of scope
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c codex/memory-exposure-hardening
+```
 
 ## Product Ideas After Hardening
 
 These are intentionally lower priority than the stability/security work above. Revisit them after documentation cleanup, security review, token sync policy review, and test-depth work are in better shape.
 
-### 5. `vault run -- <command>`
+### 6. `vault run -- <command>`
 
 Run a command with vault entries injected as environment variables, without printing secrets:
 
@@ -329,7 +358,7 @@ git pull
 git switch -c codex/vault-run-command
 ```
 
-### 6. Project Profiles
+### 7. Project Profiles
 
 Support separate vault contexts for different projects or environments:
 
@@ -347,7 +376,7 @@ git pull
 git switch -c codex/project-profiles
 ```
 
-### 7. Namespaces
+### 8. Namespaces
 
 Support namespaced keys for environments such as `dev`, `staging`, and `prod`:
 
@@ -364,7 +393,7 @@ git pull
 git switch -c codex/namespaces
 ```
 
-### 8. Clipboard Command
+### 9. Clipboard Command
 
 Copy a secret to the system clipboard and optionally clear it after a timeout:
 
@@ -381,7 +410,7 @@ git pull
 git switch -c codex/clipboard-copy
 ```
 
-### 9. Token UX Cleanup
+### 10. Token UX Cleanup
 
 Make token commands more consistent and automation-friendly:
 
@@ -399,7 +428,7 @@ git pull
 git switch -c codex/token-ux
 ```
 
-### 10. Terminal UI
+### 11. Terminal UI
 
 Add an optional TUI for browsing/searching keys, viewing token status, editing values, and triggering copy/export flows:
 
@@ -415,7 +444,7 @@ git pull
 git switch -c codex/tui
 ```
 
-### 11. Secret Rotation Hooks
+### 12. Secret Rotation Hooks
 
 Support command-driven rotation workflows:
 
@@ -431,7 +460,7 @@ git pull
 git switch -c codex/secret-rotation
 ```
 
-### 12. Hook System
+### 13. Hook System
 
 Allow local scripts to run after selected events such as `set`, `delete`, `backup`, or `token create`:
 

@@ -17,21 +17,61 @@ func syncSharedVaultToMainVault(mainVault *ExtendedVault) error {
 		return fmt.Errorf("failed to load shared vault: %w", err)
 	}
 
-	syncedCount := 0
+	importedCount := 0
+	deletedCount := 0
+	skippedConflicts := 0
 
 	for key, value := range sharedVault.Data {
-		if mainVault.Data[key] != value {
+		if shouldImportSharedValue(mainVault, sharedVault, key) {
 			mainVault.Data[key] = value
-			syncedCount++
+			markKeyUpdated(mainVault, key)
+			importedCount++
+		} else if mainVault.Data[key] != value {
+			skippedConflicts++
 		}
 	}
 
-	if syncedCount > 0 {
-		log.Printf("Synced %d changes from token vault to main vault", syncedCount)
-		fmt.Printf("📥 Synchronized %d token changes to main vault\n", syncedCount)
+	if sharedVault.Sync != nil {
+		for key, sharedDeletedAt := range sharedVault.Sync.DeletedAt {
+			if sharedDeletedAt.IsZero() {
+				continue
+			}
+			mainUpdatedAt := syncUpdatedAt(mainVault, key)
+			if mainUpdatedAt.IsZero() || sharedDeletedAt.After(mainUpdatedAt) {
+				if _, exists := mainVault.Data[key]; exists {
+					delete(mainVault.Data, key)
+					markKeyDeleted(mainVault, key)
+					deletedCount++
+				}
+			}
+		}
+	}
+
+	if importedCount > 0 || deletedCount > 0 {
+		total := importedCount + deletedCount
+		log.Printf("Synced %d changes from token vault to main vault", total)
+		fmt.Printf("📥 Synchronized %d token changes to main vault\n", total)
+	}
+	if skippedConflicts > 0 {
+		fmt.Printf("⚠️  Skipped %d older token conflict(s); main vault values were newer\n", skippedConflicts)
 	}
 
 	return nil
+}
+
+func shouldImportSharedValue(mainVault, sharedVault *ExtendedVault, key string) bool {
+	if mainVault.Data[key] == sharedVault.Data[key] {
+		return false
+	}
+
+	sharedUpdatedAt := syncUpdatedAt(sharedVault, key)
+	mainUpdatedAt := syncUpdatedAt(mainVault, key)
+
+	if sharedUpdatedAt.IsZero() || mainUpdatedAt.IsZero() {
+		return true
+	}
+
+	return sharedUpdatedAt.After(mainUpdatedAt)
 }
 
 func syncMainVaultToSharedVault(vault *ExtendedVault) error {
@@ -53,6 +93,7 @@ func syncMainVaultToSharedVault(vault *ExtendedVault) error {
 
 	sharedVault := &ExtendedVault{
 		TokenManager: vault.TokenManager,
+		Sync:         vault.Sync,
 		Metadata:     vault.Metadata,
 	}
 
@@ -68,6 +109,7 @@ func syncMainVaultToSharedVault(vault *ExtendedVault) error {
 	}
 
 	sharedVault.Data = copyVaultData(vault.Data)
+	sharedVault.Sync = vault.Sync
 
 	return saveTokenVaultEncrypted(sharedVault, sharedTokenVault)
 }

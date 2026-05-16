@@ -107,11 +107,23 @@ func runPasswordCommand(command, password string) error {
 	switch command {
 	case "set":
 		handleSetCommand(extendedVault.Data)
+		if len(os.Args) == 4 {
+			markKeyUpdated(extendedVault, os.Args[2])
+		}
 	case "get":
 		handleGetCommand(extendedVault.Data)
 		return nil
 	case "delete":
+		deletedKey := ""
+		if len(os.Args) == 3 {
+			if _, exists := extendedVault.Data[os.Args[2]]; exists {
+				deletedKey = os.Args[2]
+			}
+		}
 		handleDeleteCommand(extendedVault.Data)
+		if deletedKey != "" {
+			markKeyDeleted(extendedVault, deletedKey)
+		}
 	case "export":
 		handleExportCommand(extendedVault.Data)
 		return nil
@@ -122,9 +134,17 @@ func runPasswordCommand(command, password string) error {
 		handleSearchCommand(extendedVault.Data)
 		return nil
 	case "clear":
+		deletedKeys := make([]string, 0, len(extendedVault.Data))
+		for key := range extendedVault.Data {
+			deletedKeys = append(deletedKeys, key)
+		}
 		handleClearCommand(extendedVault)
+		if len(extendedVault.Data) == 0 {
+			markAllKeysDeleted(extendedVault, deletedKeys)
+		}
 	case "import":
-		handleImportCommand(extendedVault.Data)
+		importedKeys := handleImportCommand(extendedVault.Data)
+		markKeysUpdated(extendedVault, importedKeys)
 	case "backup":
 		if err := createTimestampedBackup(); err != nil {
 			fmt.Printf("❌ Backup failed: %v\n", err)
@@ -210,7 +230,7 @@ func showUsage() {
 }
 
 func showHelp() {
-	fmt.Println(`🔐 myminivault CLI v0.2.1
+	fmt.Println(`🔐 myminivault CLI v0.2.2
 
 BASIC COMMANDS:
   set <key> <value>     Set a key-value pair

@@ -205,6 +205,7 @@ func executeTokenSet(vault *ExtendedVault, token AccessToken, key, value string)
 	defer tokenVaultMutex.Unlock()
 
 	vault.Data[key] = value
+	markKeyUpdated(vault, key)
 
 	if err := saveTokenVaultEncrypted(vault, sharedTokenVault); err != nil {
 		return fmt.Errorf("failed to save changes: %w", err)

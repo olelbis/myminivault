@@ -34,7 +34,13 @@ type ExtendedVault struct {
 	Data         map[string]string `json:"data"`
 	Recovery     *RecoveryData     `json:"recovery,omitempty"`
 	TokenManager *TokenManager     `json:"token_manager,omitempty"`
+	Sync         *SyncMetadata     `json:"sync,omitempty"`
 	Metadata     VaultMetadata     `json:"metadata"`
+}
+
+type SyncMetadata struct {
+	UpdatedAt map[string]time.Time `json:"updated_at,omitempty"`
+	DeletedAt map[string]time.Time `json:"deleted_at,omitempty"`
 }
 
 type VaultMetadata struct {

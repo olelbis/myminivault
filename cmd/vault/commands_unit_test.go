@@ -50,7 +50,8 @@ func TestImportFromFile(t *testing.T) {
 	}
 
 	vault := make(map[string]string)
-	if err := importFromFile(vault, file); err != nil {
+	importedKeys, err := importFromFile(vault, file)
+	if err != nil {
 		t.Fatalf("importFromFile: %v", err)
 	}
 
@@ -63,6 +64,9 @@ func TestImportFromFile(t *testing.T) {
 	}
 	if len(vault) != len(want) {
 		t.Fatalf("imported %d entries, want %d: %+v", len(vault), len(want), vault)
+	}
+	if len(importedKeys) != len(want) {
+		t.Fatalf("imported keys = %v, want %d keys", importedKeys, len(want))
 	}
 	for key, value := range want {
 		if vault[key] != value {

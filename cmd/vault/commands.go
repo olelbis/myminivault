@@ -124,16 +124,18 @@ func handleClearCommand(vault *ExtendedVault) {
 	}
 }
 
-func handleImportCommand(vault map[string]string) {
+func handleImportCommand(vault map[string]string) []string {
 	if len(os.Args) != 3 {
 		fmt.Println("Usage: vault import <file>")
-		return
+		return nil
 	}
-	if err := importFromFile(vault, os.Args[2]); err != nil {
+	importedKeys, err := importFromFile(vault, os.Args[2])
+	if err != nil {
 		fmt.Printf("❌ Import failed: %v\n", err)
-		return
+		return nil
 	}
 	fmt.Println("✅ Import completed")
+	return importedKeys
 }
 
 func readSecurePassword() (string, error) {
@@ -202,13 +204,14 @@ func validateKey(key string) error {
 	return nil
 }
 
-func importFromFile(vault map[string]string, filename string) error {
+func importFromFile(vault map[string]string, filename string) ([]string, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	imported := 0
+	importedKeys := make([]string, 0)
 	for _, line := range splitImportLines(string(data)) {
 		line = strings.TrimSpace(line)
 		if len(line) == 0 || strings.HasPrefix(line, "#") {
@@ -235,11 +238,12 @@ func importFromFile(vault map[string]string, filename string) error {
 		}
 
 		vault[key] = value
+		importedKeys = append(importedKeys, key)
 		imported++
 	}
 
 	fmt.Printf("Imported %d entries\n", imported)
-	return nil
+	return importedKeys, nil
 }
 
 func splitImportLines(content string) []string {

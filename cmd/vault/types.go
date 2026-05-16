@@ -9,6 +9,7 @@ import (
 type RecoveryData = model.RecoveryData
 type AccessToken = model.AccessToken
 type TokenManager = model.TokenManager
+type SyncMetadata = model.SyncMetadata
 type ExtendedVault = model.ExtendedVault
 type VaultMetadata = model.VaultMetadata
 type TokenRegistry = model.TokenRegistry

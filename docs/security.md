@@ -127,7 +127,7 @@ Important limitations:
 - a stolen token can be used until it expires, is revoked, or reaches max uses
 - `vault-token.key` is critical for token security
 - token writes go through `shared-token-vault.json`
-- conflict handling is currently last-writer-wins at the vault-key level
+- sync conflict handling uses per-key timestamps when metadata is available, but it is not a distributed merge system
 
 ## Main And Shared Vault Boundary
 
@@ -140,7 +140,7 @@ Current behavior:
 - master mutations mirror the main vault back to the shared token vault after saving when token runtime exists
 - deletes remain authoritative because mirroring replaces shared vault data with main vault data
 
-This is a powerful but complex model. The current policy is documented in [Token Sync Policy](token-sync-policy.md): automatic import remains the default, `sync-tokens` remains available for explicit import, and conflicts are last-writer-wins for now.
+This is a powerful but complex model. The current policy is documented in [Token Sync Policy](token-sync-policy.md): automatic import remains the default, `sync-tokens` remains available for explicit import, and conflicts use per-key timestamps when metadata is available.
 
 ## Backups And Export
 
@@ -186,7 +186,7 @@ Suggested response:
 Planned or recommended:
 
 - keep expanding `vault doctor` checks as runtime behavior grows
-- decide token sync conflict policy
-- decide whether delete tombstones or per-key revisions are needed
+- keep hardening token sync if it moves beyond local-file workflows
+- decide whether revision counters, merge-base metadata, or fuller delete tombstones are needed
 - consider log rotation or retention controls if logs become more detailed
 - avoid claiming production security without an external audit

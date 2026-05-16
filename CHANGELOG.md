@@ -1,6 +1,18 @@
 # Changelog
 
-All notable project changes are recorded here. Application releases use Git tags such as `v0.2.1`, and the CLI-visible version is kept in sync with the current release tag.
+All notable project changes are recorded here. Application releases use Git tags such as `v0.2.2`, and the CLI-visible version is kept in sync with the current release tag.
+
+## [v0.2.2] - 2026-05-16
+
+### Added
+
+- Added per-key sync metadata for main/shared vault updates and delete markers.
+- Added tests for sync metadata conflict decisions.
+
+### Changed
+
+- Token sync now skips older shared-vault values when main-vault metadata shows a newer local update.
+- Updated token sync docs and backlog score for the stronger sync policy.
 
 ## [v0.2.1] - 2026-05-16
 
