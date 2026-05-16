@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.1.6`
+- Current baseline release: `v0.1.7`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -42,6 +42,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Added core unit coverage for crypto, token helpers, key validation, and import parsing.
 - Moved crypto helpers into `internal/crypto` with focused English comments.
 - Moved config loading and validation into `internal/config` with focused English comments.
+- Added automated CLI smoke coverage for `change-password`.
 
 ## Current Verification
 
@@ -108,6 +109,7 @@ Automated smoke tests now cover:
 - `list`
 - `backup`
 - wrong password rejection
+- `change-password`
 - token creation
 - token `get`
 - token `set`
@@ -117,10 +119,6 @@ Automated smoke tests now cover:
 - recovery `test-recovery`
 - recovery `recover`
 - concurrent command serialization through `.myminivault.lock`
-
-Remaining coverage to add:
-
-- `change-password` through a pseudo-terminal or refactored testable input path
 
 Suggested branch:
 
@@ -269,11 +267,31 @@ git pull
 git switch -c codex/internal-packages
 ```
 
+### 9. Documentation Cleanup After Refactor
+
+After the `internal/...` refactor is complete, rewrite the documentation structure instead of continuing to grow the README.
+
+Target structure:
+
+- `README.md`: concise project overview, install/build, quick start, common commands, release links
+- `CHANGELOG.md`: version history only
+- `BACKLOG.md`: future work and handoff notes only
+- `docs/user-manual.md`: full user-facing manual
+- `docs/development.md`: architecture notes, test workflow, branch/tag/release workflow
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c codex/docs-cleanup
+```
+
 ## Product Ideas After Hardening
 
 These are intentionally lower priority than the stability/security work above. Revisit them after smoke tests, recovery hardening, sync policy, shell-safe export, config validation, and package cleanup are in place.
 
-### 9. `vault run -- <command>`
+### 10. `vault run -- <command>`
 
 Run a command with vault entries injected as environment variables, without printing secrets:
 
@@ -290,7 +308,7 @@ git pull
 git switch -c codex/vault-run-command
 ```
 
-### 10. Project Profiles
+### 11. Project Profiles
 
 Support separate vault contexts for different projects or environments:
 
@@ -308,7 +326,7 @@ git pull
 git switch -c codex/project-profiles
 ```
 
-### 11. Namespaces
+### 12. Namespaces
 
 Support namespaced keys for environments such as `dev`, `staging`, and `prod`:
 
@@ -325,7 +343,7 @@ git pull
 git switch -c codex/namespaces
 ```
 
-### 12. Clipboard Command
+### 13. Clipboard Command
 
 Copy a secret to the system clipboard and optionally clear it after a timeout:
 
@@ -342,7 +360,7 @@ git pull
 git switch -c codex/clipboard-copy
 ```
 
-### 13. Token UX Cleanup
+### 14. Token UX Cleanup
 
 Make token commands more consistent and automation-friendly:
 
@@ -360,7 +378,7 @@ git pull
 git switch -c codex/token-ux
 ```
 
-### 14. `vault doctor`
+### 15. `vault doctor`
 
 Add a health-check command for local setup and runtime files:
 
@@ -378,7 +396,7 @@ git pull
 git switch -c codex/doctor-command
 ```
 
-### 15. Terminal UI
+### 16. Terminal UI
 
 Add an optional TUI for browsing/searching keys, viewing token status, editing values, and triggering copy/export flows:
 
@@ -394,7 +412,7 @@ git pull
 git switch -c codex/tui
 ```
 
-### 16. Secret Rotation Hooks
+### 17. Secret Rotation Hooks
 
 Support command-driven rotation workflows:
 
@@ -410,7 +428,7 @@ git pull
 git switch -c codex/secret-rotation
 ```
 
-### 17. Hook System
+### 18. Hook System
 
 Allow local scripts to run after selected events such as `set`, `delete`, `backup`, or `token create`:
 

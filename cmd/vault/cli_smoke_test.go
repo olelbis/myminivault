@@ -129,6 +129,21 @@ func TestCLISmokeWrongPasswordRejected(t *testing.T) {
 	requireContains(t, result.output, "error loading vault")
 }
 
+func TestCLISmokeChangePassword(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	requireOK(t, runVault(t, bin, dir, "oldpass\n", "set", "API_KEY", "hello"))
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "oldpass\nnewpass\nnewpass\n", "change-password")), "Password changed successfully")
+
+	oldPasswordResult := runVault(t, bin, dir, "oldpass\n", "get", "API_KEY")
+	if oldPasswordResult.err != nil {
+		t.Fatalf("vault prints load errors but exits zero; got err %v\n%s", oldPasswordResult.err, oldPasswordResult.output)
+	}
+	requireContains(t, oldPasswordResult.output, "error loading vault")
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "newpass\n", "get", "API_KEY")), "hello")
+}
+
 func TestCLISmokeExportShellQuotesValues(t *testing.T) {
 	bin := buildVaultBinary(t)
 	dir := t.TempDir()
