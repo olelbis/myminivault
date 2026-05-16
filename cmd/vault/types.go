@@ -15,5 +15,5 @@ type TokenRegistry = model.TokenRegistry
 
 var (
 	currentRecoveryKey string
-	tokenVaultMutex    sync.Mutex // ⭐ MUTEX PER ACCESSO CONCORRENTE
+	tokenVaultMutex    sync.Mutex // Serializes access to the shared token vault file.
 )

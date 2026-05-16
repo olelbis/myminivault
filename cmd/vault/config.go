@@ -6,7 +6,7 @@ import (
 	vaultconfig "github.com/olelbis/myminivault/internal/config"
 )
 
-// Parametri per cifratura e derivazione della chiave
+// Default encryption and key-derivation parameters.
 var config = vaultconfig.Default
 
 const (
@@ -15,9 +15,9 @@ const (
 	logFile          = "vault.log"
 	tokenRegistry    = "vault-tokens.json"
 	tokenKeyFile     = "vault-token.key"
-	sharedTokenVault = "shared-token-vault.json" // ⭐ VAULT CONDIVISO
+	sharedTokenVault = "shared-token-vault.json"
 	saltSize         = 16
-	vaultVersion     = "0.1.9"
+	vaultVersion     = "0.1.10"
 )
 
 func showConfig() {

@@ -6,7 +6,7 @@ The main CLI lives in `cmd/vault`.
 
 ## Versioning
 
-Application releases use Git tags such as `v0.1.9` and are documented in `CHANGELOG.md`.
+Application releases use Git tags such as `v0.1.10` and are documented in `CHANGELOG.md`.
 
 The CLI-visible version is kept in sync with the current release tag. When the vault file format changes, the version should be updated together with migration notes in the changelog.
 
@@ -474,10 +474,12 @@ internal/
     model.go      vault, recovery, token, and metadata structs
   storage/
     storage.go    vault load/save, checksum, and atomic writes
+  token/
+    token.go      token signing, validation, registry, and shared token vault persistence
 ```
 
 ## Recommended Next Hardening Work
 
 Recommended follow-up tasks:
 
-- continue package refactor toward `internal/recovery` and `internal/token`
+- continue package refactor toward `internal/recovery`

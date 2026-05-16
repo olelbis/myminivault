@@ -2,31 +2,27 @@
 package main
 
 import (
-	"crypto/hmac"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
+	vaulttoken "github.com/olelbis/myminivault/internal/token"
 )
 
 func getOrCreateTokenMasterKey() ([]byte, error) {
-	if key, err := loadTokenMasterKey(); err == nil {
+	if key, err := vaulttoken.LoadMasterKey(tokenKeyFile); err == nil {
 		return key, nil
 	}
 
 	fmt.Println("🔑 Generating secure token master key...")
 	key := generateRandom(32)
 
-	if err := saveTokenMasterKey(key); err != nil {
+	if err := vaulttoken.SaveMasterKey(tokenKeyFile, key); err != nil {
 		return nil, fmt.Errorf("failed to save token master key: %w", err)
 	}
 
@@ -35,24 +31,11 @@ func getOrCreateTokenMasterKey() ([]byte, error) {
 }
 
 func loadTokenMasterKey() ([]byte, error) {
-	if _, err := os.Stat(tokenKeyFile); err != nil {
-		return nil, err
-	}
-
-	key, err := os.ReadFile(tokenKeyFile)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(key) != 32 {
-		return nil, errors.New("invalid token key length")
-	}
-
-	return key, nil
+	return vaulttoken.LoadMasterKey(tokenKeyFile)
 }
 
 func saveTokenMasterKey(key []byte) error {
-	return os.WriteFile(tokenKeyFile, key, 0600)
+	return vaulttoken.SaveMasterKey(tokenKeyFile, key)
 }
 
 func cleanupExpiredTokens(vault *ExtendedVault) error {
@@ -145,81 +128,14 @@ func executeWithToken() error {
 	}
 }
 
-// ⭐ MODIFICA: Parsing con supporto token corti
 func parseAndValidateProductionToken(tokenStr string) (AccessToken, *ExtendedVault, error) {
-
-	tokenStr = addBase64Padding(tokenStr)
-
-	decoded, err := base64.URLEncoding.DecodeString(tokenStr)
-	if err != nil {
-
-		decoded, err = base64.StdEncoding.DecodeString(tokenStr)
-		if err != nil {
-			return AccessToken{}, nil, fmt.Errorf("invalid token format: %w", err)
-		}
-	}
-
-	parts := strings.Split(string(decoded), ":")
-	if len(parts) != 6 {
-		return AccessToken{}, nil, errors.New("malformed token structure")
-	}
-
-	tokenID := parts[0]
-	keyPattern := parts[1]
-	expiresUnix, err := strconv.ParseInt(parts[2], 10, 64)
-	if err != nil {
-		return AccessToken{}, nil, errors.New("invalid expiration time")
-	}
-	permissions := strings.Split(parts[3], ",")
-	maxUses, err := strconv.Atoi(parts[4])
-	if err != nil {
-		return AccessToken{}, nil, errors.New("invalid max uses")
-	}
-	providedSignature := parts[5]
-
-	vault, err := loadSharedTokenVault()
-	if err != nil {
-		return AccessToken{}, nil, fmt.Errorf("cannot load shared token vault: %w", err)
-	}
-
-	if vault.TokenManager == nil {
-		return AccessToken{}, nil, errors.New("no token manager found in vault")
-	}
-
-	storedToken, exists := vault.TokenManager.Tokens[tokenID]
-	if !exists {
-		return AccessToken{}, nil, errors.New("token not found or has been revoked")
-	}
-
-	payload := fmt.Sprintf("%s:%s:%d:%s:%d", tokenID, keyPattern, expiresUnix, strings.Join(permissions, ","), maxUses)
-	h := hmac.New(sha256.New, vault.TokenManager.SecretKey)
-	h.Write([]byte(payload))
-	expectedSignature := base64.StdEncoding.EncodeToString(h.Sum(nil))
-
-	if !hmac.Equal([]byte(providedSignature), []byte(expectedSignature)) {
-		return AccessToken{}, nil, errors.New("invalid token signature - token may be forged")
-	}
-
-	storedToken.UsageCount++
-	vault.TokenManager.Tokens[tokenID] = storedToken
-
-	saveTokenVaultEncrypted(vault, sharedTokenVault)
-
-	return storedToken, vault, nil
+	return vaulttoken.ParseAndValidateProductionToken(tokenStr, sharedTokenVault, tokenOptions())
 }
 
-// ⭐ NUOVO: Helper per aggiungere padding base64
 func addBase64Padding(s string) string {
-	switch len(s) % 4 {
-	case 2:
-		return s + "=="
-	case 3:
-		return s + "="
-	}
-	return s
+	return vaulttoken.AddBase64Padding(s)
 }
 
-// ⭐ NUOVO: Carica vault condiviso
 func loadSharedTokenVault() (*ExtendedVault, error) {
 	tokenVaultMutex.Lock()
 	defer tokenVaultMutex.Unlock()
@@ -228,149 +144,23 @@ func loadSharedTokenVault() (*ExtendedVault, error) {
 }
 
 func saveTokenVaultEncrypted(vault *ExtendedVault, tokenVaultPath string) error {
-	serialized, err := json.MarshalIndent(vault, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	checksum := sha256.Sum256(serialized)
-	dataWithChecksum := append(checksum[:], serialized...)
-
-	tokenKey, err := getOrCreateTokenMasterKey()
-	if err != nil {
-		return fmt.Errorf("failed to get token master key: %w", err)
-	}
-
-	salt := generateRandom(saltSize)
-	key, err := deriveKey(tokenKey, salt)
-	if err != nil {
-		return err
-	}
-
-	ciphertext, err := encrypt(dataWithChecksum, key)
-	if err != nil {
-		return err
-	}
-
-	return saveTokenVaultFileAtomic(tokenVaultPath, salt, ciphertext)
+	return vaulttoken.SaveEncryptedVault(vault, tokenVaultPath, tokenOptions())
 }
 
 func loadVaultFromTokenFileEncrypted(tokenFilePath string) (*ExtendedVault, error) {
-	f, err := os.Open(tokenFilePath)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	salt := make([]byte, saltSize)
-	if _, err := io.ReadFull(f, salt); err != nil {
-		return nil, fmt.Errorf("failed to read salt: %w", err)
-	}
-
-	encryptedData, err := io.ReadAll(f)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read encrypted data: %w", err)
-	}
-
-	tokenKey, err := getOrCreateTokenMasterKey()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get token master key: %w", err)
-	}
-
-	key, err := deriveKey(tokenKey, salt)
-	if err != nil {
-		return nil, err
-	}
-
-	decrypted, err := decrypt(encryptedData, key)
-	if err != nil {
-		return nil, fmt.Errorf("decryption failed: %w", err)
-	}
-
-	if len(decrypted) <= 32 {
-		return nil, errors.New("data too short")
-	}
-
-	expectedChecksum := decrypted[:32]
-	data := decrypted[32:]
-	actualChecksum := sha256.Sum256(data)
-
-	if !hmac.Equal(expectedChecksum, actualChecksum[:]) {
-		return nil, errors.New("checksum verification failed")
-	}
-
-	var vault ExtendedVault
-	if err := json.Unmarshal(data, &vault); err != nil {
-		return nil, fmt.Errorf("cannot parse vault data: %w", err)
-	}
-
-	return &vault, nil
+	return vaulttoken.LoadEncryptedVault(tokenFilePath, tokenOptions())
 }
 
 func saveTokenVaultFileAtomic(tokenVaultPath string, salt, data []byte) error {
-	tempFile := tokenVaultPath + ".tmp"
-	f, err := os.Create(tempFile)
-	if err != nil {
-		return fmt.Errorf("failed to create temp file: %w", err)
-	}
-
-	if _, err := f.Write(salt); err != nil {
-		f.Close()
-		os.Remove(tempFile)
-		return fmt.Errorf("failed to write salt: %w", err)
-	}
-
-	if _, err := f.Write(data); err != nil {
-		f.Close()
-		os.Remove(tempFile)
-		return fmt.Errorf("failed to write data: %w", err)
-	}
-
-	if err := f.Sync(); err != nil {
-		f.Close()
-		os.Remove(tempFile)
-		return fmt.Errorf("failed to sync file: %w", err)
-	}
-
-	f.Close()
-
-	if err := os.Rename(tempFile, tokenVaultPath); err != nil {
-		os.Remove(tempFile)
-		return fmt.Errorf("failed to finalize save: %w", err)
-	}
-
-	return nil
+	return vaulttoken.SaveVaultFileAtomic(tokenVaultPath, salt, data)
 }
 
 func loadTokenRegistry() (*TokenRegistry, error) {
-	if _, err := os.Stat(tokenRegistry); err != nil {
-		return &TokenRegistry{
-			VaultPath:       vaultFile,
-			SharedVaultPath: sharedTokenVault,
-			Tokens:          make(map[string]string),
-		}, nil
-	}
-
-	data, err := os.ReadFile(tokenRegistry)
-	if err != nil {
-		return nil, err
-	}
-
-	var registry TokenRegistry
-	if err := json.Unmarshal(data, &registry); err != nil {
-		return nil, err
-	}
-
-	return &registry, nil
+	return vaulttoken.LoadRegistry(tokenRegistry, vaultFile, sharedTokenVault)
 }
 
 func saveTokenRegistry(registry *TokenRegistry) error {
-	data, err := json.MarshalIndent(registry, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(tokenRegistry, data, 0600)
+	return vaulttoken.SaveRegistry(tokenRegistry, registry)
 }
 
 func executeTokenGet(vault *ExtendedVault, token AccessToken, key string) error {
@@ -394,7 +184,6 @@ func executeTokenGet(vault *ExtendedVault, token AccessToken, key string) error 
 	return fmt.Errorf("key '%s' not found", key)
 }
 
-// ⭐ MODIFICA: Set con sincronizzazione immediata
 func executeTokenSet(vault *ExtendedVault, token AccessToken, key, value string) error {
 	if !contains(token.Permissions, "write") {
 		return errors.New("token does not have write permission")
@@ -482,23 +271,9 @@ func executeTokenSearch(vault *ExtendedVault, token AccessToken, pattern string)
 }
 
 func matchKeyPattern(pattern, key string) (bool, error) {
-	if pattern == "*" {
-		return true, nil
-	}
-
-	regexPattern := regexp.QuoteMeta(pattern)
-	regexPattern = strings.ReplaceAll(regexPattern, "\\*", ".*")
-	regexPattern = "^" + regexPattern + "$"
-
-	matched, err := regexp.MatchString(regexPattern, key)
-	if err != nil {
-		return false, fmt.Errorf("invalid pattern '%s': %w", pattern, err)
-	}
-
-	return matched, nil
+	return vaulttoken.MatchKeyPattern(pattern, key)
 }
 
-// ⭐ MODIFICA: Crea token nel vault condiviso
 func handleCreateToken(vault *ExtendedVault) {
 	if len(os.Args) < 3 {
 		fmt.Println("Usage: vault create-token --keys=<pattern> --duration=<time> [--permissions=read,write] [--max-uses=N]")
@@ -609,30 +384,12 @@ func handleCreateToken(vault *ExtendedVault) {
 	fmt.Printf("\n🔄 Token writes are stored in the shared token vault and imported by master commands.\n")
 }
 
-// ⭐ NUOVO: Genera token ID più corto
 func generateShortRandomID() string {
-	b := make([]byte, 12)
-	rand.Read(b)
-	return strings.TrimRight(base64.URLEncoding.EncodeToString(b), "=")
+	return vaulttoken.GenerateShortRandomID()
 }
 
-// ⭐ NUOVO: Crea signed token più corto
 func createShortSignedToken(token AccessToken, secretKey []byte) (string, error) {
-	payload := fmt.Sprintf("%s:%s:%d:%s:%d",
-		token.TokenID,
-		token.KeyPattern,
-		token.ExpiresAt.Unix(),
-		strings.Join(token.Permissions, ","),
-		token.MaxUses)
-
-	h := hmac.New(sha256.New, secretKey)
-	h.Write([]byte(payload))
-	signature := h.Sum(nil)
-
-	tokenData := payload + ":" + base64.StdEncoding.EncodeToString(signature)
-
-	encoded := base64.URLEncoding.EncodeToString([]byte(tokenData))
-	return strings.TrimRight(encoded, "="), nil
+	return vaulttoken.CreateShortSignedToken(token, secretKey)
 }
 
 func handleRevokeToken(vault *ExtendedVault) {
@@ -686,12 +443,21 @@ func getKeyFromTokenArgs() string {
 }
 
 func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
+	return vaulttoken.Contains(slice, item)
+}
+
+func tokenOptions() vaulttoken.Options {
+	return vaulttoken.Options{
+		TokenKeyFile: tokenKeyFile,
+		SaltSize:     saltSize,
+		MasterKey:    getOrCreateTokenMasterKey,
+		Scrypt: vaultcrypto.ScryptConfig{
+			N:       config.ScryptN,
+			R:       config.ScryptR,
+			P:       config.ScryptP,
+			KeySize: config.KeySize,
+		},
 	}
-	return false
 }
 
 func handleListTokens(vault *ExtendedVault) {
