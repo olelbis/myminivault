@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.1.11`
+- Current baseline release: `v0.1.12`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -47,6 +47,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Moved vault load/save, checksum, and atomic write helpers into `internal/storage`.
 - Moved token signing, validation, registry, and encrypted shared token vault helpers into `internal/token`.
 - Moved recovery key generation, validation, recovery vault decryption, and recovery file writes into `internal/recovery`.
+- Renamed `cmd/vault` CLI wrapper files so they are easier to distinguish from similarly named `internal/...` packages.
 
 ## Current Verification
 
@@ -75,12 +76,12 @@ cmd/
   vault/
     main.go       CLI dispatch and command flow
     commands.go   basic key/value commands, import/export, stats
-    config.go     config loading/display
+    config_cli.go       config loading/display
     crypto.go     encryption, decryption, random bytes, key derivation
-    recovery.go   recovery and password-change flows
-    storage.go    main vault load/save
+    recovery_cli.go     recovery and password-change flows
+    storage_bridge.go   main vault load/save wrappers
     sync.go       main/shared vault synchronization
-    token.go      token creation, validation, token commands
+    token_cli.go        token creation, validation, token commands
     types.go      compatibility aliases for shared data structures
 internal/
   config/
