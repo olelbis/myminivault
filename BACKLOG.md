@@ -15,15 +15,16 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `8.3 / 10`.
+Current assessment score: `8.4 / 10`.
 
-`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
+`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
 Main strengths:
 
 - release discipline with Git tags, GitHub releases, and a changelog
 - GitHub CI for formatting, vetting, and automated tests across Linux and macOS
 - release package automation for Linux amd64, Linux arm64, and macOS arm64
+- formal threat model covering assets, attackers, trust boundaries, data flows, residual risks, and incident response
 - focused `internal/...` packages for crypto, config, model, recovery, storage, and token logic
 - automated CLI smoke coverage for critical workflows
 - explicit handling for recovery, token sync, locking, backups, export, and password changes
@@ -31,18 +32,18 @@ Main strengths:
 
 Main risks:
 
-- the project handles real secrets, so security assumptions must be documented and reviewed carefully
+- the project handles real secrets, so the threat model must stay current as behavior changes
 - token/shared-vault synchronization is better guarded than before, but still conceptually complex
 - package-level unit coverage is improving, but more edge-case coverage is still useful as behavior grows
 - `cmd/vault` still contains some orchestration and command logic that may deserve future extraction
-- the README has been split into focused docs, but the security model still needs a dedicated review
+- the security model is clearer, but it is still self-reviewed and not an external audit
 
 Strategic guidance:
 
 - prefer documentation, security review, and test depth before adding new features
 - keep product ideas below hardening work unless they reduce operational risk
 - document behavior before changing user-facing semantics
-- avoid claiming production security until a threat model and focused security review exist
+- avoid claiming production security without external review
 
 ## What Has Been Done
 
@@ -113,6 +114,7 @@ Strategic guidance:
 - Added GitHub Actions release packaging for Linux amd64, Linux arm64, and macOS arm64 archives.
 - Added README and CLI help credits for `olelbis`.
 - Expanded GitHub Actions CI to run `gofmt`, `go vet`, and `go test ./...` on Linux and macOS.
+- Reworked `docs/security.md` into a formal threat model with assets, attacker assumptions, trust boundaries, data flows, residual risks, and incident response guidance.
 
 ## Current Verification
 
@@ -228,28 +230,15 @@ git switch -c codex/token-sync-next
 
 Priority: medium-high.
 
-These items are the most direct path from the current `8.2 / 10` assessment toward roughly `8.5 / 10`. Prefer them before adding new product features.
+These items are the most direct path from the current `8.4 / 10` assessment toward roughly `8.5 / 10`. Prefer them before adding new product features.
 
 Recommended order:
 
-1. formalize the threat model in `docs/security.md`
-2. add coverage reporting, then decide whether to enforce a minimum threshold
-3. continue improving release binaries and install paths after the first package workflow
-4. continue reducing broad orchestration in `cmd/vault` only where tests already protect behavior
+1. add coverage reporting, then decide whether to enforce a minimum threshold
+2. continue improving release binaries and install paths after the first package workflow
+3. continue reducing broad orchestration in `cmd/vault` only where tests already protect behavior
 
 Suggested branches:
-
-```bash
-git switch main
-git pull
-git switch -c codex/threat-model
-```
-
-```bash
-git switch main
-git pull
-git switch -c codex/ci-matrix
-```
 
 ```bash
 git switch main
@@ -263,30 +252,7 @@ git pull
 git switch -c codex/coverage-reporting
 ```
 
-### 3. Security Threat Model Review
-
-Priority: medium-high.
-
-The security model documents many assumptions and limits, but it should be rewritten into a more explicit threat model before the project is described as beta-ready.
-
-Cover at least:
-
-- local attacker assumptions, including same-user processes and filesystem access
-- memory exposure limits in Go and what mitigations are only best-effort
-- terminal, shell history, clipboard, and export plaintext boundaries
-- token/shared-vault trust boundaries and sync assumptions
-- backup, recovery, and stale snapshot risks
-- what the tool explicitly does not defend against
-
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c codex/threat-model
-```
-
-### 4. Coverage Reporting
+### 3. Coverage Reporting
 
 Priority: medium.
 
@@ -305,7 +271,7 @@ git pull
 git switch -c codex/coverage-reporting
 ```
 
-### 5. Install And Release Packaging
+### 4. Install And Release Packaging
 
 Priority: medium.
 
@@ -326,7 +292,7 @@ git pull
 git switch -c codex/install-packaging
 ```
 
-### 6. Additional CLI Smoke Tests
+### 5. Additional CLI Smoke Tests
 
 Automated smoke tests currently cover:
 
@@ -368,7 +334,7 @@ git pull
 git switch -c codex/cli-smoke-tests-more
 ```
 
-### 7. Import/Export Format Review
+### 6. Import/Export Format Review
 
 Priority: low-medium.
 
@@ -401,7 +367,7 @@ git pull
 git switch -c codex/import-export-format
 ```
 
-### 8. Future Refactor Candidates
+### 7. Future Refactor Candidates
 
 Priority: low unless a bug or feature makes the extraction useful.
 
@@ -429,7 +395,7 @@ Future token sync simplification:
 - Per-key timestamps now exist; consider revision counters, merge-base metadata, or fuller delete tombstones before changing the policy further.
 - Document the final behavior in the user manual once the policy is stable.
 
-### 9. Memory Exposure Hardening Next Steps
+### 8. Memory Exposure Hardening Next Steps
 
 Priority: low-medium.
 
@@ -454,7 +420,7 @@ git switch -c codex/memory-exposure-next
 
 These are intentionally lower priority than the stability/security work above. Revisit them after documentation cleanup, security review, token sync policy review, and test-depth work are in better shape.
 
-### 10. `vault run -- <command>`
+### 9. `vault run -- <command>`
 
 Run a command with vault entries injected as environment variables, without printing secrets:
 
@@ -471,7 +437,7 @@ git pull
 git switch -c codex/vault-run-command
 ```
 
-### 11. Project Profiles
+### 10. Project Profiles
 
 Support separate vault contexts for different projects or environments:
 
@@ -489,7 +455,7 @@ git pull
 git switch -c codex/project-profiles
 ```
 
-### 12. Namespaces
+### 11. Namespaces
 
 Support namespaced keys for environments such as `dev`, `staging`, and `prod`:
 
@@ -506,7 +472,7 @@ git pull
 git switch -c codex/namespaces
 ```
 
-### 13. Token UX Cleanup
+### 12. Token UX Cleanup
 
 Make token commands more consistent and automation-friendly:
 
@@ -524,7 +490,7 @@ git pull
 git switch -c codex/token-ux
 ```
 
-### 14. Terminal UI
+### 13. Terminal UI
 
 Add an optional TUI for browsing/searching keys, viewing token status, editing values, and triggering copy/export flows:
 
@@ -540,7 +506,7 @@ git pull
 git switch -c codex/tui
 ```
 
-### 15. Secret Rotation Hooks
+### 14. Secret Rotation Hooks
 
 Support command-driven rotation workflows:
 
@@ -556,7 +522,7 @@ git pull
 git switch -c codex/secret-rotation
 ```
 
-### 16. Hook System
+### 15. Hook System
 
 Allow local scripts to run after selected events such as `set`, `delete`, `backup`, or `token create`:
 

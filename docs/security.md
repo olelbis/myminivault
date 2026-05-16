@@ -1,20 +1,28 @@
-# myminivault Security Model
+# myminivault Security Model And Threat Model
 
 `myminivault` is an experimental personal project. It has not been independently audited and should not be treated as a production password manager.
 
-This document explains the intended security boundaries, sensitive assets, assumptions, and known limitations so future development can be explicit instead of relying on "it is encrypted" as a complete answer.
+This document defines the current security goals, assumptions, trust boundaries, known limitations, and residual risks. The purpose is to keep future development honest about what the tool protects, what it only mitigates, and what it explicitly does not defend against.
 
-## Goals
+## Scope
+
+This model covers the local CLI, local runtime files, recovery workflow, token workflow, import/export behavior, clipboard behavior, and release artifacts.
+
+It does not cover hosted infrastructure, remote synchronization services, browser extensions, mobile clients, multi-user deployments, or enterprise administration because those features do not exist in the project.
+
+## Security Goals
 
 `myminivault` aims to:
 
 - keep vault values encrypted at rest in local runtime files
 - derive encryption keys from a master password using scrypt
 - authenticate encrypted payloads with AES-GCM
-- support a recovery workflow without storing the master password
-- support temporary token access with key-pattern and permission limits
+- support recovery without storing the master password
+- support temporary token access with key-pattern, permission, expiry, and max-use limits
 - reduce local write races with an inter-process lock file
 - keep runtime vault files out of Git by default
+- avoid printing plaintext where a safer workflow exists, such as `copy` or `export --output`
+- document operational risks clearly before claiming stronger guarantees
 
 ## Non-Goals
 
@@ -23,13 +31,15 @@ This document explains the intended security boundaries, sensitive assets, assum
 - enterprise password manager guarantees
 - audited cryptographic design
 - protection from malware or a compromised local user account
+- protection from an attacker who can run arbitrary code as the same OS user
 - remote sync security
 - multi-user access control
 - hardware-backed key storage
-- memory-hardening against local process inspection
-- protection from secrets copied into shell history, terminal scrollback, logs, or clipboard tools
+- strong memory-hardening against local process inspection
+- protection from secrets copied into shell history, terminal scrollback, logs, screenshots, remote desktop tools, or clipboard managers
+- guaranteed recovery from every backup or historical vault state
 
-## Sensitive Assets
+## Protected Assets
 
 Treat these as sensitive:
 
@@ -44,159 +54,260 @@ Treat these as sensitive:
 - `shared-token-vault.json`
 - `vault-tokens.json`
 - backup files such as `vault.db.<timestamp>.bak`
-- `vault.log` if key names or token IDs reveal context
-- exported shell snippets
+- `vault.log` if command timing or action metadata reveals context
+- exported shell snippets and files created by `vault export --output`
+- clipboard contents after `vault copy`
 
-## Attacker Assumptions
+## Attacker Model
 
-The current model mostly considers an attacker who can read or copy files from the working directory after commands have run.
+The primary attacker considered by the current design can read or copy project runtime files after trusted commands have run.
 
-The project does not currently defend well against:
+This includes cases such as:
 
-- an attacker who can run code as the same OS user
-- an attacker who can observe terminal input/output
-- an attacker who can read shell history
-- an attacker who can inspect process memory
-- an attacker who can replace the binary or source code
+- accidental Git staging of runtime files
+- backup leakage
+- copied project folders
+- overly broad local filesystem permissions
+- another local user reading world-readable files
+
+The project has only partial or best-effort mitigations for:
+
 - an attacker who can modify runtime files between trusted command runs
+- an attacker who can observe terminal input or output
+- an attacker who can read shell history or terminal scrollback
+- an attacker who can steal a compact token before it expires
+- an attacker who can copy encrypted vault files and attempt offline password guessing
 
-## Runtime Files
+The project does not defend against:
 
-| File | Sensitivity | Notes |
-| --- | --- | --- |
-| `vault.db` | High | Main encrypted vault |
-| `vault.db.bak` | High | Previous encrypted vault version |
-| `vault.db.recovery` | High | Recovery-encrypted vault snapshot |
-| `vault-token.key` | Critical | Local token master key; compromise invalidates token security assumptions |
-| `shared-token-vault.json` | High | Encrypted shared token vault |
-| `vault-tokens.json` | Medium | Token registry metadata |
-| `vault.log` | Medium | May reveal token IDs, actions, or key names |
-| `vault-config.json` | Low/Medium | Can affect scrypt and backup behavior |
-| `.myminivault.lock` | Low | Coordination file, not a security boundary |
+- malware running as the same OS user
+- debuggers, memory dump tools, or process inspection by the same user
+- a compromised terminal emulator, shell, OS account, or machine
+- a malicious or replaced binary/source tree
+- a compromised Go toolchain or dependency supply chain
+- a user intentionally exporting or pasting secrets into unsafe locations
 
-Runtime files should stay out of Git and should normally be readable only by the local user.
+## Trust Boundaries
 
-## File Permissions
+### Local Process Boundary
 
-Current code writes some sensitive files with restrictive permissions, but a complete file-permission audit is still a backlog item.
+The CLI process is trusted while it runs. Plaintext secrets, passwords, derived keys, and decrypted vault data may exist in process memory during command execution.
 
-Expected direction:
+The CLI disables core dumps on supported Unix-like systems as a best-effort mitigation, but this is not a sandbox and not a defense against same-user process inspection.
 
-- `vault.db`, `.bak`, `.recovery`, token key, shared token vault, registry, and logs should not be world-readable
-- backup files should receive the same care as `vault.db`
-- `vault-token.key` should be treated as especially sensitive
-- `vault doctor` warns about unsafe permissions and related local runtime health issues
+### Runtime File Boundary
 
-## Master Password
+Runtime files are local files in the current working directory. Encrypted vault files are designed to tolerate file copying better than plaintext files, but copied files still enable offline password guessing and may contain historical secrets.
 
-The master password is used to derive an encryption key through scrypt. It is not intentionally stored.
+File permissions are an important local mitigation, not a complete security boundary.
 
-Risks:
+### Terminal Boundary
 
-- weak master passwords are still weak
-- terminal input may be exposed by a compromised terminal or OS user
-- process memory is not hardened
-- shell scripts that pipe passwords can leak through history, process inspection, or logs
+Anything printed to the terminal can be captured by terminal scrollback, shell wrappers, logs, screen recording, remote desktop software, or clipboard copy.
 
-## Recovery Key
+`get` and plain `export` intentionally print plaintext. Prefer `copy` for one secret and `export --output <file>` for export artifacts when terminal exposure matters.
 
-Recovery uses a high-entropy recovery key and a recovery-encrypted snapshot stored in `vault.db.recovery`. See [Recovery Policy](recovery-policy.md) for the full snapshot, divergence, verifier, and rotation policy.
+### Clipboard Boundary
 
-Important limitations:
+`copy` avoids terminal output, but the clipboard is shared local OS state. Clipboard managers, local apps, remote desktop tools, and malware may read it.
 
-- recovery can recover only the snapshot stored in `vault.db.recovery`
-- if the main vault and recovery snapshot diverge, recovery follows the recovery snapshot
-- anyone with the recovery key and recovery file can attempt recovery
-- losing the recovery key means recovery is not available
-- replacing or rotating recovery does not rewrite historical backups that may contain older recovery snapshots
+`copy` clears the clipboard after a TTL when supported and only if the clipboard still contains the copied secret. This is a best-effort cleanup, not a hard guarantee.
 
-## Token System
-
-Tokens provide temporary access with:
-
-- key-pattern restrictions
-- read/write permissions
-- expiration time
-- max-use limits
-- HMAC signatures
-- encrypted shared token vault storage
-
-Important limitations:
-
-- a compact token string is a bearer credential while valid
-- a stolen token can be used until it expires, is revoked, or reaches max uses
-- `vault-token.key` is critical for token security
-- token writes go through `shared-token-vault.json`
-- sync conflict handling uses per-key timestamps when metadata is available, but it is not a distributed merge system
-
-## Main And Shared Vault Boundary
+### Main Vault And Shared Token Vault Boundary
 
 `vault.db` is the main password-protected vault. `shared-token-vault.json` is the encrypted vault used by token commands.
 
-Current behavior:
+Token writes are staged in the shared token vault, then imported by master-password commands. Master mutations mirror the main vault back to the shared token vault when token runtime files exist.
 
-- token writes are staged in `shared-token-vault.json`
-- master-password commands import token-side changes before running
-- master mutations mirror the main vault back to the shared token vault after saving when token runtime exists
-- deletes remain authoritative because mirroring replaces shared vault data with main vault data
+This is a local convenience model, not distributed synchronization. Per-key timestamps reduce overwrite surprises when metadata is available, but there is no full merge-base or multi-device conflict model.
 
-This is a powerful but complex model. The current policy is documented in [Token Sync Policy](token-sync-policy.md): automatic import remains the default, `sync-tokens` remains available for explicit import, and conflicts use per-key timestamps when metadata is available.
+### Release Boundary
 
-## Backups, Export, And Clipboard
+GitHub Releases publish source tags and binary archives. Release checksums help detect accidental corruption or mismatched downloads, but they do not replace a signed release process.
 
-Backups are encrypted but still sensitive because they may contain old secrets.
+The project does not currently sign commits, tags, release archives, or checksums.
 
-Export output is intentionally shell-friendly, but exported values are plaintext once printed. Be careful with:
+## Runtime Files
 
-- terminal scrollback
-- shell history
-- copied output
-- logs
-- redirected files
+| File | Sensitivity | Primary Risk | Current Mitigation |
+| --- | --- | --- | --- |
+| `vault.db` | High | Offline password guessing, copied encrypted secrets | AES-GCM encryption, scrypt, restrictive writes |
+| `vault.db.bak` | High | Historical encrypted secrets | Same encrypted format, restrictive writes |
+| `vault.db.recovery` | High | Recovery-encrypted snapshot exposure | High-entropy recovery key, restrictive writes |
+| `vault-token.key` | Critical | Token system compromise | Restrictive writes, `regenerate-token-key` |
+| `shared-token-vault.json` | High | Token-access vault exposure | Encrypted shared vault, token master key |
+| `vault-tokens.json` | Medium | Token registry metadata leakage | Restrictive writes |
+| `vault.log` | Medium | Operational metadata leakage | Redacted key/token identifiers, optional logging |
+| `vault-config.json` | Low/Medium | Unsafe runtime configuration | Validation on load |
+| `.myminivault.lock` | Low | Write coordination confusion | Advisory lock only |
 
-Use `vault export --output <file>` when you need an export artifact. The file is written with restrictive permissions, but it still contains plaintext shell snippets and must be protected.
+Runtime files should stay out of Git and should normally be readable only by the local user.
 
-Use `vault copy <key>` when you need one secret without printing it. Clipboard copy avoids terminal scrollback, but clipboard contents may still be visible to clipboard managers, local apps, remote desktop tooling, or malware. The command clears the clipboard after a TTL when supported.
+## Data Flows
 
-## Runtime Memory
+### Password-Protected Vault Commands
 
-The CLI disables core dumps on supported Unix-like systems as a best-effort mitigation. This reduces accidental plaintext exposure in crash dump files, but it is not a defense against malware, debuggers, process inspection, terminal capture, or a compromised local user account.
+1. The user provides a master password.
+2. The CLI derives a key from the password and vault salt.
+3. The CLI decrypts and authenticates `vault.db`.
+4. The command reads or mutates vault data.
+5. Mutating commands save atomically and keep a `.bak` copy.
+6. If token runtime exists, relevant changes may be mirrored to the shared token vault.
 
-Go strings are immutable and managed by the runtime, so memory zeroing cannot be treated as a complete guarantee. Future hardening may reduce plaintext lifetime further where `[]byte` buffers can be used meaningfully.
+Primary risks:
 
-## Logging
+- weak passwords enable offline guessing if encrypted files are copied
+- plaintext exists in process memory during execution
+- `get` prints plaintext by design
+- interrupted or concurrent writes can corrupt data without proper locking
 
-`vault.log` can reveal operational metadata such as command names and token actions. Key names and token identifiers may be sensitive even when values are encrypted.
+Current mitigations:
 
-Current behavior:
+- scrypt key derivation
+- AES-GCM authenticated encryption
+- checksum verification around serialized vault payloads
+- atomic writes with file sync and backup behavior
+- inter-process lock file
+- safer alternatives such as `copy` and `export --output`
 
-- audit logging is enabled by default
-- set `"audit_log": false` in `vault-config.json` to disable audit logging
-- key names are not logged by default
-- token identifiers are not logged by default
-- log writes use restrictive file permissions
+### Recovery Flow
 
-## Locking
+1. `setup-recovery` creates a high-entropy recovery key.
+2. A recovery-encrypted vault snapshot is written to `vault.db.recovery`.
+3. `recover` uses the recovery key to decrypt that snapshot and reset access.
 
-`.myminivault.lock` serializes local CLI processes and helps avoid write races. It is not an access-control mechanism and should not be treated as a security boundary.
+Primary risks:
 
-## If A Runtime File Is Compromised
+- recovery follows the recovery snapshot, not necessarily the latest main vault
+- anyone with both recovery key and recovery file can attempt recovery
+- historical backups may contain older recovery state
 
-Suggested response:
+Current mitigations:
 
-- If `vault.db` or a backup is copied, rotate secrets if the master password may be weak or exposed.
-- If the master password is exposed, change the master password and rotate secrets as appropriate.
-- If `vault-token.key` is exposed, run `regenerate-token-key` and treat existing tokens as compromised.
-- If a compact token is exposed, revoke the token or wait for expiration only if the risk is acceptable.
-- If the recovery key is exposed, replace recovery setup and rotate secrets as appropriate.
-- If exported plaintext is exposed, rotate affected secrets.
+- recovery key uses 32 random bytes encoded as grouped base32
+- recovery file is written atomically with restrictive permissions
+- verifier metadata confirms that the recovery key belongs to the snapshot
+- recovery behavior is documented in [Recovery Policy](recovery-policy.md)
+
+### Token Flow
+
+1. `create-token` creates a compact bearer token with scope, expiry, permissions, and max-use limits.
+2. Token metadata and shared vault data are stored in encrypted token runtime files.
+3. `use-token` validates the token and applies allowed read/write operations.
+4. Usage count is persisted after validation.
+5. Master-password commands import staged token writes according to the token sync policy.
+
+Primary risks:
+
+- a compact token is a bearer credential while valid
+- `vault-token.key` compromise undermines token security
+- shared token vault sync is local best-effort, not distributed merge
+- token writes may surprise users if they expect fully separate vaults
+
+Current mitigations:
+
+- token expiry and max-use limits
+- HMAC token signatures
+- key-pattern and permission checks
+- encrypted shared token vault
+- usage-count persistence
+- revocation support
+- documented sync behavior in [Token Sync Policy](token-sync-policy.md)
+
+### Export And Clipboard Flow
+
+`export` creates shell-friendly plaintext. `export --output <file>` writes that plaintext to a restrictive file. `copy` writes one secret to the system clipboard and clears it after a TTL when supported.
+
+Primary risks:
+
+- terminal scrollback and shell capture
+- plaintext export files
+- clipboard managers and local apps
+- accidental sharing of copied/exported values
+
+Current mitigations:
+
+- interactive plaintext export warning
+- `export --output` writes with restrictive permissions
+- `copy` avoids terminal output
+- clipboard warning and TTL-based best-effort clearing
+
+## Key Threats And Residual Risk
+
+| Threat | Current Posture |
+| --- | --- |
+| Copied encrypted vault file | Mitigated by scrypt and AES-GCM, but weak passwords remain risky |
+| Copied plaintext export | Not mitigated after export; rotate exposed secrets |
+| Stolen compact token | Limited by expiry, max uses, scope, and revocation |
+| Stolen `vault-token.key` | Serious; regenerate token key and treat tokens as compromised |
+| Stolen recovery key and recovery file | Serious; replace recovery setup and rotate sensitive secrets |
+| Same-user malware | Out of scope |
+| Process memory inspection | Mostly out of scope; core dump disabling is best-effort only |
+| Terminal capture | Out of scope once plaintext is printed |
+| Clipboard capture | Partially mitigated by TTL clearing, but not prevented |
+| Runtime file tampering | Partially mitigated by authenticated encryption and checksums |
+| Supply-chain compromise | Mostly out of scope; CI and releases help reproducibility but are not signatures |
+
+## Operational Guidance
+
+- Use a strong, unique master password.
+- Keep runtime files out of Git and cloud-shared folders unless you understand the risk.
+- Prefer `copy` over `get` when terminal exposure matters.
+- Prefer `export --output <file>` over plain terminal export when an export artifact is needed.
+- Treat export files as plaintext secrets.
+- Disable audit logging with `"audit_log": false` if command metadata is too sensitive for your environment.
+- Run `vault doctor` periodically in active vault directories.
+- Rotate tokens quickly if a compact token may have been exposed.
+- Regenerate the token master key if `vault-token.key` may have been exposed.
+- Do not describe the tool as production secure without external review.
+
+## Incident Response
+
+If `vault.db` or a backup is copied:
+
+- assume offline password guessing is possible
+- change weak or reused master passwords
+- rotate high-value secrets if exposure risk is meaningful
+
+If the master password is exposed:
+
+- change the master password
+- rotate stored secrets as appropriate
+- treat old backups as still protected by the old risk profile
+
+If `vault-token.key` is exposed:
+
+- run `regenerate-token-key`
+- treat existing compact tokens and shared token vault state as compromised
+- recreate needed tokens
+
+If a compact token is exposed:
+
+- revoke the token when possible
+- rotate affected secrets if the token allowed reads and may have been used
+- do not rely only on expiry unless the risk is acceptable
+
+If the recovery key is exposed:
+
+- replace recovery setup
+- rotate sensitive secrets if the recovery file may also have been exposed
+- review backups for older recovery snapshots
+
+If exported plaintext or clipboard contents are exposed:
+
+- rotate affected secrets
+- delete plaintext export artifacts where possible
+- review shell history, logs, and shared files
 
 ## Future Security Work
 
-Planned or recommended:
+Recommended next steps:
 
+- add coverage reporting so security-sensitive behavior is easier to track over time
 - keep expanding `vault doctor` checks as runtime behavior grows
 - keep hardening token sync if it moves beyond local-file workflows
 - decide whether revision counters, merge-base metadata, or fuller delete tombstones are needed
 - consider log rotation or retention controls if logs become more detailed
+- consider macOS Keychain or another OS key store for protecting `vault-token.key`
+- consider signed tags, signed release checksums, or provenance later in the release process
 - avoid claiming production security without an external audit
