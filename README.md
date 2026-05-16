@@ -189,7 +189,7 @@ The normal save path also keeps `vault.db.bak` as the previous version of the va
 ./bin/vault setup-recovery
 ```
 
-Generates a recovery key and asks you to retype it to confirm that you saved it.
+Generates a high-entropy recovery key and asks you to retype it to confirm that you saved it. The key is a grouped base32 string derived from 32 secure random bytes.
 
 ### Test Recovery
 
@@ -215,7 +215,7 @@ Uses the recovery key to decrypt the recovery vault copy and set a new master pa
 
 Prompts for the current master password first, then asks for the new password and confirmation.
 
-Operational note: recovery exists, but it should be revisited before relying on it heavily. The current recovery key generation is convenient but weaker than a modern high-entropy recovery secret, and the recovery file update behavior should be part of future hardening work.
+Operational note: recovery uses a high-entropy recovery key and writes the recovery file atomically. Recovery should still get broader end-to-end CLI coverage before it is treated as fully hardened.
 
 ## Token System
 
@@ -451,8 +451,7 @@ cmd/
 Recommended follow-up tasks:
 
 - extend automated smoke tests for `change-password` and recovery flows
-- strengthen recovery key generation
-- make recovery file updates explicit and reliable
+- add end-to-end recovery setup/test/recover smoke coverage
 - make `export` shell-safe
 - create token runtime files only when token functionality is used
 - validate `vault-config.json`

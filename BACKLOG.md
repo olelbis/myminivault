@@ -31,6 +31,8 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Merged and deleted completed task branches: `codex/split-monolith`, `codex/file-locking`, and `codex/cli-smoke-tests`.
 - Added automated CLI smoke tests for basic vault commands, wrong-password rejection, and token read/write flows.
 - Added automated concurrent lock smoke coverage.
+- Hardened recovery key generation to use 32 secure random bytes encoded as grouped base32.
+- Made recovery file saves atomic and added unit tests for recovery key validation and recovery file writes.
 
 ## Current Verification
 
@@ -100,22 +102,25 @@ git pull
 git switch -c codex/cli-smoke-tests-extended
 ```
 
-### 2. Hardening: Recovery
+### 2. Finish Recovery Hardening
 
 Recovery is the highest-priority security area.
 
 Known concerns:
 
-- recovery key entropy is low for a vault recovery secret
-- recovery file update behavior should be explicit and reliable
 - recovery flow should have automated smoke coverage
 
-Possible approach:
+Completed:
 
-- generate a longer random recovery secret
-- store only a verifier/hash in the main vault
+- recovery key generation now uses a high-entropy random secret
+- recovery file writes are atomic
+- unit tests cover recovery key validation and recovery file writes
+
+Remaining:
+
 - document that recovery can only recover the snapshot stored in `vault.db.recovery`
-- make recovery file refresh behavior explicit after setup
+- add end-to-end recovery setup/test/recover smoke coverage
+- consider whether recovery metadata should store only a stronger verifier/hash strategy over time
 
 Suggested branch:
 

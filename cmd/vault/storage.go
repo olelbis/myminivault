@@ -117,11 +117,15 @@ func saveExtendedVault(vault *ExtendedVault, password string, salt []byte) error
 		recoveryKey := getCurrentRecoveryKey()
 		if recoveryKey != "" {
 			recoveryKeyDerived, err := deriveKey([]byte(recoveryKey), salt)
-			if err == nil {
-				recoveryCiphertext, err := encrypt(dataWithChecksum, recoveryKeyDerived)
-				if err == nil {
-					saveRecoveryFile(salt, recoveryCiphertext)
-				}
+			if err != nil {
+				return err
+			}
+			recoveryCiphertext, err := encrypt(dataWithChecksum, recoveryKeyDerived)
+			if err != nil {
+				return err
+			}
+			if err := saveRecoveryFile(salt, recoveryCiphertext); err != nil {
+				return err
 			}
 		}
 	}

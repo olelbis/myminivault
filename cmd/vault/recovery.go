@@ -6,6 +6,7 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base32"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +16,8 @@ import (
 	"syscall"
 	"time"
 )
+
+const recoveryKeyBytes = 32
 
 func handleSetupRecovery(vault *ExtendedVault) {
 	if vault.Recovery != nil {
@@ -27,7 +30,11 @@ func handleSetupRecovery(vault *ExtendedVault) {
 		}
 	}
 
-	recoveryKey := generateRecoveryKey()
+	recoveryKey, err := generateRecoveryKey()
+	if err != nil {
+		fmt.Printf("❌ Failed to generate recovery key: %v\n", err)
+		return
+	}
 	fmt.Printf("\n🔑 Your Recovery Key (SAVE THIS SAFELY!):\n")
 	fmt.Printf("┌─────────────────────────────────────────────┐\n")
 	fmt.Printf("│ %s │\n", recoveryKey)
@@ -44,13 +51,12 @@ func handleSetupRecovery(vault *ExtendedVault) {
 	}
 
 	setCurrentRecoveryKey(recoveryKey)
-	hash := sha256.Sum256([]byte(recoveryKey))
 
 	vault.Recovery = &RecoveryData{
-		RecoveryKeyHash: hash[:],
-		CreatedAt:       time.Now(),
-		UseCount:        0,
+		CreatedAt: time.Now(),
+		UseCount:  0,
 	}
+	hashRecoveryKey(vault.Recovery, recoveryKey)
 
 	fmt.Println("✅ Recovery key setup complete!")
 }
@@ -205,27 +211,37 @@ func handleChangePassword(vault *ExtendedVault, salt []byte) {
 	}
 }
 
-func generateRecoveryKey() string {
-	words := []string{
-		"alpha", "bravo", "charlie", "delta", "echo", "foxtrot",
-		"golf", "hotel", "india", "juliet", "kilo", "lima",
-		"mike", "november", "oscar", "papa", "quebec", "romeo",
-		"sierra", "tango", "uniform", "victor", "whiskey", "xray",
+func generateRecoveryKey() (string, error) {
+	keyBytes := make([]byte, recoveryKeyBytes)
+	if _, err := rand.Read(keyBytes); err != nil {
+		return "", fmt.Errorf("secure random failed: %w", err)
 	}
 
-	selected := make([]string, 8)
-	for i := 0; i < 8; i++ {
-		idx := make([]byte, 1)
-		rand.Read(idx)
-		selected[i] = words[int(idx[0])%len(words)]
-	}
+	encoded := strings.TrimRight(base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(keyBytes), "=")
+	return groupRecoveryKey(encoded), nil
+}
 
-	return strings.Join(selected, "-")
+func groupRecoveryKey(encoded string) string {
+	const groupSize = 5
+	groups := make([]string, 0, (len(encoded)+groupSize-1)/groupSize)
+	for len(encoded) > groupSize {
+		groups = append(groups, encoded[:groupSize])
+		encoded = encoded[groupSize:]
+	}
+	if encoded != "" {
+		groups = append(groups, encoded)
+	}
+	return strings.Join(groups, "-")
 }
 
 func validateRecoveryKey(recovery *RecoveryData, key string) bool {
 	hash := sha256.Sum256([]byte(key))
 	return hmac.Equal(recovery.RecoveryKeyHash, hash[:])
+}
+
+func hashRecoveryKey(recovery *RecoveryData, key string) {
+	hash := sha256.Sum256([]byte(key))
+	recovery.RecoveryKeyHash = hash[:]
 }
 
 func setCurrentRecoveryKey(key string) {
@@ -238,19 +254,39 @@ func getCurrentRecoveryKey() string {
 
 func saveRecoveryFile(salt, recoveryCiphertext []byte) error {
 	recoveryFile := vaultFile + ".recovery"
-	f, err := os.Create(recoveryFile)
+	tempFile := recoveryFile + ".tmp"
+	f, err := os.OpenFile(tempFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to create recovery file: %w", err)
 	}
-	defer f.Close()
 
 	if _, err := f.Write(salt); err != nil {
+		f.Close()
+		os.Remove(tempFile)
 		return fmt.Errorf("failed to write salt to recovery file: %w", err)
 	}
 
 	if _, err := f.Write(recoveryCiphertext); err != nil {
+		f.Close()
+		os.Remove(tempFile)
 		return fmt.Errorf("failed to write data to recovery file: %w", err)
 	}
 
-	return f.Sync()
+	if err := f.Sync(); err != nil {
+		f.Close()
+		os.Remove(tempFile)
+		return fmt.Errorf("failed to sync recovery file: %w", err)
+	}
+
+	if err := f.Close(); err != nil {
+		os.Remove(tempFile)
+		return fmt.Errorf("failed to close recovery file: %w", err)
+	}
+
+	if err := os.Rename(tempFile, recoveryFile); err != nil {
+		os.Remove(tempFile)
+		return fmt.Errorf("failed to finalize recovery file: %w", err)
+	}
+
+	return nil
 }
