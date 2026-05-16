@@ -1,12 +1,30 @@
-# myminivault
+<p align="center">
+  <img src="assets/myminivault-pixel.png" alt="myminivault pixel art vault" width="220">
+</p>
 
-`myminivault` is a local command-line vault written in Go. It stores key/value secrets in an encrypted vault file, supports password recovery, temporary access tokens, backup/import/export utilities, and basic security auditing.
+<h1 align="center">myminivault</h1>
+
+<p align="center">
+  A local encrypted command-line vault written in Go.
+</p>
+
+<p align="center">
+  <img alt="Go" src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white">
+  <img alt="Latest release" src="https://img.shields.io/github/v/release/olelbis/myminivault?sort=semver">
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
+  <img alt="Status" src="https://img.shields.io/badge/status-experimental-orange">
+  <img alt="CLI" src="https://img.shields.io/badge/interface-CLI-2f3337">
+</p>
+
+`myminivault` stores key/value secrets in an encrypted local vault file, supports password recovery, temporary access tokens, backup/import/export utilities, and basic security auditing.
+
+> Experimental personal project. Not audited. Do not rely on it as a production password manager.
 
 The main CLI lives in `cmd/vault`.
 
 ## Versioning
 
-Application releases use Git tags such as `v0.1.13` and are documented in `CHANGELOG.md`.
+Application releases use Git tags such as `v0.1.14` and are documented in `CHANGELOG.md`.
 
 The CLI-visible version is kept in sync with the current release tag. When the vault file format changes, the version should be updated together with migration notes in the changelog.
 
@@ -454,6 +472,8 @@ printf 'oldpass\n' | ./vault get TEST_KEY
 ## Project Layout
 
 ```text
+assets/
+  myminivault-pixel.png README pixel art vault image
 cmd/
   vault/
     main.go       CLI dispatch and top-level command flow

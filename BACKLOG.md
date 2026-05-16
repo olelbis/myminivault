@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.1.13`
+- Current baseline release: `v0.1.14`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -75,6 +75,7 @@ Strategic guidance:
 - Moved token signing, validation, registry, and encrypted shared token vault helpers into `internal/token`.
 - Moved recovery key generation, validation, recovery vault decryption, and recovery file writes into `internal/recovery`.
 - Renamed `cmd/vault` CLI wrapper files so they are easier to distinguish from similarly named `internal/...` packages.
+- Added MIT license, README badges, and a project-local pixel art vault image.
 
 ## Current Verification
 
@@ -99,6 +100,8 @@ Manual smoke tests were run in `/private/tmp` with fake data:
 ## Current Project Layout
 
 ```text
+assets/
+  myminivault-pixel.png README pixel art vault image
 cmd/
   vault/
     main.go             CLI dispatch and command flow

@@ -1,6 +1,17 @@
 # Changelog
 
-All notable project changes are recorded here. Application releases use Git tags such as `v0.1.13`, and the CLI-visible version is kept in sync with the current release tag.
+All notable project changes are recorded here. Application releases use Git tags such as `v0.1.14`, and the CLI-visible version is kept in sync with the current release tag.
+
+## [v0.1.14] - 2026-05-16
+
+### Added
+
+- Added MIT license.
+- Added README badges and a project-local pixel art vault image.
+
+### Changed
+
+- Refreshed the README header with a concise tagline and experimental security caveat.
 
 ## [v0.1.13] - 2026-05-16
 
