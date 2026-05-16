@@ -1,6 +1,13 @@
 # Changelog
 
-All notable project changes are recorded here. Application releases use Git tags such as `v0.1.8`, and the CLI-visible version is kept in sync with the current release tag.
+All notable project changes are recorded here. Application releases use Git tags such as `v0.1.9`, and the CLI-visible version is kept in sync with the current release tag.
+
+## [v0.1.9] - 2026-05-16
+
+### Changed
+
+- Moved vault load/save, checksum, and atomic write helpers into `internal/storage`.
+- Kept compatibility wrappers in `cmd/vault` while the refactor continues.
 
 ## [v0.1.8] - 2026-05-16
 

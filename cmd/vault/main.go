@@ -204,7 +204,7 @@ func showUsage() {
 }
 
 func showHelp() {
-	fmt.Println(`🔐 myminivault CLI v0.1.8
+	fmt.Println(`🔐 myminivault CLI v0.1.9
 
 BASIC COMMANDS:
   set <key> <value>     Set a key-value pair

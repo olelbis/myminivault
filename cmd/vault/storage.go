@@ -1,189 +1,42 @@
-// Code split from myminivault.go; behavior intentionally unchanged.
 package main
 
 import (
-	"crypto/sha256"
-	"encoding/json"
-	"errors"
-	"io"
-	"os"
-	"time"
+	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
+	vaultstorage "github.com/olelbis/myminivault/internal/storage"
 )
 
 func loadAndDecryptExtendedVault(password string) (*ExtendedVault, []byte, error) {
-	vault, salt, err := loadVaultFile(vaultFile, password)
-	if err == nil {
-		return vault, salt, nil
-	}
-
-	if os.IsNotExist(err) {
-		vault, salt, err := loadVaultFile(vaultFile+".bak", password)
-		if err == nil {
-			return vault, salt, nil
-		}
-	}
-
-	if os.IsNotExist(err) {
-		return &ExtendedVault{
-			Data: make(map[string]string),
-			Metadata: VaultMetadata{
-				Version:   vaultVersion,
-				CreatedAt: time.Now(),
-			},
-		}, generateRandom(saltSize), nil
-	}
-
-	return nil, nil, err
+	return vaultstorage.Load(password, storageOptions())
 }
 
 func loadVaultFile(file, password string) (*ExtendedVault, []byte, error) {
-	salt, vaultData, err := tryLoad(file)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	key, err := deriveKey([]byte(password), salt)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	decrypted, err := decrypt(vaultData, key)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if len(decrypted) > 32 {
-		expectedChecksum := decrypted[:32]
-		data := decrypted[32:]
-		actualChecksum := sha256.Sum256(data)
-
-		checksumMatch := true
-		for i := range expectedChecksum {
-			if expectedChecksum[i] != actualChecksum[i] {
-				checksumMatch = false
-			}
-		}
-
-		if !checksumMatch {
-			return nil, nil, errors.New("checksum failed")
-		}
-
-		decrypted = data
-	}
-
-	var vault ExtendedVault
-	if err := json.Unmarshal(decrypted, &vault); err != nil {
-		var oldVault map[string]string
-		if err := json.Unmarshal(decrypted, &oldVault); err != nil {
-			return nil, nil, err
-		}
-
-		vault = ExtendedVault{
-			Data: oldVault,
-			Metadata: VaultMetadata{
-				Version:   vaultVersion,
-				CreatedAt: time.Now(),
-			},
-		}
-	}
-
-	if vault.Data == nil {
-		vault.Data = make(map[string]string)
-	}
-
-	return &vault, salt, nil
+	return vaultstorage.LoadFile(file, password, storageOptions())
 }
 
 func saveExtendedVault(vault *ExtendedVault, password string, salt []byte) error {
-	serialized, err := json.MarshalIndent(vault, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	checksum := sha256.Sum256(serialized)
-	dataWithChecksum := append(checksum[:], serialized...)
-
-	masterKey, err := deriveKey([]byte(password), salt)
-	if err != nil {
-		return err
-	}
-
-	ciphertext, err := encrypt(dataWithChecksum, masterKey)
-	if err != nil {
-		return err
-	}
-
-	if vault.Recovery != nil {
-		recoveryKey := getCurrentRecoveryKey()
-		if recoveryKey != "" {
-			recoveryKeyDerived, err := deriveKey([]byte(recoveryKey), salt)
-			if err != nil {
-				return err
-			}
-			recoveryCiphertext, err := encrypt(dataWithChecksum, recoveryKeyDerived)
-			if err != nil {
-				return err
-			}
-			if err := saveRecoveryFile(salt, recoveryCiphertext); err != nil {
-				return err
-			}
-		}
-	}
-
-	return saveVaultFileAtomic(salt, ciphertext)
+	return vaultstorage.Save(vault, password, salt, storageOptions())
 }
 
 func saveVaultFileAtomic(salt, data []byte) error {
-	if _, err := os.Stat(vaultFile); err == nil {
-		if err := os.Rename(vaultFile, vaultFile+".bak"); err != nil {
-			return err
-		}
-	}
-
-	tempFile := vaultFile + ".tmp"
-	f, err := os.Create(tempFile)
-	if err != nil {
-		return err
-	}
-
-	if _, err := f.Write(salt); err != nil {
-		f.Close()
-		os.Remove(tempFile)
-		return err
-	}
-
-	if _, err := f.Write(data); err != nil {
-		f.Close()
-		os.Remove(tempFile)
-		return err
-	}
-
-	if err := f.Sync(); err != nil {
-		f.Close()
-		os.Remove(tempFile)
-		return err
-	}
-
-	f.Close()
-	return os.Rename(tempFile, vaultFile)
+	return vaultstorage.SaveFileAtomic(vaultFile, salt, data)
 }
 
 func tryLoad(file string) ([]byte, []byte, error) {
-	f, err := os.Open(file)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer f.Close()
+	return vaultstorage.TryLoad(file, saltSize)
+}
 
-	salt := make([]byte, saltSize)
-	if _, err := io.ReadFull(f, salt); err != nil {
-		return nil, nil, err
+func storageOptions() vaultstorage.Options {
+	return vaultstorage.Options{
+		VaultFile:   vaultFile,
+		SaltSize:    saltSize,
+		Version:     vaultVersion,
+		RecoveryKey: getCurrentRecoveryKey(),
+		Scrypt: vaultcrypto.ScryptConfig{
+			N:       config.ScryptN,
+			R:       config.ScryptR,
+			P:       config.ScryptP,
+			KeySize: config.KeySize,
+		},
+		SaveRecoveryFile: saveRecoveryFile,
 	}
-
-	data, err := io.ReadAll(f)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return salt, data, nil
 }

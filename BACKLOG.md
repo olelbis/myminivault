@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.1.8`
+- Current baseline release: `v0.1.9`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -44,6 +44,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Moved config loading and validation into `internal/config` with focused English comments.
 - Added automated CLI smoke coverage for `change-password`.
 - Moved shared data structures into `internal/model` with compatibility aliases in `cmd/vault`.
+- Moved vault load/save, checksum, and atomic write helpers into `internal/storage`.
 
 ## Current Verification
 
@@ -86,6 +87,8 @@ internal/
     crypto.go     key derivation, encryption, decryption, secure random bytes
   model/
     model.go      vault, recovery, token, and metadata structs
+  storage/
+    storage.go    vault load/save, checksum, and atomic writes
 ```
 
 ## Next Recommended Steps
@@ -256,11 +259,10 @@ The current split keeps everything in package `main`, which was intentionally co
 
 Later, move stable areas into packages:
 
-- `internal/storage`
 - `internal/token`
 - `internal/recovery`
 
-`internal/crypto`, `internal/config`, and `internal/model` have already been extracted. Continue only with well-covered areas. During the refactor, add concise English comments for non-obvious invariants and flows, especially around recovery, token validation, shared-vault sync, and file locking.
+`internal/crypto`, `internal/config`, `internal/model`, and `internal/storage` have already been extracted. Continue only with well-covered areas. During the refactor, add concise English comments for non-obvious invariants and flows, especially around recovery, token validation, shared-vault sync, and file locking.
 
 Suggested branch:
 
