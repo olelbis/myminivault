@@ -2,6 +2,19 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.3.2] - 2026-05-17
+
+### Added
+
+- Added GitHub Actions release packaging for Linux amd64, Linux arm64, and macOS arm64 archives.
+- Added SHA-256 checksum files for release package assets.
+- Added README install guidance for `go install`.
+- Added explicit project credits in the README and CLI help output.
+
+### Changed
+
+- Updated the CLI-visible version to `0.3.2`.
+
 ## [v0.3.1] - 2026-05-17
 
 ### Added

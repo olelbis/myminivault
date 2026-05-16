@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.3.1`
+- Current baseline release: `v0.3.2`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -15,14 +15,15 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `8.1 / 10`.
+Current assessment score: `8.2 / 10`.
 
-`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
+`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI, release packaging for common Linux/macOS targets, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
 Main strengths:
 
 - release discipline with Git tags, GitHub releases, and a changelog
 - GitHub CI for formatting, vetting, and automated tests
+- release package automation for Linux amd64, Linux arm64, and macOS arm64
 - focused `internal/...` packages for crypto, config, model, recovery, storage, and token logic
 - automated CLI smoke coverage for critical workflows
 - explicit handling for recovery, token sync, locking, backups, export, and password changes
@@ -109,6 +110,8 @@ Strategic guidance:
 - Added `export --output <file>` to write shell-safe exports directly to a `0600` file.
 - Added best-effort core dump disabling on supported Unix-like systems.
 - Documented clipboard, export, and runtime memory exposure limits.
+- Added GitHub Actions release packaging for Linux amd64, Linux arm64, and macOS arm64 archives.
+- Added README and CLI help credits for `olelbis`.
 
 ## Current Verification
 
@@ -224,13 +227,13 @@ git switch -c codex/token-sync-next
 
 Priority: medium-high.
 
-These items are the most direct path from the current `8.1 / 10` assessment toward roughly `8.5 / 10`. Prefer them before adding new product features.
+These items are the most direct path from the current `8.2 / 10` assessment toward roughly `8.5 / 10`. Prefer them before adding new product features.
 
 Recommended order:
 
 1. formalize the threat model in `docs/security.md`
 2. expand GitHub CI into an operating-system matrix for Linux and macOS
-3. add release binaries or a documented install path, starting with `go install`
+3. continue improving release binaries and install paths after the first package workflow
 4. add coverage reporting, then decide whether to enforce a minimum threshold
 5. continue reducing broad orchestration in `cmd/vault` only where tests already protect behavior
 
@@ -308,12 +311,12 @@ git switch -c codex/ci-matrix
 
 Priority: medium.
 
-The README currently documents local build and run commands, but public users would benefit from a clearer install story.
+The README now documents `go install`, and release package automation builds Linux amd64, Linux arm64, and macOS arm64 archives when a GitHub release is published.
 
 Recommended progression:
 
-- document `go install github.com/olelbis/myminivault/cmd/vault@latest` once the module path and command name are confirmed to work as intended
-- add GitHub release binaries for common platforms after the install docs are stable
+- verify the first package workflow run after publishing `v0.3.2`
+- decide whether Linux/macOS amd64 and arm64 are enough for the first public phase
 - consider Homebrew only after release binaries and public positioning are more mature
 - keep checksums in release assets if binaries are published
 

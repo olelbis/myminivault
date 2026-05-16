@@ -28,6 +28,12 @@
 
 ## Build
 
+Install the latest tagged release with Go:
+
+```bash
+go install github.com/olelbis/myminivault/cmd/vault@latest
+```
+
 Build the CLI from the repository root:
 
 ```bash
@@ -133,3 +139,7 @@ The CLI-visible version is kept in sync with the current release tag. When the v
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+## Credits
+
+Created and maintained by [olelbis](https://github.com/olelbis).
