@@ -7,7 +7,7 @@ All notable project changes are recorded here. Application releases use Git tags
 ### Added
 
 - Added GitHub Actions CI for formatting, `go vet`, and `go test ./...`.
-- Added a real CI badge, Go Report Card badge, and Go Reference badge to the README.
+- Added real CI and Go Reference badges to the README.
 
 ### Changed
 

@@ -12,7 +12,6 @@
   <img alt="CI" src="https://github.com/olelbis/myminivault/actions/workflows/ci.yml/badge.svg">
   <img alt="Go" src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white">
   <img alt="Latest release" src="https://img.shields.io/github/v/release/olelbis/myminivault?sort=semver">
-  <img alt="Go Report Card" src="https://goreportcard.com/badge/github.com/olelbis/myminivault">
   <img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/olelbis/myminivault.svg">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
   <img alt="Status" src="https://img.shields.io/badge/status-experimental-orange">
