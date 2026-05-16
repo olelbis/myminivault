@@ -7,11 +7,11 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Last committed milestone: `4b27f76 Update module Go version`
+- Last committed milestone: `9e92d9b Add inter-process vault file locking`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
-- Historical branch `codex/split-monolith` has been fast-forwarded into `main`.
+- Only `main` is currently kept locally and on GitHub; completed task branches were merged and deleted.
 
 ## What Has Been Done
 
@@ -27,7 +27,8 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Added `BACKLOG.md` as a handoff file for future sessions.
 - Updated `go.mod` to Go `1.26`.
 - Fast-forwarded `main` to the completed split/fix/docs state and pushed it to GitHub.
-- Added inter-process file locking via `.myminivault.lock` on branch `codex/file-locking`.
+- Added inter-process file locking via `.myminivault.lock`.
+- Merged and deleted completed task branches: `codex/split-monolith` and `codex/file-locking`.
 
 ## Current Verification
 
@@ -47,6 +48,7 @@ Manual smoke tests were run in `/private/tmp` with fake data:
 - `change-password`
 - old password rejected after password change
 - new password accepted after password change
+- concurrent `set` commands serialized correctly through `.myminivault.lock`
 
 ## Current Project Layout
 

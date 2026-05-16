@@ -343,7 +343,7 @@ Token write operations save immediately to the shared token vault. The main vaul
 ./bin/vault sync-tokens
 ```
 
-Operational note: synchronization is designed for normal sequential CLI use. The current in-process mutex does not protect against two separate CLI processes writing at exactly the same time. File locking is a recommended future improvement.
+Operational note: vault commands use `.myminivault.lock` to serialize separate CLI processes while they access runtime vault files. This reduces cross-process write races around `vault.db`, token files, and the shared token vault.
 
 ## Security Audit
 
@@ -453,7 +453,6 @@ Recommended follow-up tasks:
 - add automated smoke tests for the CLI
 - strengthen recovery key generation
 - make recovery file updates explicit and reliable
-- add file locking for cross-process writes
 - make `export` shell-safe
 - create token runtime files only when token functionality is used
 - validate `vault-config.json`
