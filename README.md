@@ -403,7 +403,7 @@ Use `main` as the stable base branch. Create a focused branch for each backlog i
 ```bash
 git switch main
 git pull
-git switch -c codex/recovery-hardening
+git switch -c codex/recovery-setup-test
 ```
 
 Run all package checks:
