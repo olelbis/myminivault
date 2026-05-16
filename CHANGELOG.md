@@ -1,6 +1,13 @@
 # Changelog
 
-All notable project changes are recorded here. Application releases use Git tags such as `v0.1.12`, and the CLI-visible version is kept in sync with the current release tag.
+All notable project changes are recorded here. Application releases use Git tags such as `v0.1.13`, and the CLI-visible version is kept in sync with the current release tag.
+
+## [v0.1.13] - 2026-05-16
+
+### Changed
+
+- Reorganized `BACKLOG.md` around project assessment, risks, strategic guidance, and prioritized next steps.
+- Moved product ideas below documentation, security, token sync policy, and test-depth work.
 
 ## [v0.1.12] - 2026-05-16
 

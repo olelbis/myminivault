@@ -7,11 +7,38 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.1.12`
+- Current baseline release: `v0.1.13`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
 - Only `main` is currently kept locally and on GitHub; completed task branches were merged and deleted.
+
+## Project Assessment
+
+Current assessment: `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, and a clearer package structure than the original monolith. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
+
+Main strengths:
+
+- release discipline with Git tags, GitHub releases, and a changelog
+- focused `internal/...` packages for crypto, config, model, recovery, storage, and token logic
+- automated CLI smoke coverage for critical workflows
+- explicit handling for recovery, token sync, locking, backups, export, and password changes
+- a handoff backlog that can restart work from a fresh chat
+
+Main risks:
+
+- the project handles real secrets, so security assumptions must be documented and reviewed carefully
+- token/shared-vault synchronization is powerful but conceptually complex
+- most high-value tests are end-to-end smoke tests; more package-level unit tests are still useful
+- `cmd/vault` still contains some orchestration and command logic that may deserve future extraction
+- the README is too large and should be split before adding more feature work
+
+Strategic guidance:
+
+- prefer documentation, security review, and test depth before adding new features
+- keep product ideas below hardening work unless they reduce operational risk
+- document behavior before changing user-facing semantics
+- avoid claiming production security until a threat model and focused security review exist
 
 ## What Has Been Done
 
@@ -74,47 +101,150 @@ Manual smoke tests were run in `/private/tmp` with fake data:
 ```text
 cmd/
   vault/
-    main.go       CLI dispatch and command flow
-    commands.go   basic key/value commands, import/export, stats
+    main.go             CLI dispatch and command flow
+    commands.go         basic key/value commands, import/export, stats
     config_cli.go       config loading/display
-    crypto.go     encryption, decryption, random bytes, key derivation
+    crypto.go           encryption, decryption, random bytes, key derivation
     recovery_cli.go     recovery and password-change flows
     storage_bridge.go   main vault load/save wrappers
-    sync.go       main/shared vault synchronization
+    sync.go             main/shared vault synchronization
     token_cli.go        token creation, validation, token commands
-    types.go      compatibility aliases for shared data structures
+    types.go            compatibility aliases for shared data structures
 internal/
   config/
-    config.go     config defaults, loading, and validation
+    config.go           config defaults, loading, and validation
   crypto/
-    crypto.go     key derivation, encryption, decryption, secure random bytes
+    crypto.go           key derivation, encryption, decryption, secure random bytes
   model/
-    model.go      vault, recovery, token, and metadata structs
+    model.go            vault, recovery, token, and metadata structs
   recovery/
-    recovery.go   recovery keys, recovery vault decryption, and recovery file writes
+    recovery.go         recovery keys, recovery vault decryption, and recovery file writes
   storage/
-    storage.go    vault load/save, checksum, and atomic writes
+    storage.go          vault load/save, checksum, and atomic writes
   token/
-    token.go      token signing, validation, registry, and shared token vault persistence
+    token.go            token signing, validation, registry, and shared token vault persistence
 ```
 
 ## Next Recommended Steps
 
-### 0. Versioning And Changelog
+### 1. Documentation Cleanup
 
-Status: baseline changelog added for `v0.1.0`.
+Priority: highest.
 
-Guidelines:
+The README is too large and mixes overview, user manual, implementation notes, and backlog-like guidance. Split it before adding new user-facing features.
 
-- use `v0.x.y` while the CLI is still evolving quickly
-- patch releases (`v0.1.1`) for small fixes
-- minor releases (`v0.2.0`) for backlog items that add or change behavior
-- document every merged branch in `CHANGELOG.md`
-- keep the CLI-visible version in sync with the current release tag
+Target structure:
 
-### 1. Extend Automated CLI Smoke Tests
+- `README.md`: concise overview, build/install, quick start, common commands, release links, security caveat
+- `docs/user-manual.md`: full user-facing manual
+- `docs/development.md`: architecture notes, test workflow, branch/tag/release workflow
+- `CHANGELOG.md`: version history only
+- `BACKLOG.md`: future work, risk notes, and handoff context only
 
-Automated smoke tests now cover:
+User manual must cover:
+
+- basic key/value workflows
+- backups and recovery
+- password changes
+- token creation, usage, expiration, revocation, and cleanup
+- main/shared vault sync policy
+- file locking and concurrent CLI usage expectations
+- import/export behavior and shell-safety notes
+- troubleshooting common errors
+- a clear note that this is a local/personal vault, not a production password manager
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c codex/docs-cleanup
+```
+
+### 2. Security Review And Threat Model
+
+Priority: high.
+
+Create a focused security document before claiming stronger security properties.
+
+Cover at least:
+
+- assets: master password, vault contents, recovery key, token master key, token strings, backups
+- attacker assumptions: local filesystem read, local process race, shell history, logs, copied tokens, stolen runtime files
+- non-goals: remote sync security, multi-user access control, hardened enterprise password manager behavior
+- file permissions for `vault.db`, `.bak`, `.recovery`, `vault-token.key`, `shared-token-vault.json`, `vault-tokens.json`, logs, backups
+- what metadata is visible without decrypting files
+- recovery limitations and snapshot behavior
+- token/shared-vault trust boundaries
+- logging policy and whether token/key identifiers can leak sensitive context
+- migration guidance if a runtime file is compromised
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c codex/security-threat-model
+```
+
+### 3. Token And Shared Vault Policy Review
+
+Priority: high.
+
+The token/shared-vault model is the most complex behavior in the project and needs an explicit policy decision.
+
+Current policy:
+
+- `vault.db` is the source of truth after master-password commands save
+- token writes are staged in `shared-token-vault.json`
+- master commands import staged token writes before executing
+- master mutations mirror the full main vault back to the shared vault after saving
+- deletes remain authoritative because mirroring replaces shared vault data with main vault data
+- conflict handling is currently last-writer-wins at the vault-key level
+
+Decisions to make:
+
+- keep automatic import on master commands, or require explicit `sync-tokens`
+- keep last-writer-wins, or add per-key timestamps/revisions
+- add delete tombstones, or keep full mirror replacement semantics
+- make token write behavior more explicit in command output
+- document exact behavior in `docs/user-manual.md`
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c codex/token-sync-policy-review
+```
+
+### 4. Test Depth For `internal/...`
+
+Priority: medium-high.
+
+Smoke tests protect real workflows, but package-level tests should cover internal behavior directly.
+
+Add focused unit tests for:
+
+- `internal/storage`: checksum failure, legacy vault JSON, `.bak` fallback only when primary is missing, atomic write behavior
+- `internal/token`: signature validation, forged token rejection, usage count persistence, registry load/save, encrypted shared vault checksum failure
+- `internal/recovery`: checksum failure, wrong recovery key, valid recovery decrypt, recovery file atomic write
+- `internal/config`: boundary values and malformed JSON cases already covered, expand only if config grows
+- `internal/crypto`: ciphertext tamper rejection and short ciphertext behavior
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c codex/internal-unit-tests
+```
+
+### 5. Extend Automated CLI Smoke Tests
+
+Priority: medium.
+
+Automated smoke tests currently cover:
 
 - `set`
 - `get`
@@ -133,6 +263,16 @@ Automated smoke tests now cover:
 - recovery `recover`
 - concurrent command serialization through `.myminivault.lock`
 
+Additional smoke coverage to consider:
+
+- token expiration and max-use cleanup
+- token revocation followed by failed use
+- `token-info` and `list-tokens`
+- `security-audit`
+- malformed config from the CLI
+- backup/restore expectations if restore is added later
+- import/export round-trip expectations
+
 Suggested branch:
 
 ```bash
@@ -141,62 +281,38 @@ git pull
 git switch -c codex/cli-smoke-tests-extended
 ```
 
-### 2. Finish Recovery Hardening
+### 6. Recovery Policy And Verifier Review
 
-Recovery is the highest-priority security area.
+Priority: medium.
 
 Completed:
 
-- recovery key generation now uses a high-entropy random secret
+- recovery key generation uses a high-entropy random secret
 - recovery file writes are atomic
-- unit tests cover recovery key validation and recovery file writes
+- tests cover recovery key validation and recovery file writes
 - end-to-end smoke coverage verifies `recover` changes the master password
 - end-to-end smoke coverage verifies `setup-recovery` and `test-recovery`
 
 Remaining:
 
-- document that recovery can only recover the snapshot stored in `vault.db.recovery`
-- consider whether recovery metadata should store only a stronger verifier/hash strategy over time
+- document that recovery can recover only the snapshot stored in `vault.db.recovery`
+- decide whether recovery metadata should use a stronger verifier strategy over time
+- document what happens when the main vault and recovery snapshot diverge
+- document operational guidance for rotating/replacing a recovery key
 
 Suggested branch:
 
 ```bash
 git switch main
 git pull
-git switch -c codex/recovery-setup-test
+git switch -c codex/recovery-policy-review
 ```
 
-### 3. Hardening: Token/Shared Vault Sync
+### 7. Import/Export Round-Trip Review
 
-The sync policy is now explicit in code and docs.
+Priority: medium.
 
-Current policy:
-
-- `vault.db` is the source of truth after master-password commands save.
-- token writes are staged in `shared-token-vault.json`.
-- master commands import staged token writes before executing.
-- master mutations mirror the full main vault back to the shared vault after saving.
-- deletes remain authoritative because mirroring replaces shared vault data with main vault data.
-- conflict handling is currently last-writer-wins at the vault-key level.
-
-Remaining questions:
-
-- Should token writes require explicit `sync-tokens` instead of automatic import on master commands?
-- Should conflicts use timestamps or per-key revision metadata?
-- Should delete tombstones be added for more precise conflict handling?
-- Document this area thoroughly in a future user manual, including the main/shared vault model, automatic imports, explicit `sync-tokens`, conflict behavior, and delete semantics.
-
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c codex/token-sync-conflicts
-```
-
-### 4. Make Export Shell-Safe
-
-Status: implemented with POSIX single-quote escaping and smoke/unit coverage.
+Status: export is implemented with POSIX single-quote escaping and smoke/unit coverage.
 
 Current export output is shell-safe:
 
@@ -204,7 +320,7 @@ Current export output is shell-safe:
 export KEY='value'
 ```
 
-Covered cases:
+Covered export cases:
 
 - quotes
 - `$`
@@ -212,57 +328,51 @@ Covered cases:
 - backslashes
 - newlines
 
-Remaining follow-up: improve `import` parsing if imported files need to round-trip every shell-escaped export exactly.
+Remaining:
 
-### 5. Reduce Token Side Effects
-
-Status: implemented with smoke coverage.
-
-Current behavior:
-
-- ordinary password commands do not create `vault-token.key`, `shared-token-vault.json`, or `vault-tokens.json`
-- token runtime files are created when token features are used
-- main vault mutations mirror back to the shared token vault only after token runtime has been initialized
-
-### 6. Validate Configuration
-
-Status: implemented with unit coverage.
-
-Current behavior:
-
-- malformed `vault-config.json` is rejected
-- `scrypt_n` must be a power of two between `32768` and `1048576`
-- `scrypt_r` must be between `1` and `16`
-- `scrypt_p` must be between `1` and `8`
-- `key_size` must be `16`, `24`, or `32`
-- `max_backups` must be between `1` and `100`
-
-### 7. Draft User Manual
-
-The README is enough for development, but the CLI should eventually have a user-facing manual.
-
-Cover at least:
-
-- basic key/value workflows
-- backups and recovery
-- password changes
-- token creation, usage, expiration, revocation, and cleanup
-- main/shared vault sync policy
-- file locking and concurrent CLI usage expectations
-- import/export behavior and shell-safety notes
-- troubleshooting common errors
+- decide whether imported files must round-trip every shell-escaped export exactly
+- improve `import` parsing if exact round-trip behavior becomes a requirement
+- document safe shell usage and shell history caveats
 
 Suggested branch:
 
 ```bash
 git switch main
 git pull
-git switch -c codex/user-manual
+git switch -c codex/import-export-roundtrip
 ```
 
-### 8. Later Refactor To `internal/...`
+### 8. Runtime File Permissions And `vault doctor`
 
-The current split keeps everything in package `main`, which was intentionally conservative.
+Priority: medium.
+
+Add a health-check command for local setup and runtime files:
+
+```bash
+vault doctor
+```
+
+Checks could include:
+
+- file permissions for vault, token key, shared vault, registry, recovery file, backups, and logs
+- stale lock file behavior
+- config validity
+- token runtime state
+- backup presence
+- recovery status
+- warnings for files that should not be committed
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c codex/doctor-command
+```
+
+### 9. Future Refactor Candidates
+
+Priority: low unless a bug or feature makes the extraction useful.
 
 Stable internal packages already extracted:
 
@@ -273,39 +383,18 @@ Stable internal packages already extracted:
 - `internal/storage`
 - `internal/token`
 
-Continue only if another well-covered area emerges. During any future refactor, add concise English comments for non-obvious invariants and flows, especially around shared-vault sync and file locking.
+Possible future extractions:
 
-Suggested branch:
+- `internal/sync`: main/shared vault synchronization policy
+- `internal/lock`: file lock handling
+- `internal/commands`: command-independent key/value operations
+- `internal/audit`: security audit reporting
 
-```bash
-git switch main
-git pull
-git switch -c codex/internal-packages
-```
-
-### 9. Documentation Cleanup After Refactor
-
-After the `internal/...` refactor is complete, rewrite the documentation structure instead of continuing to grow the README.
-
-Target structure:
-
-- `README.md`: concise project overview, install/build, quick start, common commands, release links
-- `CHANGELOG.md`: version history only
-- `BACKLOG.md`: future work and handoff notes only
-- `docs/user-manual.md`: full user-facing manual
-- `docs/development.md`: architecture notes, test workflow, branch/tag/release workflow
-
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c codex/docs-cleanup
-```
+Continue only with well-covered areas and add concise English comments for non-obvious invariants.
 
 ## Product Ideas After Hardening
 
-These are intentionally lower priority than the stability/security work above. Revisit them after smoke tests, recovery hardening, sync policy, shell-safe export, config validation, and package cleanup are in place.
+These are intentionally lower priority than the stability/security work above. Revisit them after documentation cleanup, security review, token sync policy review, and test-depth work are in better shape.
 
 ### 10. `vault run -- <command>`
 
@@ -394,25 +483,7 @@ git pull
 git switch -c codex/token-ux
 ```
 
-### 15. `vault doctor`
-
-Add a health-check command for local setup and runtime files:
-
-```bash
-vault doctor
-```
-
-Checks could include file permissions, lock file behavior, config validity, token state, backup presence, and recovery status.
-
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c codex/doctor-command
-```
-
-### 16. Terminal UI
+### 15. Terminal UI
 
 Add an optional TUI for browsing/searching keys, viewing token status, editing values, and triggering copy/export flows:
 
@@ -428,7 +499,7 @@ git pull
 git switch -c codex/tui
 ```
 
-### 17. Secret Rotation Hooks
+### 16. Secret Rotation Hooks
 
 Support command-driven rotation workflows:
 
@@ -444,7 +515,7 @@ git pull
 git switch -c codex/secret-rotation
 ```
 
-### 18. Hook System
+### 17. Hook System
 
 Allow local scripts to run after selected events such as `set`, `delete`, `backup`, or `token create`:
 
