@@ -1,6 +1,17 @@
 # Changelog
 
-All notable project changes are recorded here. Application releases use Git tags such as `v0.1.18`, and the CLI-visible version is kept in sync with the current release tag.
+All notable project changes are recorded here. Application releases use Git tags such as `v0.1.19`, and the CLI-visible version is kept in sync with the current release tag.
+
+## [v0.1.19] - 2026-05-16
+
+### Added
+
+- Added package-level tests for `internal/storage`, `internal/token`, and `internal/recovery`.
+- Added crypto coverage for tampered ciphertext rejection.
+
+### Fixed
+
+- Fixed legacy vault loading for old JSON payloads longer than the checksum prefix size.
 
 ## [v0.1.18] - 2026-05-16
 

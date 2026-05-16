@@ -85,6 +85,18 @@ func LoadFile(file, password string, opts Options) (*model.ExtendedVault, []byte
 			},
 		}
 	}
+	if vault.Data == nil && vault.Metadata.Version == "" {
+		var oldVault map[string]string
+		if err := json.Unmarshal(decrypted, &oldVault); err == nil {
+			vault = model.ExtendedVault{
+				Data: oldVault,
+				Metadata: model.VaultMetadata{
+					Version:   opts.Version,
+					CreatedAt: time.Now(),
+				},
+			}
+		}
+	}
 
 	if vault.Data == nil {
 		vault.Data = make(map[string]string)
@@ -211,6 +223,10 @@ func stripChecksum(decrypted []byte) ([]byte, error) {
 		}
 	}
 	if !checksumMatch {
+		var legacy map[string]string
+		if json.Unmarshal(decrypted, &legacy) == nil {
+			return decrypted, nil
+		}
 		return nil, errors.New("checksum failed")
 	}
 

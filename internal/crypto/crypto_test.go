@@ -58,6 +58,24 @@ func TestDecryptRejectsWrongKey(t *testing.T) {
 	}
 }
 
+func TestDecryptRejectsTamperedCiphertext(t *testing.T) {
+	salt := Random(16)
+	key, err := DeriveKey([]byte("password"), salt, testScryptConfig)
+	if err != nil {
+		t.Fatalf("DeriveKey: %v", err)
+	}
+
+	ciphertext, err := Encrypt([]byte("secret payload"), key)
+	if err != nil {
+		t.Fatalf("Encrypt: %v", err)
+	}
+	ciphertext[len(ciphertext)-1] ^= 0xff
+
+	if _, err := Decrypt(ciphertext, key); err == nil {
+		t.Fatal("expected tampered ciphertext to fail")
+	}
+}
+
 func TestDecryptRejectsShortCiphertext(t *testing.T) {
 	key, err := DeriveKey([]byte("password"), Random(16), testScryptConfig)
 	if err != nil {

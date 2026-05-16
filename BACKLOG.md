@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.1.18`
+- Current baseline release: `v0.1.19`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -29,7 +29,7 @@ Main risks:
 
 - the project handles real secrets, so security assumptions must be documented and reviewed carefully
 - token/shared-vault synchronization is powerful but conceptually complex
-- most high-value tests are end-to-end smoke tests; more package-level unit tests are still useful
+- package-level unit coverage is improving, but more edge-case coverage is still useful as behavior grows
 - `cmd/vault` still contains some orchestration and command logic that may deserve future extraction
 - the README has been split into focused docs, but the security model still needs a dedicated review
 
@@ -82,6 +82,9 @@ Strategic guidance:
 - Added `docs/security.md` with the current security model, non-goals, sensitive assets, runtime-file risks, recovery limits, token boundaries, and compromise guidance.
 - Added `docs/token-sync-policy.md` documenting the current automatic token-write import policy, `sync-tokens`, conflict behavior, delete semantics, and deferred decisions.
 - Clarified token command output and help text around staged token writes and main-vault import.
+- Added package-level tests for `internal/storage`, `internal/token`, and `internal/recovery`.
+- Added crypto coverage for tampered ciphertext rejection.
+- Fixed legacy vault loading for old JSON payloads longer than the checksum prefix size.
 
 ## Current Verification
 
@@ -90,6 +93,13 @@ Current automated checks:
 ```bash
 go test ./...
 ```
+
+Package-level coverage now includes:
+
+- `internal/storage`: checksum failure, legacy vault JSON, `.bak` fallback only when primary is missing, and atomic write behavior
+- `internal/token`: token master key validation, registry load/save, encrypted shared vault tamper rejection, forged token rejection, and usage count persistence
+- `internal/recovery`: grouped key generation, verifier validation, valid recovery decrypt, wrong-key rejection, checksum failure, missing verifier rejection, and atomic recovery file writes
+- `internal/crypto`: round trip, wrong key rejection, tampered ciphertext rejection, and short ciphertext rejection
 
 Manual smoke tests were run in `/private/tmp` with fake data:
 
@@ -142,31 +152,9 @@ docs/
 
 ## Next Recommended Steps
 
-### 1. Test Depth For `internal/...`
+### 1. Extend Automated CLI Smoke Tests
 
-Priority: highest.
-
-Smoke tests protect real workflows, but package-level tests should cover internal behavior directly.
-
-Add focused unit tests for:
-
-- `internal/storage`: checksum failure, legacy vault JSON, `.bak` fallback only when primary is missing, atomic write behavior
-- `internal/token`: signature validation, forged token rejection, usage count persistence, registry load/save, encrypted shared vault checksum failure
-- `internal/recovery`: checksum failure, wrong recovery key, valid recovery decrypt, recovery file atomic write
-- `internal/config`: boundary values and malformed JSON cases already covered, expand only if config grows
-- `internal/crypto`: ciphertext tamper rejection and short ciphertext behavior
-
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c codex/internal-unit-tests
-```
-
-### 2. Extend Automated CLI Smoke Tests
-
-Priority: medium.
+Priority: medium-high.
 
 Automated smoke tests currently cover:
 
@@ -205,7 +193,7 @@ git pull
 git switch -c codex/cli-smoke-tests-extended
 ```
 
-### 3. Recovery Policy And Verifier Review
+### 2. Recovery Policy And Verifier Review
 
 Priority: medium.
 
@@ -232,7 +220,7 @@ git pull
 git switch -c codex/recovery-policy-review
 ```
 
-### 4. Import/Export Round-Trip Review
+### 3. Import/Export Round-Trip Review
 
 Priority: medium.
 
@@ -266,7 +254,7 @@ git pull
 git switch -c codex/import-export-roundtrip
 ```
 
-### 5. Runtime File Permissions And `vault doctor`
+### 4. Runtime File Permissions And `vault doctor`
 
 Priority: medium.
 
@@ -294,7 +282,7 @@ git pull
 git switch -c codex/doctor-command
 ```
 
-### 6. Future Refactor Candidates
+### 5. Future Refactor Candidates
 
 Priority: low unless a bug or feature makes the extraction useful.
 
@@ -326,7 +314,7 @@ Future token sync simplification:
 
 These are intentionally lower priority than the stability/security work above. Revisit them after documentation cleanup, security review, token sync policy review, and test-depth work are in better shape.
 
-### 7. `vault run -- <command>`
+### 6. `vault run -- <command>`
 
 Run a command with vault entries injected as environment variables, without printing secrets:
 
@@ -343,7 +331,7 @@ git pull
 git switch -c codex/vault-run-command
 ```
 
-### 8. Project Profiles
+### 7. Project Profiles
 
 Support separate vault contexts for different projects or environments:
 
@@ -361,7 +349,7 @@ git pull
 git switch -c codex/project-profiles
 ```
 
-### 9. Namespaces
+### 8. Namespaces
 
 Support namespaced keys for environments such as `dev`, `staging`, and `prod`:
 
@@ -378,7 +366,7 @@ git pull
 git switch -c codex/namespaces
 ```
 
-### 10. Clipboard Command
+### 9. Clipboard Command
 
 Copy a secret to the system clipboard and optionally clear it after a timeout:
 
@@ -395,7 +383,7 @@ git pull
 git switch -c codex/clipboard-copy
 ```
 
-### 11. Token UX Cleanup
+### 10. Token UX Cleanup
 
 Make token commands more consistent and automation-friendly:
 
@@ -413,7 +401,7 @@ git pull
 git switch -c codex/token-ux
 ```
 
-### 12. Terminal UI
+### 11. Terminal UI
 
 Add an optional TUI for browsing/searching keys, viewing token status, editing values, and triggering copy/export flows:
 
@@ -429,7 +417,7 @@ git pull
 git switch -c codex/tui
 ```
 
-### 13. Secret Rotation Hooks
+### 12. Secret Rotation Hooks
 
 Support command-driven rotation workflows:
 
@@ -445,7 +433,7 @@ git pull
 git switch -c codex/secret-rotation
 ```
 
-### 14. Hook System
+### 13. Hook System
 
 Allow local scripts to run after selected events such as `set`, `delete`, `backup`, or `token create`:
 
