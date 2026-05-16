@@ -146,9 +146,9 @@ Shows vault metadata:
 ./bin/vault export
 ```
 
-Prints entries as shell-style `export KEY="value"` lines.
+Prints entries as shell-safe `export KEY='value'` lines.
 
-Operational note: export output is currently simple and does not fully shell-escape complex values containing quotes, variable expansion characters, or newlines.
+Operational note: export uses POSIX single-quote escaping, so values containing quotes, `$`, backticks, backslashes, and newlines are printed without triggering shell expansion.
 
 ### Import
 
@@ -457,7 +457,6 @@ cmd/
 Recommended follow-up tasks:
 
 - extend automated smoke tests for `change-password` and recovery setup/test flows
-- make `export` shell-safe
 - create token runtime files only when token functionality is used
 - validate `vault-config.json`
 - add unit tests for crypto roundtrip, token signing, key validation, pattern matching, and import parsing

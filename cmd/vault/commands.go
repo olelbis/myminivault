@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -60,9 +61,23 @@ func handleDeleteCommand(vault map[string]string) {
 }
 
 func handleExportCommand(vault map[string]string) {
-	for k, v := range vault {
-		fmt.Printf("export %s=\"%s\"\n", k, v)
+	keys := make([]string, 0, len(vault))
+	for key := range vault {
+		keys = append(keys, key)
 	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		fmt.Printf("export %s=%s\n", key, shellQuote(vault[key]))
+	}
+}
+
+func shellQuote(value string) string {
+	if value == "" {
+		return "''"
+	}
+
+	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
 }
 
 func handleListCommand(vault map[string]string) {

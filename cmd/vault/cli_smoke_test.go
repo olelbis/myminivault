@@ -93,6 +93,17 @@ func TestCLISmokeWrongPasswordRejected(t *testing.T) {
 	requireContains(t, result.output, "error loading vault")
 }
 
+func TestCLISmokeExportShellQuotesValues(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+	value := "quote\" dollar$ backtick` slash\\ line\nnext apostrophe's"
+
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "SPECIAL", value))
+
+	exportOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "export"))
+	requireContains(t, exportOutput, "export SPECIAL='quote\" dollar$ backtick` slash\\ line\nnext apostrophe'\\''s'")
+}
+
 func TestCLISmokeTokenReadAndWrite(t *testing.T) {
 	bin := buildVaultBinary(t)
 	dir := t.TempDir()

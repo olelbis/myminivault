@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Last committed milestone: `055ab6f Update docs for recovery coverage`
+- Last committed main milestone: `16b3727 Clarify token sync policy`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -34,13 +34,17 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Hardened recovery key generation to use 32 secure random bytes encoded as grouped base32.
 - Made recovery file saves atomic and added unit tests for recovery key validation and recovery file writes.
 - Added end-to-end `recover` smoke coverage and fixed piped password input for recovery flows.
+- Clarified the main/shared token vault sync policy in code and documentation.
+- Added smoke coverage for automatic token-write import by master-password commands.
+- Removed the legacy `cmd/splitter` helper after the monolith split was complete.
+- Made `export` output shell-safe with POSIX single-quote escaping and added smoke/unit coverage.
 
 ## Current Verification
 
-These commands passed after the split and fixes:
+Current automated checks:
 
 ```bash
-GOCACHE=/private/tmp/myminivault-gocache go test ./...
+go test ./...
 ```
 
 Manual smoke tests were run in `/private/tmp` with fake data:
@@ -86,6 +90,8 @@ Automated smoke tests now cover:
 - token creation
 - token `get`
 - token `set`
+- automatic import of token writes by master-password commands
+- shell-safe `export` output
 - concurrent command serialization through `.myminivault.lock`
 
 Remaining coverage to add:
@@ -160,13 +166,15 @@ git switch -c codex/token-sync-conflicts
 
 ### 4. Make Export Shell-Safe
 
-Current export output is simple:
+Status: implemented with POSIX single-quote escaping and smoke/unit coverage.
+
+Current export output is shell-safe:
 
 ```bash
-export KEY="value"
+export KEY='value'
 ```
 
-It should safely escape:
+Covered cases:
 
 - quotes
 - `$`
@@ -174,13 +182,7 @@ It should safely escape:
 - backslashes
 - newlines
 
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c codex/export-shell-safe
-```
+Remaining follow-up: improve `import` parsing if imported files need to round-trip every shell-escaped export exactly.
 
 ### 5. Reduce Token Side Effects
 
