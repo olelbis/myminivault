@@ -11,11 +11,6 @@ import (
 )
 
 func main() {
-	if err := loadConfig(); err != nil {
-		fmt.Printf("Config error: %v\n", err)
-		return
-	}
-
 	if len(os.Args) < 2 {
 		showUsage()
 		return
@@ -27,6 +22,17 @@ func main() {
 	case "help", "--help", "-h":
 		showHelp()
 		return
+	case "doctor":
+		handleDoctorCommand()
+		return
+	}
+
+	if err := loadConfig(); err != nil {
+		fmt.Printf("Config error: %v\n", err)
+		return
+	}
+
+	switch command {
 	case "config":
 		if len(os.Args) < 3 {
 			showConfig()
@@ -200,11 +206,11 @@ func showUsage() {
 	fmt.Println("Recovery: setup-recovery, recover, test-recovery, change-password")
 	fmt.Println("Tokens: create-token, list-tokens, revoke-token, use-token, token-info, cleanup-tokens")
 	fmt.Println("Sync: sync-tokens")
-	fmt.Println("Security: security-audit, config, regenerate-token-key, help")
+	fmt.Println("Security: security-audit, doctor, config, regenerate-token-key, help")
 }
 
 func showHelp() {
-	fmt.Println(`🔐 myminivault CLI v0.1.21
+	fmt.Println(`🔐 myminivault CLI v0.2.0
 
 BASIC COMMANDS:
   set <key> <value>     Set a key-value pair
@@ -243,6 +249,7 @@ SYNCHRONIZATION:
 
 SECURITY:
   security-audit        Comprehensive security audit
+  doctor                Check runtime file permissions and local health
   config                Show configuration
   regenerate-token-key  Generate new token master key
 

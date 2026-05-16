@@ -87,6 +87,7 @@ Create a backup:
 | `create-token` | Create temporary token access |
 | `use-token` | Use a temporary token |
 | `security-audit` | Print local vault status |
+| `doctor` | Check runtime file permissions and local health |
 
 ## Screenshots
 
@@ -122,7 +123,7 @@ The CLI stores runtime files in the current working directory where the command 
 
 ## Versioning
 
-Application releases use Git tags such as `v0.1.21` and are documented in `CHANGELOG.md`.
+Application releases use Git tags such as `v0.2.0` and are documented in `CHANGELOG.md`.
 
 The CLI-visible version is kept in sync with the current release tag. When the vault file format changes, the version should be updated together with migration notes in the changelog.
 

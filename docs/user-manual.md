@@ -131,6 +131,16 @@ vault.db.2026-05-15_22-30-00.bak
 
 The normal save path also keeps `vault.db.bak` as the previous version of the vault. The loader uses `vault.db.bak` only when `vault.db` is missing, not as a fallback for wrong passwords.
 
+## Local Health Check
+
+```bash
+./bin/vault doctor
+```
+
+Checks local runtime health without asking for the master password. It reports config validity, runtime file permissions, timestamped backup presence, lock-file presence, recovery file presence, token files, and log file status.
+
+Sensitive runtime files should normally be readable only by the local user. `vault doctor` warns when files such as `vault.db`, backups, recovery snapshots, token files, or logs are group/world-readable.
+
 ## Password Recovery
 
 For the exact snapshot, divergence, verifier, and rotation policy, see [Recovery Policy](recovery-policy.md).

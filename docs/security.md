@@ -85,7 +85,7 @@ Expected direction:
 - `vault.db`, `.bak`, `.recovery`, token key, shared token vault, registry, and logs should not be world-readable
 - backup files should receive the same care as `vault.db`
 - `vault-token.key` should be treated as especially sensitive
-- future `vault doctor` checks should warn about unsafe permissions
+- `vault doctor` warns about unsafe permissions and related local runtime health issues
 
 ## Master Password
 
@@ -183,10 +183,9 @@ Suggested response:
 
 Planned or recommended:
 
-- add `vault doctor` checks for runtime file permissions and stale locks
-- add more unit tests around tampered ciphertext, checksum failure, and token forgery
+- keep expanding `vault doctor` checks as runtime behavior grows
 - decide token sync conflict policy
 - decide whether delete tombstones or per-key revisions are needed
-- document recovery key rotation
 - review logging behavior
+- consider making logging configurable or less revealing by default
 - avoid claiming production security without an external audit

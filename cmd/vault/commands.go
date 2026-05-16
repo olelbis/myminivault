@@ -260,14 +260,16 @@ func copyFile(src, dst string) error {
 	}
 	defer source.Close()
 
-	destination, err := os.Create(dst)
+	destination, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
 	defer destination.Close()
 
-	_, err = io.Copy(destination, source)
-	return err
+	if _, err := io.Copy(destination, source); err != nil {
+		return err
+	}
+	return destination.Sync()
 }
 
 func showStats(vault *ExtendedVault) {
@@ -312,11 +314,12 @@ func getKeyFromArgs() string {
 }
 
 func logAccess(action, key string) {
-	file, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return
 	}
 	defer file.Close()
+	_ = os.Chmod(logFile, 0600)
 
 	logger := log.New(file, "", log.LstdFlags)
 	if key != "" {

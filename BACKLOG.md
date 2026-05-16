@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.1.21`
+- Current baseline release: `v0.2.0`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -90,6 +90,9 @@ Strategic guidance:
 - Added a basic import/export round-trip smoke test.
 - Added `docs/recovery-policy.md` documenting recovery snapshot behavior, divergence semantics, verifier policy, and rotation caveats.
 - Linked the recovery policy from README, user manual, security model, and development docs.
+- Added `vault doctor` for local runtime health checks covering config validity, file permissions, locks, backups, recovery files, token files, and logs.
+- Hardened sensitive runtime writes to prefer `0600` permissions for main vaults, backups, shared token vaults, and logs.
+- Added automated CLI smoke coverage for `vault doctor`.
 
 ## Current Verification
 
@@ -124,7 +127,7 @@ Automated CLI smoke coverage includes:
 - token create/get/set, automatic token-write import, expired token rejection, used-up token rejection, revocation rejection, `list-tokens`, and `token-info`
 - recovery setup, recovery validation, and master password recovery
 - shell-safe export output and basic import/export round-trip behavior
-- malformed config handling and concurrent command serialization through `.myminivault.lock`
+- malformed config handling, `vault doctor`, and concurrent command serialization through `.myminivault.lock`
 
 ## Current Project Layout
 
@@ -138,6 +141,7 @@ cmd/
     commands.go         basic key/value commands, import/export, stats
     config_cli.go       config loading/display
     crypto.go           encryption, decryption, random bytes, key derivation
+    doctor_cli.go       local runtime health checks
     recovery_cli.go     recovery and password-change flows
     storage_bridge.go   main vault load/save wrappers
     sync.go             main/shared vault synchronization
@@ -166,33 +170,32 @@ docs/
 
 ## Next Recommended Steps
 
-### 1. Runtime File Permissions And `vault doctor`
+### 1. Logging Cleanup
 
 Priority: medium.
 
-Add a health-check command for local setup and runtime files:
+Reduce metadata leakage from `vault.log`.
 
-```bash
-vault doctor
-```
+Current concerns:
 
-Checks could include:
+- logs can reveal command names, key names, and token ID prefixes
+- key names may be sensitive even when values are encrypted
+- logging is not currently configurable
 
-- file permissions for vault, token key, shared vault, registry, recovery file, backups, and logs
-- stale lock file behavior
-- config validity
-- token runtime state
-- backup presence
-- recovery status
-- warnings for files that should not be committed
-- recovery snapshot freshness compared with the main vault, if a reliable timestamp/check is available
+Possible directions:
+
+- add a config flag to disable audit logging
+- stop logging key names by default
+- further truncate or hash token IDs in logs
+- keep log writes at `0600`
+- document the chosen default in the security model and user manual
 
 Suggested branch:
 
 ```bash
 git switch main
 git pull
-git switch -c codex/doctor-command
+git switch -c codex/logging-cleanup
 ```
 
 ### 2. Additional CLI Smoke Tests

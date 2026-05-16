@@ -145,10 +145,13 @@ func SaveFileAtomic(vaultFile string, salt, data []byte) error {
 		if err := os.Rename(vaultFile, vaultFile+".bak"); err != nil {
 			return err
 		}
+		if err := os.Chmod(vaultFile+".bak", 0600); err != nil {
+			return err
+		}
 	}
 
 	tempFile := vaultFile + ".tmp"
-	f, err := os.Create(tempFile)
+	f, err := os.OpenFile(tempFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
@@ -172,7 +175,10 @@ func SaveFileAtomic(vaultFile string, salt, data []byte) error {
 	}
 
 	f.Close()
-	return os.Rename(tempFile, vaultFile)
+	if err := os.Rename(tempFile, vaultFile); err != nil {
+		return err
+	}
+	return os.Chmod(vaultFile, 0600)
 }
 
 func TryLoad(file string, saltSize int) ([]byte, []byte, error) {

@@ -152,7 +152,7 @@ func LoadEncryptedVault(tokenFilePath string, opts Options) (*model.ExtendedVaul
 
 func SaveVaultFileAtomic(tokenVaultPath string, salt, data []byte) error {
 	tempFile := tokenVaultPath + ".tmp"
-	f, err := os.Create(tempFile)
+	f, err := os.OpenFile(tempFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %w", err)
 	}
@@ -182,7 +182,7 @@ func SaveVaultFileAtomic(tokenVaultPath string, salt, data []byte) error {
 		return fmt.Errorf("failed to finalize save: %w", err)
 	}
 
-	return nil
+	return os.Chmod(tokenVaultPath, 0600)
 }
 
 func GetOrCreateMasterKey(opts Options) ([]byte, error) {

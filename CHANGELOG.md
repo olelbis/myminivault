@@ -1,6 +1,17 @@
 # Changelog
 
-All notable project changes are recorded here. Application releases use Git tags such as `v0.1.21`, and the CLI-visible version is kept in sync with the current release tag.
+All notable project changes are recorded here. Application releases use Git tags such as `v0.2.0`, and the CLI-visible version is kept in sync with the current release tag.
+
+## [v0.2.0] - 2026-05-16
+
+### Added
+
+- Added `vault doctor` to check runtime file permissions, config health, lock-file presence, backups, recovery, token files, and logs.
+- Added CLI smoke coverage for `vault doctor`.
+
+### Changed
+
+- Hardened sensitive runtime file writes to prefer `0600` permissions for main vaults, backups, shared token vaults, and logs.
 
 ## [v0.1.21] - 2026-05-16
 

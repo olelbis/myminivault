@@ -239,6 +239,32 @@ func TestCLISmokeMalformedConfigRejected(t *testing.T) {
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "config")), "Config error")
 }
 
+func TestCLISmokeDoctorChecksRuntimeHealth(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	initialOutput := requireOK(t, runVault(t, bin, dir, "", "doctor"))
+	requireContains(t, initialOutput, "Vault Doctor")
+	requireContains(t, initialOutput, "config")
+	requireContains(t, initialOutput, "using defaults")
+
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "API_KEY", "hello"))
+	requireOK(t, runVault(t, bin, dir, "pass\n", "backup"))
+
+	doctorOutput := requireOK(t, runVault(t, bin, dir, "", "doctor"))
+	requireContains(t, doctorOutput, "main vault")
+	requireContains(t, doctorOutput, "mode 0600")
+	requireContains(t, doctorOutput, "timestamped backups")
+	requireContains(t, doctorOutput, "Status: usable with warnings")
+
+	if err := os.Chmod(filepath.Join(dir, vaultFile), 0644); err != nil {
+		t.Fatalf("chmod vault file: %v", err)
+	}
+	insecureOutput := requireOK(t, runVault(t, bin, dir, "", "doctor"))
+	requireContains(t, insecureOutput, "main vault")
+	requireContains(t, insecureOutput, "mode 0644")
+}
+
 func TestCLISmokeImportExportRoundTrip(t *testing.T) {
 	bin := buildVaultBinary(t)
 	sourceDir := t.TempDir()

@@ -421,11 +421,12 @@ func handleRevokeToken(vault *ExtendedVault) {
 }
 
 func logTokenAccess(tokenID, action, key string) {
-	file, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return
 	}
 	defer file.Close()
+	_ = os.Chmod(logFile, 0600)
 
 	logger := log.New(file, "", log.LstdFlags)
 	if key != "" {
