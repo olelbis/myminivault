@@ -34,27 +34,29 @@ func syncSharedVaultToMainVault(mainVault *ExtendedVault) error {
 	return nil
 }
 
-func ensureSharedVaultExists(vault *ExtendedVault) error {
-	tokenVaultMutex.Lock()
-	defer tokenVaultMutex.Unlock()
-
-	if _, err := os.Stat(sharedTokenVault); err == nil {
-		return nil
-	}
-
-	return saveTokenVaultEncrypted(newSharedVaultFromMain(vault, vault.TokenManager), sharedTokenVault)
-}
-
 func syncMainVaultToSharedVault(vault *ExtendedVault) error {
 	tokenVaultMutex.Lock()
 	defer tokenVaultMutex.Unlock()
+
+	sharedExists := true
+	if _, err := os.Stat(sharedTokenVault); err != nil {
+		if os.IsNotExist(err) {
+			sharedExists = false
+		} else {
+			return err
+		}
+	}
+
+	if !sharedExists && vault.TokenManager == nil {
+		return nil
+	}
 
 	sharedVault := &ExtendedVault{
 		TokenManager: vault.TokenManager,
 		Metadata:     vault.Metadata,
 	}
 
-	if _, err := os.Stat(sharedTokenVault); err == nil {
+	if sharedExists {
 		existing, err := loadVaultFromTokenFileEncrypted(sharedTokenVault)
 		if err != nil {
 			return err
@@ -68,14 +70,6 @@ func syncMainVaultToSharedVault(vault *ExtendedVault) error {
 	sharedVault.Data = copyVaultData(vault.Data)
 
 	return saveTokenVaultEncrypted(sharedVault, sharedTokenVault)
-}
-
-func newSharedVaultFromMain(vault *ExtendedVault, tokenManager *TokenManager) *ExtendedVault {
-	return &ExtendedVault{
-		Data:         copyVaultData(vault.Data),
-		TokenManager: tokenManager,
-		Metadata:     vault.Metadata,
-	}
 }
 
 func copyVaultData(data map[string]string) map[string]string {

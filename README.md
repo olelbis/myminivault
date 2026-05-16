@@ -6,7 +6,7 @@ The main CLI lives in `cmd/vault`.
 
 ## Versioning
 
-Application releases use Git tags such as `v0.1.0` and are documented in `CHANGELOG.md`.
+Application releases use Git tags such as `v0.1.1` and are documented in `CHANGELOG.md`.
 
 The CLI-visible version is kept in sync with the current release tag. When the vault file format changes, the version should be updated together with migration notes in the changelog.
 
@@ -45,9 +45,9 @@ The CLI stores runtime files in the current working directory where the command 
 | `vault.db` | Main encrypted vault |
 | `vault.db.bak` | Backup of previous main vault version |
 | `vault.db.recovery` | Recovery-encrypted vault copy, when recovery is configured |
-| `vault-token.key` | Local token master key |
-| `shared-token-vault.json` | Encrypted shared vault used by token access |
-| `vault-tokens.json` | Token registry metadata |
+| `vault-token.key` | Local token master key, created when token features are used |
+| `shared-token-vault.json` | Encrypted shared vault used by token access, created when token features are used |
+| `vault-tokens.json` | Token registry metadata, created when tokens are created |
 | `vault.log` | Audit log |
 | `vault-config.json` | Optional config override |
 | `.myminivault.lock` | Inter-process lock file used while vault commands run |
@@ -341,7 +341,7 @@ The CLI keeps a main vault and a shared token vault:
 - `vault.db` is the main password-protected vault
 - `shared-token-vault.json` is an encrypted shared vault used for token commands
 
-Commands that mutate the main vault, such as `set`, `delete`, `clear`, and `import`, mirror the main vault back to the shared token vault after saving.
+Commands that mutate the main vault, such as `set`, `delete`, `clear`, and `import`, mirror the main vault back to the shared token vault after saving only when token runtime files already exist or token data is configured.
 
 Token write operations save immediately to the shared token vault. Master-password commands import token-side changes from the shared vault before running, and you can also import them explicitly with:
 
@@ -356,7 +356,8 @@ Sync policy:
 - `vault.db` is the master-password source of truth after a master command saves.
 - token writes are staged in `shared-token-vault.json`.
 - master commands import staged token writes before they execute.
-- master mutations mirror the full main vault back to the shared vault after saving, so deletes remain deleted.
+- ordinary password commands do not create token runtime files until token features are used.
+- master mutations mirror the full main vault back to the shared vault after saving once token runtime files exist, so deletes remain deleted.
 - conflict handling is currently last-writer-wins at the vault-key level.
 
 ## Security Audit

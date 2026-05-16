@@ -1,6 +1,16 @@
 # Changelog
 
-All notable project changes are recorded here. Application releases use Git tags such as `v0.1.0`, and the CLI-visible version is kept in sync with the current release tag.
+All notable project changes are recorded here. Application releases use Git tags such as `v0.1.1`, and the CLI-visible version is kept in sync with the current release tag.
+
+## [v0.1.1] - 2026-05-16
+
+### Changed
+
+- Avoid creating token runtime files during ordinary master-password commands before token features are used.
+
+### Added
+
+- Added smoke coverage to verify ordinary password commands do not initialize token runtime files.
 
 ## [v0.1.0] - 2026-05-16
 

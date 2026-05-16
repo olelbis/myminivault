@@ -84,10 +84,6 @@ func runPasswordCommand(command, password string) error {
 		log.Printf("Warning: failed to sync from shared vault: %v", err)
 	}
 
-	if err := ensureSharedVaultExists(extendedVault); err != nil {
-		log.Printf("Warning: failed to initialize shared token vault: %v", err)
-	}
-
 	if err := cleanupExpiredTokens(extendedVault); err != nil {
 		log.Printf("Token cleanup warning: %v", err)
 	}
@@ -205,7 +201,7 @@ func showUsage() {
 }
 
 func showHelp() {
-	fmt.Println(`🔐 myminivault CLI v0.1.0
+	fmt.Println(`🔐 myminivault CLI v0.1.1
 
 BASIC COMMANDS:
   set <key> <value>     Set a key-value pair

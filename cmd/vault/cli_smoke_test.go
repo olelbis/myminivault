@@ -59,6 +59,24 @@ func requireContains(t *testing.T, output, want string) {
 	}
 }
 
+func requireFileNotExists(t *testing.T, path string) {
+	t.Helper()
+
+	if _, err := os.Stat(path); err == nil {
+		t.Fatalf("expected %s not to exist", path)
+	} else if !os.IsNotExist(err) {
+		t.Fatalf("stat %s: %v", path, err)
+	}
+}
+
+func requireFileExists(t *testing.T, path string) {
+	t.Helper()
+
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("expected %s to exist: %v", path, err)
+	}
+}
+
 func TestCLISmokeBasicVaultCommands(t *testing.T) {
 	bin := buildVaultBinary(t)
 	dir := t.TempDir()
@@ -78,6 +96,22 @@ func TestCLISmokeBasicVaultCommands(t *testing.T) {
 
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "delete", "API_KEY")), "Key 'API_KEY' deleted")
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY")), "not found")
+}
+
+func TestCLISmokePasswordCommandsDoNotInitializeTokenFiles(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "API_KEY", "hello"))
+	requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY"))
+	requireOK(t, runVault(t, bin, dir, "pass\n", "list"))
+	requireOK(t, runVault(t, bin, dir, "pass\n", "export"))
+	requireOK(t, runVault(t, bin, dir, "pass\n", "stats"))
+	requireOK(t, runVault(t, bin, dir, "pass\n", "delete", "API_KEY"))
+
+	requireFileNotExists(t, filepath.Join(dir, tokenKeyFile))
+	requireFileNotExists(t, filepath.Join(dir, sharedTokenVault))
+	requireFileNotExists(t, filepath.Join(dir, tokenRegistry))
 }
 
 func TestCLISmokeWrongPasswordRejected(t *testing.T) {
@@ -112,6 +146,9 @@ func TestCLISmokeTokenReadAndWrite(t *testing.T) {
 
 	createOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=API_*", "--duration=1h", "--permissions=read,write", "--max-uses=10"))
 	requireContains(t, createOutput, "Secure synchronized token created")
+	requireFileExists(t, filepath.Join(dir, tokenKeyFile))
+	requireFileExists(t, filepath.Join(dir, sharedTokenVault))
+	requireFileExists(t, filepath.Join(dir, tokenRegistry))
 
 	token := extractCompactToken(t, createOutput)
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", token, "get", "API_KEY")), "hello")

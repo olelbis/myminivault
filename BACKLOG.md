@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.1.0`
+- Current baseline release: `v0.1.1`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -199,19 +199,13 @@ Remaining follow-up: improve `import` parsing if imported files need to round-tr
 
 ### 5. Reduce Token Side Effects
 
-Currently ordinary password commands can create token runtime files because sync initializes the shared token vault.
+Status: implemented with smoke coverage.
 
-Goal:
+Current behavior:
 
-- create `vault-token.key` and `shared-token-vault.json` only when token features are actually used, or clearly document why they are always created.
-
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c codex/token-side-effects
-```
+- ordinary password commands do not create `vault-token.key`, `shared-token-vault.json`, or `vault-tokens.json`
+- token runtime files are created when token features are used
+- main vault mutations mirror back to the shared token vault only after token runtime has been initialized
 
 ### 6. Validate Configuration
 
