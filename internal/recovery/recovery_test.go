@@ -112,6 +112,45 @@ func TestSaveFileAtomic(t *testing.T) {
 	}
 }
 
+func TestSaveFileReplacesExistingRecoveryFile(t *testing.T) {
+	vaultFile := filepath.Join(t.TempDir(), "vault.db")
+	recoveryFile := vaultFile + ".recovery"
+	if err := os.WriteFile(recoveryFile, []byte("old recovery data"), 0600); err != nil {
+		t.Fatalf("write original recovery file: %v", err)
+	}
+	salt := []byte("1234567890123456")
+	ciphertext := []byte("new encrypted recovery data")
+
+	if err := SaveFile(vaultFile, salt, ciphertext); err != nil {
+		t.Fatalf("SaveFile: %v", err)
+	}
+
+	data, err := os.ReadFile(recoveryFile)
+	if err != nil {
+		t.Fatalf("read recovery file: %v", err)
+	}
+	if !bytes.Equal(data, append(salt, ciphertext...)) {
+		t.Fatalf("recovery file = %q, want salt+ciphertext", data)
+	}
+	if info, err := os.Stat(recoveryFile); err != nil {
+		t.Fatalf("stat recovery file: %v", err)
+	} else if info.Mode().Perm() != 0600 {
+		t.Fatalf("recovery mode = %04o, want 0600", info.Mode().Perm())
+	}
+}
+
+func TestSaveFileReportsCreateError(t *testing.T) {
+	vaultFile := filepath.Join(t.TempDir(), "missing", "vault.db")
+
+	err := SaveFile(vaultFile, []byte("1234567890123456"), []byte("encrypted"))
+	if err == nil {
+		t.Fatal("expected create error")
+	}
+	if !strings.Contains(err.Error(), "failed to create recovery file") {
+		t.Fatalf("error = %v, want create recovery file", err)
+	}
+}
+
 func recoveryTestVault(recoveryKey string) *model.ExtendedVault {
 	recoveryData := &model.RecoveryData{CreatedAt: time.Now()}
 	HashKey(recoveryData, recoveryKey)

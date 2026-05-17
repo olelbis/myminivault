@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.4.1`
+- Current baseline release: `v0.4.2`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -15,7 +15,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `9.2 / 10`.
+Current assessment score: `9.3 / 10`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -34,7 +34,7 @@ Main strengths:
 - tested `internal/commands` package for export/import/key validation helpers
 - tested `internal/clipboard` package for backend selection and clear-if-unchanged behavior
 - tested `internal/export` package for shell export rendering and restrictive file writes
-- internal package coverage above 80%, including token master-key handling, compact-token parsing, token helper behavior, expiry/max-use checks, runtime path handling, and important error paths
+- internal package coverage at `83.5%`, including token master-key handling, compact-token parsing, token helper behavior, expiry/max-use checks, runtime path handling, and important error paths
 - automated CLI smoke coverage for critical workflows in the top-level `tests` package
 - explicit handling for recovery, token sync, locking, backups, export, and password changes
 - a handoff backlog that can restart work from a fresh chat
@@ -136,6 +136,7 @@ Strategic guidance:
 - Moved sensitive runtime files into `~/.myminivault/` by default, with `MYMINIVAULT_HOME` override and legacy cwd migration.
 - Added `vault inspect-runtime` for active and legacy runtime file inspection without decrypting vault data.
 - Documented `vault inspect-runtime` across the README, user manual, security model, development guide, recovery policy, and token sync policy.
+- Raised internal package coverage to `83.5%` with focused tests for runtime paths, empty-vault loading, recovery file writes, storage atomic-write behavior, and token vault error paths.
 - Clarified recovery-file plus recovery-key exposure across security, recovery, and user documentation.
 - Added an `80.0%` internal package coverage floor to CI.
 - Extracted command logging and shared-vault mirror policy helpers from `cmd/vault` orchestration.
@@ -157,9 +158,9 @@ GitHub Actions runs the normal checks on Linux and macOS, plus a Linux coverage 
 
 Package-level coverage now includes:
 
-- `internal/storage`: checksum failure, legacy vault JSON, `.bak` fallback only when primary is missing, and atomic write behavior
-- `internal/token`: token master key validation and creation, registry load/save and parse errors, encrypted shared vault tamper rejection and error paths, malformed token parsing, missing token-manager cases, forged token rejection, generated token IDs, permission helpers, expiry/max-use checks, and usage count persistence
-- `internal/recovery`: grouped key generation, verifier validation, valid recovery decrypt, wrong-key rejection, checksum failure, missing verifier rejection, and atomic recovery file writes
+- `internal/storage`: missing-vault creation, checksum failure, legacy vault JSON, `.bak` fallback only when primary is missing, recovery snapshot saves, short reads, and atomic write behavior
+- `internal/token`: token master key validation and creation, key-file backed encrypted vaults, registry load/save and parse errors, encrypted shared vault tamper rejection and error paths, malformed token parsing, missing token-manager cases, forged token rejection, generated token IDs, permission helpers, expiry/max-use checks, and usage count persistence
+- `internal/recovery`: grouped key generation, verifier validation, valid recovery decrypt, wrong-key rejection, checksum failure, missing verifier rejection, and atomic recovery file writes/replacements
 - `internal/crypto`: round trip, wrong key rejection, tampered ciphertext rejection, and short ciphertext rejection
 - `internal/sync`: import conflict decisions, delete markers, metadata helpers, and copy behavior
 - `internal/commands`: shell-safe export/import parsing and key validation
@@ -310,7 +311,7 @@ Current CI runs formatting, `go vet`, `go test ./...`, full coverage reporting, 
 
 Next actions:
 
-- keep `./internal/...` coverage at or above the current `80.0%` floor
+- keep `./internal/...` coverage at or above the current `80.0%` floor, with `83.5%` as the latest local baseline
 - raise `cmd/vault` coverage with focused unit tests or further extraction of command-independent logic where it improves clarity
 
 Suggested branch:

@@ -1,6 +1,8 @@
 package token
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"encoding/base64"
 	"os"
 	"path/filepath"
@@ -154,6 +156,33 @@ func TestEncryptedVaultRoundTripAndChecksumFailure(t *testing.T) {
 	}
 }
 
+func TestEncryptedVaultRoundTripWithKeyFileProvider(t *testing.T) {
+	dir := t.TempDir()
+	sharedVault := filepath.Join(dir, "shared-token-vault.json")
+	opts := Options{
+		TokenKeyFile: filepath.Join(dir, "vault-token.key"),
+		SaltSize:     16,
+		Scrypt:       testScrypt,
+	}
+
+	if err := SaveEncryptedVault(tokenTestVault(), sharedVault, opts); err != nil {
+		t.Fatalf("SaveEncryptedVault: %v", err)
+	}
+
+	loaded, err := LoadEncryptedVault(sharedVault, opts)
+	if err != nil {
+		t.Fatalf("LoadEncryptedVault: %v", err)
+	}
+	if loaded.Data["API_KEY"] != "secret" {
+		t.Fatalf("loaded secret = %q, want secret", loaded.Data["API_KEY"])
+	}
+	if key, err := LoadMasterKey(opts.TokenKeyFile); err != nil {
+		t.Fatalf("LoadMasterKey: %v", err)
+	} else if len(key) != 32 {
+		t.Fatalf("token key length = %d, want 32", len(key))
+	}
+}
+
 func TestSaveEncryptedVaultReportsMasterKeyError(t *testing.T) {
 	errBoom := errTest("boom")
 	opts := Options{
@@ -177,6 +206,85 @@ func TestLoadEncryptedVaultRejectsShortFile(t *testing.T) {
 
 	if _, err := LoadEncryptedVault(sharedVault, tokenTestOptions(bytesOf(0x11, 32))); err == nil {
 		t.Fatal("expected short file error")
+	}
+}
+
+func TestLoadEncryptedVaultReportsMasterKeyError(t *testing.T) {
+	sharedVault := filepath.Join(t.TempDir(), "shared-token-vault.json")
+	if err := os.WriteFile(sharedVault, append([]byte("1234567890123456"), []byte("encrypted")...), 0600); err != nil {
+		t.Fatalf("write shared vault: %v", err)
+	}
+	errBoom := errTest("boom")
+	opts := Options{
+		SaltSize: 16,
+		Scrypt:   testScrypt,
+		MasterKey: func() ([]byte, error) {
+			return nil, errBoom
+		},
+	}
+
+	err := loadEncryptedVaultError(sharedVault, opts)
+	if err == nil {
+		t.Fatal("expected master key error")
+	}
+	if !strings.Contains(err.Error(), "failed to get token master key") {
+		t.Fatalf("error = %v, want master key context", err)
+	}
+}
+
+func TestLoadEncryptedVaultRejectsMalformedJSON(t *testing.T) {
+	sharedVault := filepath.Join(t.TempDir(), "shared-token-vault.json")
+	opts := tokenTestOptions(bytesOf(0x11, 32))
+	salt := []byte("1234567890123456")
+	encrypted := encryptTokenPlaintext(t, appendTokenChecksum([]byte("not-json")), salt, opts)
+	if err := SaveVaultFileAtomic(sharedVault, salt, encrypted); err != nil {
+		t.Fatalf("SaveVaultFileAtomic: %v", err)
+	}
+
+	err := loadEncryptedVaultError(sharedVault, opts)
+	if err == nil {
+		t.Fatal("expected malformed JSON error")
+	}
+	if !strings.Contains(err.Error(), "cannot parse vault data") {
+		t.Fatalf("error = %v, want parse context", err)
+	}
+}
+
+func TestSaveVaultFileAtomicWritesFileAndRemovesTemp(t *testing.T) {
+	sharedVault := filepath.Join(t.TempDir(), "shared-token-vault.json")
+	salt := []byte("1234567890123456")
+	ciphertext := []byte("encrypted-token-vault")
+
+	if err := SaveVaultFileAtomic(sharedVault, salt, ciphertext); err != nil {
+		t.Fatalf("SaveVaultFileAtomic: %v", err)
+	}
+
+	data, err := os.ReadFile(sharedVault)
+	if err != nil {
+		t.Fatalf("read shared vault: %v", err)
+	}
+	if !bytes.Equal(data, append(salt, ciphertext...)) {
+		t.Fatalf("shared vault = %q, want salt+ciphertext", data)
+	}
+	if _, err := os.Stat(sharedVault + ".tmp"); !os.IsNotExist(err) {
+		t.Fatalf("temp file should not remain, stat err = %v", err)
+	}
+	if info, err := os.Stat(sharedVault); err != nil {
+		t.Fatalf("stat shared vault: %v", err)
+	} else if info.Mode().Perm() != 0600 {
+		t.Fatalf("shared vault mode = %04o, want 0600", info.Mode().Perm())
+	}
+}
+
+func TestSaveVaultFileAtomicReportsCreateError(t *testing.T) {
+	sharedVault := filepath.Join(t.TempDir(), "missing", "shared-token-vault.json")
+
+	err := SaveVaultFileAtomic(sharedVault, []byte("1234567890123456"), []byte("encrypted"))
+	if err == nil {
+		t.Fatal("expected create error")
+	}
+	if !strings.Contains(err.Error(), "failed to create temp file") {
+		t.Fatalf("error = %v, want temp file context", err)
 	}
 }
 
@@ -413,6 +521,34 @@ func tokenTestVault() *model.ExtendedVault {
 			CreatedAt: time.Date(2026, 5, 16, 10, 0, 0, 0, time.UTC),
 		},
 	}
+}
+
+func appendTokenChecksum(data []byte) []byte {
+	checksum := sha256.Sum256(data)
+	return append(checksum[:], data...)
+}
+
+func encryptTokenPlaintext(t *testing.T, plaintext, salt []byte, opts Options) []byte {
+	t.Helper()
+
+	tokenKey, err := opts.MasterKey()
+	if err != nil {
+		t.Fatalf("MasterKey: %v", err)
+	}
+	key, err := vaultcrypto.DeriveKey(tokenKey, salt, opts.Scrypt)
+	if err != nil {
+		t.Fatalf("DeriveKey: %v", err)
+	}
+	ciphertext, err := vaultcrypto.Encrypt(plaintext, key)
+	if err != nil {
+		t.Fatalf("Encrypt: %v", err)
+	}
+	return ciphertext
+}
+
+func loadEncryptedVaultError(path string, opts Options) error {
+	_, err := LoadEncryptedVault(path, opts)
+	return err
 }
 
 func bytesOf(value byte, length int) []byte {

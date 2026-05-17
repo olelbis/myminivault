@@ -2,6 +2,18 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.4.2] - 2026-05-17
+
+### Added
+
+- Added `inspect-runtime` to list active and legacy runtime files without decrypting vault data.
+
+### Changed
+
+- Added focused internal coverage for runtime path handling, empty-vault loading, storage atomic-write errors, recovery file replacement/errors, token key-file encryption, token vault parse errors, and token atomic-write behavior.
+- Updated the coverage baselines to `34.6%` full repository and `83.5%` internal packages.
+- Updated the CLI-visible version to `0.4.2`.
+
 ## [v0.4.1] - 2026-05-17
 
 ### Added

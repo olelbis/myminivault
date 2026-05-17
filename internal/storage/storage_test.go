@@ -12,6 +12,7 @@ import (
 
 	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
 	"github.com/olelbis/myminivault/internal/model"
+	"github.com/olelbis/myminivault/internal/recovery"
 )
 
 var testScrypt = vaultcrypto.ScryptConfig{N: 2, R: 1, P: 1, KeySize: 32}
@@ -105,6 +106,24 @@ func TestLoadUsesBackupOnlyWhenPrimaryIsMissing(t *testing.T) {
 	}
 }
 
+func TestLoadCreatesEmptyVaultWhenNoFilesExist(t *testing.T) {
+	opts := storageTestOptions(t.TempDir())
+
+	loaded, salt, err := Load("password", opts)
+	if err != nil {
+		t.Fatalf("Load missing vault: %v", err)
+	}
+	if len(loaded.Data) != 0 {
+		t.Fatalf("loaded data = %+v, want empty", loaded.Data)
+	}
+	if loaded.Metadata.Version != opts.Version {
+		t.Fatalf("version = %q, want %q", loaded.Metadata.Version, opts.Version)
+	}
+	if len(salt) != opts.SaltSize {
+		t.Fatalf("salt length = %d, want %d", len(salt), opts.SaltSize)
+	}
+}
+
 func TestSaveFileAtomicCreatesBackupAndReplacesPrimary(t *testing.T) {
 	vaultFile := filepath.Join(t.TempDir(), "vault.db")
 	original := append([]byte("old-salt"), []byte("old-data")...)
@@ -133,6 +152,112 @@ func TestSaveFileAtomicCreatesBackupAndReplacesPrimary(t *testing.T) {
 	}
 	if _, err := os.Stat(vaultFile + ".tmp"); !os.IsNotExist(err) {
 		t.Fatalf("temp file should not remain, stat err = %v", err)
+	}
+}
+
+func TestSaveFileAtomicReportsCreateError(t *testing.T) {
+	vaultFile := filepath.Join(t.TempDir(), "missing", "vault.db")
+
+	if err := SaveFileAtomic(vaultFile, []byte("salt"), []byte("data")); err == nil {
+		t.Fatal("expected create error")
+	}
+}
+
+func TestTryLoadRejectsShortSalt(t *testing.T) {
+	vaultFile := filepath.Join(t.TempDir(), "vault.db")
+	if err := os.WriteFile(vaultFile, []byte("short"), 0600); err != nil {
+		t.Fatalf("write short vault: %v", err)
+	}
+
+	if _, _, err := TryLoad(vaultFile, 16); err == nil {
+		t.Fatal("expected short salt error")
+	}
+}
+
+func TestSaveFileAtomicCreatesNewFileWithoutBackup(t *testing.T) {
+	vaultFile := filepath.Join(t.TempDir(), "vault.db")
+
+	if err := SaveFileAtomic(vaultFile, []byte("new-salt"), []byte("new-data")); err != nil {
+		t.Fatalf("SaveFileAtomic: %v", err)
+	}
+
+	current, err := os.ReadFile(vaultFile)
+	if err != nil {
+		t.Fatalf("read current: %v", err)
+	}
+	if string(current) != "new-saltnew-data" {
+		t.Fatalf("current file = %q", current)
+	}
+	if _, err := os.Stat(vaultFile + ".bak"); !os.IsNotExist(err) {
+		t.Fatalf("backup file should not exist, stat err = %v", err)
+	}
+	if info, err := os.Stat(vaultFile); err != nil {
+		t.Fatalf("stat current: %v", err)
+	} else if info.Mode().Perm() != 0600 {
+		t.Fatalf("current mode = %04o, want 0600", info.Mode().Perm())
+	}
+}
+
+func TestSaveWritesRecoverySnapshotWhenConfigured(t *testing.T) {
+	opts := storageTestOptions(t.TempDir())
+	recoveryKey := "RECOVERY-KEY"
+	recoveryData := &model.RecoveryData{CreatedAt: time.Now()}
+	recovery.HashKey(recoveryData, recoveryKey)
+	vault := &model.ExtendedVault{
+		Data:     map[string]string{"API_KEY": "secret"},
+		Recovery: recoveryData,
+		Metadata: model.VaultMetadata{
+			Version:   opts.Version,
+			CreatedAt: time.Date(2026, 5, 16, 10, 0, 0, 0, time.UTC),
+		},
+	}
+	salt := []byte("1234567890123456")
+	var recoverySalt []byte
+	var recoveryCiphertext []byte
+	opts.RecoveryKey = recoveryKey
+	opts.SaveRecoveryFile = func(gotSalt, gotCiphertext []byte) error {
+		recoverySalt = append([]byte(nil), gotSalt...)
+		recoveryCiphertext = append([]byte(nil), gotCiphertext...)
+		return nil
+	}
+
+	if err := Save(vault, "password", salt, opts); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	if !bytes.Equal(recoverySalt, salt) {
+		t.Fatalf("recovery salt = %q, want %q", recoverySalt, salt)
+	}
+	if len(recoveryCiphertext) == 0 {
+		t.Fatal("expected recovery ciphertext to be saved")
+	}
+	loadedRecovery, err := recovery.DecryptVault(recoverySalt, recoveryCiphertext, recoveryKey, recovery.Options{Scrypt: opts.Scrypt})
+	if err != nil {
+		t.Fatalf("DecryptVault recovery snapshot: %v", err)
+	}
+	if loadedRecovery.Data["API_KEY"] != "secret" {
+		t.Fatalf("recovery secret = %q, want secret", loadedRecovery.Data["API_KEY"])
+	}
+}
+
+func TestSaveReturnsRecoverySnapshotError(t *testing.T) {
+	opts := storageTestOptions(t.TempDir())
+	errBoom := errors.New("recovery write failed")
+	opts.RecoveryKey = "RECOVERY-KEY"
+	opts.SaveRecoveryFile = func(_, _ []byte) error {
+		return errBoom
+	}
+	recoveryData := &model.RecoveryData{CreatedAt: time.Now()}
+	recovery.HashKey(recoveryData, opts.RecoveryKey)
+	vault := &model.ExtendedVault{
+		Data:     map[string]string{"API_KEY": "secret"},
+		Recovery: recoveryData,
+		Metadata: model.VaultMetadata{Version: opts.Version, CreatedAt: time.Now()},
+	}
+
+	err := Save(vault, "password", []byte("1234567890123456"), opts)
+	if !errors.Is(err, errBoom) {
+		t.Fatalf("Save error = %v, want %v", err, errBoom)
 	}
 }
 
