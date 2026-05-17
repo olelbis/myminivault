@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	vaultconfig "github.com/olelbis/myminivault/internal/config"
 	vaultpaths "github.com/olelbis/myminivault/internal/paths"
@@ -119,6 +120,7 @@ func migrateLegacyRuntimeFiles(home string) error {
 			continue
 		}
 		if _, err := os.Stat(targetPath); err == nil {
+			warnLegacyRuntimeConflict(name, legacyPath, targetPath)
 			continue
 		}
 		if err := moveRuntimeFile(legacyPath, targetPath); err != nil {
@@ -126,6 +128,42 @@ func migrateLegacyRuntimeFiles(home string) error {
 		}
 	}
 	return nil
+}
+
+func warnLegacyRuntimeConflict(name, legacyPath, targetPath string) {
+	fmt.Printf("⚠️  Legacy runtime file was not migrated because the runtime-home file already exists: %s\n", name)
+	printRuntimeFileDetails("Active", targetPath)
+	printRuntimeFileDetails("Legacy", legacyPath)
+
+	activeInfo, activeErr := os.Stat(targetPath)
+	legacyInfo, legacyErr := os.Stat(legacyPath)
+	if activeErr == nil && legacyErr == nil {
+		switch {
+		case activeInfo.ModTime().After(legacyInfo.ModTime()):
+			fmt.Println("    Newer file by mtime: active runtime-home file")
+		case legacyInfo.ModTime().After(activeInfo.ModTime()):
+			fmt.Println("    Newer file by mtime: legacy current-directory file")
+		default:
+			fmt.Println("    Newer file by mtime: same timestamp")
+		}
+	}
+
+	fmt.Println("    myminivault will use the active runtime-home file.")
+	if name == vaultFileName || name == vaultFileName+".recovery" || name == sharedTokenVaultName {
+		fmt.Println("    Vault schema version is encrypted and cannot be compared before unlock.")
+	}
+}
+
+func printRuntimeFileDetails(label, path string) {
+	info, err := os.Stat(path)
+	if err != nil {
+		fmt.Printf("    %s: %s (%v)\n", label, path, err)
+		return
+	}
+	fmt.Printf("    %s: %s\n", label, path)
+	fmt.Printf("      modified: %s\n", info.ModTime().Format(time.RFC3339))
+	fmt.Printf("      size: %d bytes\n", info.Size())
+	fmt.Printf("      mode: %04o\n", info.Mode().Perm())
 }
 
 func moveRuntimeFile(src, dst string) error {

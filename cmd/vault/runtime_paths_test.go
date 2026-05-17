@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -79,4 +81,60 @@ func TestMigrateLegacyRuntimeFilesKeepsExistingTargets(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(cwd, vaultFileName)); err != nil {
 		t.Fatalf("legacy file should remain when target exists: %v", err)
 	}
+}
+
+func TestWarnLegacyRuntimeConflictShowsComparison(t *testing.T) {
+	dir := t.TempDir()
+	legacy := filepath.Join(dir, "legacy-vault.db")
+	active := filepath.Join(dir, "active-vault.db")
+
+	if err := os.WriteFile(legacy, []byte("legacy"), 0600); err != nil {
+		t.Fatalf("write legacy: %v", err)
+	}
+	if err := os.WriteFile(active, []byte("active"), 0600); err != nil {
+		t.Fatalf("write active: %v", err)
+	}
+
+	output := captureStdout(t, func() {
+		warnLegacyRuntimeConflict(vaultFileName, legacy, active)
+	})
+
+	for _, want := range []string{
+		"Legacy runtime file was not migrated",
+		"Active:",
+		"Legacy:",
+		"modified:",
+		"size:",
+		"mode:",
+		"myminivault will use the active runtime-home file",
+		"Vault schema version is encrypted",
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("warning output missing %q:\n%s", want, output)
+		}
+	}
+}
+
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+
+	original := os.Stdout
+	readEnd, writeEnd, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	os.Stdout = writeEnd
+
+	fn()
+
+	if err := writeEnd.Close(); err != nil {
+		t.Fatalf("close stdout pipe writer: %v", err)
+	}
+	os.Stdout = original
+
+	var buffer bytes.Buffer
+	if _, err := buffer.ReadFrom(readEnd); err != nil {
+		t.Fatalf("read stdout pipe: %v", err)
+	}
+	return buffer.String()
 }

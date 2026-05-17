@@ -340,7 +340,30 @@ git pull
 git switch -c install-packaging
 ```
 
-### 5. Additional CLI Smoke Tests
+### 5. File Container Header
+
+Priority: medium.
+
+Current vault schema version is stored inside the encrypted vault payload. This is good for confidentiality, but it means startup conflict warnings cannot compare vault schema versions before unlock.
+
+Future direction:
+
+- add cleartext magic bytes to encrypted runtime files, such as `MYMV`
+- add a cleartext file container version, separate from the encrypted vault schema version
+- keep user data, vault metadata, key names, token data, and recovery metadata encrypted
+- keep backward compatibility with legacy salt-plus-ciphertext files
+- document that the cleartext header identifies the file as a myminivault file and reveals container format version only
+- update `doctor` and legacy conflict warnings to show container format version without decrypting
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c file-container-header
+```
+
+### 6. Additional CLI Smoke Tests
 
 Automated smoke tests currently cover:
 
@@ -382,7 +405,7 @@ git pull
 git switch -c cli-smoke-tests-more
 ```
 
-### 6. Import/Export Format Review
+### 7. Import/Export Format Review
 
 Priority: low-medium.
 
@@ -415,7 +438,7 @@ git pull
 git switch -c import-export-format
 ```
 
-### 7. Future Refactor Candidates
+### 8. Future Refactor Candidates
 
 Priority: low unless a bug or feature makes the extraction useful.
 
@@ -446,7 +469,7 @@ Future token sync simplification:
 - Per-key timestamps now exist; consider revision counters, merge-base metadata, or fuller delete tombstones before changing the policy further.
 - Document the final behavior in the user manual once the policy is stable.
 
-### 8. Memory Exposure Hardening Next Steps
+### 9. Memory Exposure Hardening Next Steps
 
 Priority: low-medium.
 
@@ -471,7 +494,7 @@ git switch -c memory-exposure-next
 
 These are intentionally lower priority than the stability/security work above. Revisit them after documentation cleanup, security review, token sync policy review, and test-depth work are in better shape.
 
-### 9. `vault run -- <command>`
+### 10. `vault run -- <command>`
 
 Run a command with vault entries injected as environment variables, without printing secrets:
 
@@ -488,7 +511,7 @@ git pull
 git switch -c vault-run-command
 ```
 
-### 10. Project Profiles
+### 11. Project Profiles
 
 Support separate vault contexts for different projects or environments:
 
@@ -506,7 +529,7 @@ git pull
 git switch -c project-profiles
 ```
 
-### 11. Namespaces
+### 12. Namespaces
 
 Support namespaced keys for environments such as `dev`, `staging`, and `prod`:
 
@@ -523,7 +546,7 @@ git pull
 git switch -c namespaces
 ```
 
-### 12. Token UX Cleanup
+### 13. Token UX Cleanup
 
 Make token commands more consistent and automation-friendly:
 
@@ -541,7 +564,7 @@ git pull
 git switch -c token-ux
 ```
 
-### 13. Terminal UI
+### 14. Terminal UI
 
 Add an optional TUI for browsing/searching keys, viewing token status, editing values, and triggering copy/export flows:
 
@@ -557,7 +580,7 @@ git pull
 git switch -c tui
 ```
 
-### 14. Secret Rotation Hooks
+### 15. Secret Rotation Hooks
 
 Support command-driven rotation workflows:
 
@@ -573,7 +596,7 @@ git pull
 git switch -c secret-rotation
 ```
 
-### 15. Hook System
+### 16. Hook System
 
 Allow local scripts to run after selected events such as `set`, `delete`, `backup`, or `token create`:
 
