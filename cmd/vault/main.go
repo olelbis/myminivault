@@ -24,7 +24,14 @@ func main() {
 	case "help", "--help", "-h":
 		showHelp()
 		return
-	case "doctor":
+	}
+
+	if err := initRuntimePaths(); err != nil {
+		fmt.Printf("Runtime path error: %v\n", err)
+		return
+	}
+
+	if command == "doctor" {
 		handleDoctorCommand()
 		return
 	}
@@ -226,7 +233,7 @@ func showUsage() {
 }
 
 func showHelp() {
-	fmt.Println(`🔐 myminivault CLI v0.3.7
+	fmt.Println(`🔐 myminivault CLI v0.4.0
 Author: olelbis
 
 BASIC COMMANDS:

@@ -7,15 +7,15 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.3.7`
+- Current baseline release: `v0.4.0`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
-- Runtime vault files are ignored by Git.
+- Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
 - Only `main` is currently kept locally and on GitHub; completed task branches were merged and deleted.
 
 ## Project Assessment
 
-Current assessment score: `9.0 / 10`.
+Current assessment score: `9.2 / 10`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -24,6 +24,7 @@ Main strengths:
 - release discipline with Git tags, GitHub releases, and a changelog
 - GitHub CI for formatting, vetting, and automated tests across Linux and macOS
 - release package automation for Linux amd64, Linux arm64, and macOS arm64
+- dedicated runtime directory under `~/.myminivault/` with `MYMINIVAULT_HOME` override
 - CI coverage reporting with downloadable artifacts and documented baseline coverage
 - formal threat model covering assets, attackers, trust boundaries, data flows, residual risks, and incident response
 - focused `internal/...` packages for crypto, config, model, recovery, storage, and token logic
@@ -33,7 +34,7 @@ Main strengths:
 - tested `internal/commands` package for export/import/key validation helpers
 - tested `internal/clipboard` package for backend selection and clear-if-unchanged behavior
 - tested `internal/export` package for shell export rendering and restrictive file writes
-- `internal/token` coverage above 80% for master-key handling, compact-token parsing, token helper behavior, expiry/max-use checks, and important error paths
+- internal package coverage above 80%, including token master-key handling, compact-token parsing, token helper behavior, expiry/max-use checks, runtime path handling, and important error paths
 - automated CLI smoke coverage for critical workflows in the top-level `tests` package
 - explicit handling for recovery, token sync, locking, backups, export, and password changes
 - a handoff backlog that can restart work from a fresh chat
@@ -132,6 +133,7 @@ Strategic guidance:
 - Moved shell export rendering and restrictive file writes into `internal/export`.
 - Added focused `internal/token` hardening coverage for master-key creation/loading, registry parse errors, encrypted-vault error paths, malformed token parsing, missing token-manager cases, generated token IDs, permission helpers, expiry checks, and max-use checks.
 - Moved end-to-end CLI smoke tests into `tests/` and removed stale `cmd/vault` wrapper noise flagged by `gopls`.
+- Moved sensitive runtime files into `~/.myminivault/` by default, with `MYMINIVAULT_HOME` override and legacy cwd migration.
 - Clarified recovery-file plus recovery-key exposure across security, recovery, and user documentation.
 - Added an `80.0%` internal package coverage floor to CI.
 - Extracted command logging and shared-vault mirror policy helpers from `cmd/vault` orchestration.
@@ -220,6 +222,8 @@ internal/
     token.go            token signing, validation, registry, and shared token vault persistence
   lock/
     lock.go             advisory file lock helper
+  paths/
+    paths.go            runtime home resolution and secure directory creation
   audit/
     audit.go            redacted audit log formatting and writes
   sync/
@@ -323,7 +327,7 @@ The README now documents `go install`, and release package automation builds Lin
 
 Recommended progression:
 
-- verify the package workflow run after publishing `v0.3.7`
+- verify the package workflow run after publishing `v0.4.0`
 - decide whether Linux/macOS amd64 and arm64 are enough for the first public phase
 - consider Homebrew only after release binaries and public positioning are more mature
 - keep checksums in release assets if binaries are published

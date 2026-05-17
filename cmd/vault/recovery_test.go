@@ -38,20 +38,10 @@ func TestValidateRecoveryKey(t *testing.T) {
 }
 
 func TestSaveRecoveryFileAtomic(t *testing.T) {
-	originalDir, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := os.Chdir(originalDir); err != nil {
-			t.Fatalf("restore working dir: %v", err)
-		}
-	})
-
 	dir := t.TempDir()
-	if err := os.Chdir(dir); err != nil {
-		t.Fatalf("chdir: %v", err)
-	}
+	originalVaultFile := vaultFile
+	vaultFile = filepath.Join(dir, vaultFileName)
+	t.Cleanup(func() { vaultFile = originalVaultFile })
 
 	salt := []byte("1234567890123456")
 	ciphertext := []byte("encrypted recovery payload")
@@ -67,7 +57,7 @@ func TestSaveRecoveryFileAtomic(t *testing.T) {
 	if !bytes.Equal(data, expected) {
 		t.Fatalf("unexpected recovery file contents: %q", data)
 	}
-	if _, err := os.Stat(filepath.Join(dir, vaultFile+".recovery.tmp")); !os.IsNotExist(err) {
+	if _, err := os.Stat(vaultFile + ".recovery.tmp"); !os.IsNotExist(err) {
 		t.Fatalf("temporary recovery file still exists or stat failed: %v", err)
 	}
 }

@@ -59,7 +59,7 @@ func checkConfigHealth() doctorCheck {
 		return doctorCheck{name: "config", status: "OK", detail: "using defaults"}
 	}
 
-	cfg, err := vaultconfig.Load()
+	cfg, err := vaultconfig.LoadFile(configFile)
 	if err != nil {
 		return doctorCheck{name: "config", status: "FAIL", detail: err.Error()}
 	}

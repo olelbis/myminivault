@@ -201,6 +201,8 @@ Current versioning style:
 
 ## Runtime Files
 
+Runtime files live in `~/.myminivault/` by default. Set `MYMINIVAULT_HOME=/path/to/dir` to isolate a development or test run from the real user runtime directory.
+
 Runtime files are ignored by Git and should not be committed:
 
 - `vault.db`

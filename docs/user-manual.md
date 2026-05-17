@@ -382,7 +382,7 @@ Default values:
 | `max_backups` | `5` |
 | `audit_log` | `true` |
 
-The program can load `vault-config.json` from the current working directory.
+The program loads `vault-config.json` from the runtime directory.
 
 Config validation:
 
@@ -404,6 +404,14 @@ Audit logging is enabled by default but intentionally avoids key names and token
 
 ## Runtime Files
 
+By default, runtime files live in:
+
+```text
+~/.myminivault/
+```
+
+Set `MYMINIVAULT_HOME=/path/to/dir` to use a separate runtime directory. This is useful for tests, disposable demos, or intentionally isolated vaults.
+
 | File | Purpose |
 | --- | --- |
 | `vault.db` | Main encrypted vault |
@@ -417,6 +425,8 @@ Audit logging is enabled by default but intentionally avoids key names and token
 | `.myminivault.lock` | Inter-process lock file |
 
 These files are ignored by Git because they may contain encrypted secrets, keys, logs, or local runtime state.
+
+If older runtime files are found in the current working directory and the runtime directory does not already contain matching files, the CLI migrates them into `~/.myminivault/` on startup.
 
 ## Troubleshooting
 

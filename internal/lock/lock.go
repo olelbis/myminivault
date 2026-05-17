@@ -6,10 +6,6 @@ import (
 	"syscall"
 )
 
-// DefaultFile is the advisory lock file used by the CLI in each vault working
-// directory.
-const DefaultFile = ".myminivault.lock"
-
 // WithFile opens path, takes an exclusive advisory lock, runs fn, and releases
 // the lock before returning. The lock coordinates cooperating local processes;
 // it is not an access-control boundary.

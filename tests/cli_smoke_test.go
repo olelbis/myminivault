@@ -28,7 +28,8 @@ const (
 	sharedTokenVault = "shared-token-vault.json"
 	tokenRegistry    = "vault-tokens.json"
 	saltSize         = 16
-	vaultVersion     = "0.3.7"
+	vaultVersion     = "0.4.0"
+	vaultHomeEnv     = "MYMINIVAULT_HOME"
 )
 
 type cliResult struct {
@@ -56,6 +57,7 @@ func runVault(t *testing.T, bin, dir, stdin string, args ...string) cliResult {
 
 	cmd := exec.Command(bin, args...)
 	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), vaultHomeEnv+"="+dir)
 	cmd.Stdin = strings.NewReader(stdin)
 	out, err := cmd.CombinedOutput()
 
@@ -117,6 +119,24 @@ func TestCLISmokeBasicVaultCommands(t *testing.T) {
 
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "delete", "API_KEY")), "Key 'API_KEY' deleted")
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY")), "not found")
+}
+
+func TestCLISmokeRuntimeHomeKeepsVaultOutOfWorkingDirectory(t *testing.T) {
+	bin := buildVaultBinary(t)
+	workDir := t.TempDir()
+	runtimeDir := t.TempDir()
+
+	cmd := exec.Command(bin, "set", "API_KEY", "hello")
+	cmd.Dir = workDir
+	cmd.Env = append(os.Environ(), vaultHomeEnv+"="+runtimeDir)
+	cmd.Stdin = strings.NewReader("pass\n")
+	out, err := cmd.CombinedOutput()
+	requireOK(t, cliResult{output: string(out), err: err})
+
+	requireFileExists(t, filepath.Join(runtimeDir, vaultFile))
+	requireFileExists(t, filepath.Join(runtimeDir, logFile))
+	requireFileNotExists(t, filepath.Join(workDir, vaultFile))
+	requireFileNotExists(t, filepath.Join(workDir, logFile))
 }
 
 func TestCLISmokePasswordCommandsDoNotInitializeTokenFiles(t *testing.T) {
@@ -419,6 +439,7 @@ func runSetupRecovery(t *testing.T, bin, dir, password string) (string, string) 
 
 	cmd := exec.CommandContext(ctx, bin, "setup-recovery")
 	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), vaultHomeEnv+"="+dir)
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {

@@ -104,7 +104,7 @@ The CLI disables core dumps on supported Unix-like systems as a best-effort miti
 
 ### Runtime File Boundary
 
-Runtime files are local files in the current working directory. Encrypted vault files are designed to tolerate file copying better than plaintext files, but copied files still enable offline password guessing and may contain historical secrets.
+Runtime files are local files under `~/.myminivault/` by default. Encrypted vault files are designed to tolerate file copying better than plaintext files, but copied files still enable offline password guessing and may contain historical secrets.
 
 File permissions are an important local mitigation, not a complete security boundary.
 
@@ -136,6 +136,8 @@ The project does not currently sign commits, tags, release archives, or checksum
 
 ## Runtime Files
 
+Runtime files are stored under `~/.myminivault/` by default. `MYMINIVAULT_HOME` can override this location for tests, automation, or intentionally isolated vaults. The runtime directory is created with `0700` permissions, and sensitive files are written with restrictive file modes where the platform supports them.
+
 | File | Sensitivity | Primary Risk | Current Mitigation |
 | --- | --- | --- | --- |
 | `vault.db` | High | Offline password guessing, copied encrypted secrets | AES-GCM encryption, scrypt, restrictive writes |
@@ -148,7 +150,7 @@ The project does not currently sign commits, tags, release archives, or checksum
 | `vault-config.json` | Low/Medium | Unsafe runtime configuration | Validation on load |
 | `.myminivault.lock` | Low | Write coordination confusion | Advisory lock only |
 
-Runtime files should stay out of Git and should normally be readable only by the local user.
+Runtime files should stay out of Git and should normally be readable only by the local user. Legacy runtime files in the current working directory are migrated into the runtime directory when possible, unless the target file already exists.
 
 ## Data Flows
 

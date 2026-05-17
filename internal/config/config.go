@@ -7,8 +7,7 @@ import (
 	"os"
 )
 
-// FileName is the local optional configuration file read from the current
-// working directory.
+// FileName is the optional configuration file name.
 const FileName = "vault-config.json"
 
 // Config contains user-tunable runtime and encryption settings.
@@ -34,25 +33,30 @@ var Default = Config{
 // Load returns defaults when the config file is absent, but rejects malformed
 // or unsafe overrides so encryption never starts with surprising parameters.
 func Load() (Config, error) {
-	if _, err := os.Stat(FileName); err != nil {
+	return LoadFile(FileName)
+}
+
+// LoadFile reads config from path. Missing files return Default.
+func LoadFile(path string) (Config, error) {
+	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
 			return Default, nil
 		}
 		return Config{}, err
 	}
 
-	data, err := os.ReadFile(FileName)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return Config{}, err
 	}
 
 	nextConfig := Default
 	if err := json.Unmarshal(data, &nextConfig); err != nil {
-		return Config{}, fmt.Errorf("invalid %s: %w", FileName, err)
+		return Config{}, fmt.Errorf("invalid %s: %w", path, err)
 	}
 
 	if err := Validate(nextConfig); err != nil {
-		return Config{}, fmt.Errorf("invalid %s: %w", FileName, err)
+		return Config{}, fmt.Errorf("invalid %s: %w", path, err)
 	}
 
 	return nextConfig, nil

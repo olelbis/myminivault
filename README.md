@@ -13,7 +13,7 @@
   <img alt="Go" src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white">
   <img alt="Latest release" src="https://img.shields.io/github/v/release/olelbis/myminivault?sort=semver">
   <img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/olelbis/myminivault.svg">
-  <img alt="Internal coverage" src="https://img.shields.io/badge/internal_coverage-81.2%25-brightgreen">
+  <img alt="Internal coverage" src="https://img.shields.io/badge/internal_coverage-80.5%25-brightgreen">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
   <img alt="Status" src="https://img.shields.io/badge/status-experimental-orange">
   <img alt="CLI" src="https://img.shields.io/badge/interface-CLI-2f3337">
@@ -118,7 +118,15 @@ Create a backup:
 
 ## Runtime Files
 
-The CLI stores runtime files in the current working directory where the command is executed. These files are ignored by Git because they may contain encrypted secrets, keys, logs, or local runtime state.
+The CLI stores runtime files in a dedicated runtime directory instead of the current project folder:
+
+```text
+~/.myminivault/
+```
+
+Set `MYMINIVAULT_HOME=/path/to/dir` to use a different runtime directory for tests, automation, or isolated vaults. On startup, if legacy runtime files are found in the current working directory and the new runtime directory does not already contain matching files, the CLI migrates them into the runtime directory.
+
+These files are ignored by Git because they may contain encrypted secrets, keys, logs, or local runtime state.
 
 | File | Purpose |
 | --- | --- |
