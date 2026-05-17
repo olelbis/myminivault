@@ -2,6 +2,19 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.4.4] - 2026-05-18
+
+### Added
+
+- Added a `vault(1)` man page under `docs/man/vault.1`.
+- Added release workflow output for Linux `.deb`, Linux `.rpm`, and macOS `.pkg` packages in addition to the existing `.tar.gz` archives.
+- Added GitHub artifact attestations for release artifacts built by the release workflow.
+
+### Changed
+
+- Updated README, development, security, and backlog documentation for installable packages, checksums, and artifact attestations.
+- Updated the CLI-visible version to `0.4.4`.
+
 ## [v0.4.3] - 2026-05-17
 
 ### Fixed

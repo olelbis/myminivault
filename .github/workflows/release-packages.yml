@@ -11,10 +11,13 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
+  artifact-metadata: write
 
 jobs:
-  package:
-    name: Package ${{ matrix.target }}
+  linux-packages:
+    name: Linux packages (${{ matrix.target }})
     runs-on: ubuntu-latest
 
     strategy:
@@ -22,14 +25,13 @@ jobs:
       matrix:
         include:
           - target: linux-amd64
-            goos: linux
             goarch: amd64
+            deb_arch: amd64
+            rpm_arch: x86_64
           - target: linux-arm64
-            goos: linux
             goarch: arm64
-          - target: darwin-arm64
-            goos: darwin
-            goarch: arm64
+            deb_arch: arm64
+            rpm_arch: aarch64
 
     steps:
       - name: Checkout
@@ -41,21 +43,99 @@ jobs:
           go-version: '1.26.x'
           cache: true
 
-      - name: Build archive
+      - name: Install RPM tools
+        run: sudo apt-get update && sudo apt-get install -y rpm
+
+      - name: Build Linux artifacts
         env:
-          GOOS: ${{ matrix.goos }}
+          GOOS: linux
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: '0'
           TARGET: ${{ matrix.target }}
+          DEB_ARCH: ${{ matrix.deb_arch }}
+          RPM_ARCH: ${{ matrix.rpm_arch }}
           TAG_NAME: ${{ github.event.release.tag_name || inputs.tag }}
         run: |
-          mkdir -p "dist/package"
-          go build -trimpath -ldflags="-s -w" -o "dist/package/vault" ./cmd/vault
-          cp README.md LICENSE "dist/package/"
-          tar -C "dist/package" -czf "dist/myminivault_${TAG_NAME}_${TARGET}.tar.gz" vault README.md LICENSE
-          shasum -a 256 "dist/myminivault_${TAG_NAME}_${TARGET}.tar.gz" > "dist/myminivault_${TAG_NAME}_${TARGET}.tar.gz.sha256"
+          set -euo pipefail
+          VERSION="${TAG_NAME#v}"
+          PACKAGE="myminivault"
 
-      - name: Upload release assets
+          mkdir -p dist/package
+          go build -trimpath -ldflags="-s -w" -o dist/package/vault ./cmd/vault
+          cp README.md LICENSE docs/man/vault.1 dist/package/
+          tar -C dist/package -czf "dist/${PACKAGE}_${TAG_NAME}_${TARGET}.tar.gz" vault vault.1 README.md LICENSE
+
+          mkdir -p "dist/deb/DEBIAN" "dist/deb/usr/bin" "dist/deb/usr/share/man/man1" "dist/deb/usr/share/doc/${PACKAGE}"
+          cp dist/package/vault "dist/deb/usr/bin/vault"
+          cp docs/man/vault.1 "dist/deb/usr/share/man/man1/vault.1"
+          gzip -n -9 "dist/deb/usr/share/man/man1/vault.1"
+          cp README.md LICENSE "dist/deb/usr/share/doc/${PACKAGE}/"
+          cat > "dist/deb/DEBIAN/control" <<EOF
+          Package: ${PACKAGE}
+          Version: ${VERSION}
+          Section: utils
+          Priority: optional
+          Architecture: ${DEB_ARCH}
+          Maintainer: olelbis <olelbis@users.noreply.github.com>
+          Description: Local encrypted command-line key/value vault
+           myminivault stores key/value secrets in an encrypted local vault file.
+          EOF
+          sed -i 's/^          //' "dist/deb/DEBIAN/control"
+          dpkg-deb --build --root-owner-group dist/deb "dist/${PACKAGE}_${TAG_NAME}_${TARGET}.deb"
+
+          RPM_TOPDIR="$PWD/dist/rpmbuild"
+          mkdir -p "$RPM_TOPDIR/BUILD" "$RPM_TOPDIR/BUILDROOT" "$RPM_TOPDIR/RPMS" "$RPM_TOPDIR/SOURCES" "$RPM_TOPDIR/SPECS" "$RPM_TOPDIR/SRPMS"
+          mkdir -p "dist/rpmroot/usr/bin" "dist/rpmroot/usr/share/man/man1" "dist/rpmroot/usr/share/doc/${PACKAGE}"
+          cp dist/package/vault "dist/rpmroot/usr/bin/vault"
+          cp docs/man/vault.1 "dist/rpmroot/usr/share/man/man1/vault.1"
+          cp README.md LICENSE "dist/rpmroot/usr/share/doc/${PACKAGE}/"
+          tar -C dist/rpmroot -czf "$RPM_TOPDIR/SOURCES/${PACKAGE}-${VERSION}.tar.gz" .
+          cat > "$RPM_TOPDIR/SPECS/${PACKAGE}.spec" <<EOF
+          Name: ${PACKAGE}
+          Version: ${VERSION}
+          Release: 1%{?dist}
+          Summary: Local encrypted command-line key/value vault
+          License: MIT
+          URL: https://github.com/olelbis/myminivault
+          Source0: %{name}-%{version}.tar.gz
+
+          %description
+          myminivault stores key/value secrets in an encrypted local vault file.
+
+          %prep
+          %setup -q -c -T
+          tar -xzf %{SOURCE0}
+
+          %build
+
+          %install
+          mkdir -p %{buildroot}
+          cp -a usr %{buildroot}/
+
+          %files
+          %license /usr/share/doc/${PACKAGE}/LICENSE
+          %doc /usr/share/doc/${PACKAGE}/README.md
+          /usr/bin/vault
+          /usr/share/man/man1/vault.1
+          EOF
+          sed -i 's/^          //' "$RPM_TOPDIR/SPECS/${PACKAGE}.spec"
+          rpmbuild --define "_topdir ${RPM_TOPDIR}" --target "${RPM_ARCH}" -bb "$RPM_TOPDIR/SPECS/${PACKAGE}.spec"
+          cp "$RPM_TOPDIR/RPMS/${RPM_ARCH}/"*.rpm "dist/${PACKAGE}_${TAG_NAME}_${TARGET}.rpm"
+
+          shasum -a 256 "dist/${PACKAGE}_${TAG_NAME}_${TARGET}.tar.gz" \
+            "dist/${PACKAGE}_${TAG_NAME}_${TARGET}.deb" \
+            "dist/${PACKAGE}_${TAG_NAME}_${TARGET}.rpm" \
+            > "dist/${PACKAGE}_${TAG_NAME}_${TARGET}.sha256"
+
+      - name: Attest Linux artifacts
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            dist/myminivault_${{ github.event.release.tag_name || inputs.tag }}_${{ matrix.target }}.tar.gz
+            dist/myminivault_${{ github.event.release.tag_name || inputs.tag }}_${{ matrix.target }}.deb
+            dist/myminivault_${{ github.event.release.tag_name || inputs.tag }}_${{ matrix.target }}.rpm
+
+      - name: Upload Linux release assets
         env:
           GH_TOKEN: ${{ github.token }}
           TAG_NAME: ${{ github.event.release.tag_name || inputs.tag }}
@@ -63,5 +143,71 @@ jobs:
         run: |
           gh release upload "$TAG_NAME" \
             "dist/myminivault_${TAG_NAME}_${TARGET}.tar.gz" \
-            "dist/myminivault_${TAG_NAME}_${TARGET}.tar.gz.sha256" \
+            "dist/myminivault_${TAG_NAME}_${TARGET}.deb" \
+            "dist/myminivault_${TAG_NAME}_${TARGET}.rpm" \
+            "dist/myminivault_${TAG_NAME}_${TARGET}.sha256" \
+            --clobber
+
+  macos-package:
+    name: macOS package (darwin-arm64)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.x'
+          cache: true
+
+      - name: Build macOS artifacts
+        env:
+          GOOS: darwin
+          GOARCH: arm64
+          CGO_ENABLED: '0'
+          TAG_NAME: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG_NAME#v}"
+          TARGET="darwin-arm64"
+          PACKAGE="myminivault"
+
+          mkdir -p dist/package
+          go build -trimpath -ldflags="-s -w" -o dist/package/vault ./cmd/vault
+          cp README.md LICENSE docs/man/vault.1 dist/package/
+          tar -C dist/package -czf "dist/${PACKAGE}_${TAG_NAME}_${TARGET}.tar.gz" vault vault.1 README.md LICENSE
+
+          mkdir -p dist/pkgroot/usr/local/bin dist/pkgroot/usr/local/share/man/man1
+          cp dist/package/vault dist/pkgroot/usr/local/bin/vault
+          cp docs/man/vault.1 dist/pkgroot/usr/local/share/man/man1/vault.1
+          pkgbuild \
+            --root dist/pkgroot \
+            --identifier io.github.olelbis.myminivault \
+            --version "$VERSION" \
+            --install-location / \
+            "dist/${PACKAGE}_${TAG_NAME}_${TARGET}.pkg"
+
+          shasum -a 256 "dist/${PACKAGE}_${TAG_NAME}_${TARGET}.tar.gz" \
+            "dist/${PACKAGE}_${TAG_NAME}_${TARGET}.pkg" \
+            > "dist/${PACKAGE}_${TAG_NAME}_${TARGET}.sha256"
+
+      - name: Attest macOS artifacts
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            dist/myminivault_${{ github.event.release.tag_name || inputs.tag }}_darwin-arm64.tar.gz
+            dist/myminivault_${{ github.event.release.tag_name || inputs.tag }}_darwin-arm64.pkg
+
+      - name: Upload macOS release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.event.release.tag_name || inputs.tag }}
+          TARGET: darwin-arm64
+        run: |
+          gh release upload "$TAG_NAME" \
+            "dist/myminivault_${TAG_NAME}_${TARGET}.tar.gz" \
+            "dist/myminivault_${TAG_NAME}_${TARGET}.pkg" \
+            "dist/myminivault_${TAG_NAME}_${TARGET}.sha256" \
             --clobber

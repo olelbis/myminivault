@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.4.3`
+- Current baseline release: `v0.4.4`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -15,7 +15,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `9.4 / 10`.
+Current assessment score: `9.5 / 10`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -23,7 +23,7 @@ Main strengths:
 
 - release discipline with Git tags, GitHub releases, and a changelog
 - GitHub CI for formatting, vetting, and automated tests across Linux and macOS
-- release package automation for Linux amd64, Linux arm64, and macOS arm64
+- release package automation for Linux amd64, Linux arm64, and macOS arm64, including archives, `.deb`, `.rpm`, `.pkg`, checksums, and GitHub artifact attestations
 - dedicated runtime directory under `~/.myminivault/` with `MYMINIVAULT_HOME` override
 - CI coverage reporting with downloadable artifacts and documented baseline coverage
 - formal threat model covering assets, attackers, trust boundaries, data flows, residual risks, and incident response
@@ -138,6 +138,7 @@ Strategic guidance:
 - Documented `vault inspect-runtime` across the README, user manual, security model, development guide, recovery policy, and token sync policy.
 - Raised internal package coverage to `83.5%` with focused tests for runtime paths, empty-vault loading, recovery file writes, storage atomic-write behavior, and token vault error paths.
 - Fixed token max-use enforcement, token creation limit validation, compact token pattern validation, random-source failure handling, short token-ID cleanup logging, and manual backup retention.
+- Added a `vault(1)` man page and expanded release packaging to Linux `.deb`, Linux `.rpm`, macOS `.pkg`, SHA-256 checksum manifests, and GitHub artifact attestations.
 - Clarified recovery-file plus recovery-key exposure across security, recovery, and user documentation.
 - Added an `80.0%` internal package coverage floor to CI.
 - Extracted command logging and shared-vault mirror policy helpers from `cmd/vault` orchestration.
@@ -327,14 +328,14 @@ git switch -c coverage-follow-up
 
 Priority: medium.
 
-The README now documents `go install`, and release package automation builds Linux amd64, Linux arm64, and macOS arm64 archives when a GitHub release is published.
+The README now documents `go install`, and release package automation builds Linux amd64, Linux arm64, and macOS arm64 archives when a GitHub release is published. Release automation also publishes Linux `.deb`, Linux `.rpm`, macOS `.pkg`, SHA-256 checksum manifests, and GitHub artifact attestations.
 
 Recommended progression:
 
-- verify the package workflow run after publishing `v0.4.1`
+- verify the expanded package workflow run after publishing `v0.4.4`
 - decide whether Linux/macOS amd64 and arm64 are enough for the first public phase
 - consider Homebrew only after release binaries and public positioning are more mature
-- keep checksums in release assets if binaries are published
+- keep checksums and attestations in release assets/workflow outputs if binaries are published
 
 Suggested branch:
 
@@ -514,11 +515,32 @@ git pull
 git switch -c memory-exposure-next
 ```
 
+### 11. OS Keychain For Token Master Key
+
+Priority: medium.
+
+`vault-token.key` is local token-system key material. It is stored as a restrictive runtime file today, but a future hardening pass should evaluate OS-backed secret storage for platforms that support it.
+
+Possible direction:
+
+- use macOS Keychain for `vault-token.key` or a wrapping key on macOS
+- evaluate Linux Secret Service/libsecret only if it can fail gracefully in headless CLI environments
+- keep file-based fallback for portability, automation, and minimal environments
+- document migration, fallback behavior, and recovery expectations before changing storage semantics
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c token-keychain
+```
+
 ## Product Ideas After Hardening
 
 These are intentionally lower priority than the stability/security work above. Revisit them after documentation cleanup, security review, token sync policy review, and test-depth work are in better shape.
 
-### 11. `vault run -- <command>`
+### 12. `vault run -- <command>`
 
 Run a command with vault entries injected as environment variables, without printing secrets:
 
@@ -535,7 +557,7 @@ git pull
 git switch -c vault-run-command
 ```
 
-### 12. Project Profiles
+### 13. Project Profiles
 
 Support separate vault contexts for different projects or environments:
 
@@ -553,7 +575,7 @@ git pull
 git switch -c project-profiles
 ```
 
-### 13. Namespaces
+### 14. Namespaces
 
 Support namespaced keys for environments such as `dev`, `staging`, and `prod`:
 
@@ -570,7 +592,7 @@ git pull
 git switch -c namespaces
 ```
 
-### 14. Token UX Cleanup
+### 15. Token UX Cleanup
 
 Make token commands more consistent and automation-friendly:
 
@@ -588,7 +610,7 @@ git pull
 git switch -c token-ux
 ```
 
-### 15. Terminal UI
+### 16. Terminal UI
 
 Add an optional TUI for browsing/searching keys, viewing token status, editing values, and triggering copy/export flows:
 
@@ -604,7 +626,7 @@ git pull
 git switch -c tui
 ```
 
-### 16. Secret Rotation Hooks
+### 17. Secret Rotation Hooks
 
 Support command-driven rotation workflows:
 
@@ -620,7 +642,7 @@ git pull
 git switch -c secret-rotation
 ```
 
-### 17. Hook System
+### 18. Hook System
 
 Allow local scripts to run after selected events such as `set`, `delete`, `backup`, or `token create`:
 

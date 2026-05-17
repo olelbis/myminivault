@@ -130,9 +130,9 @@ This is a local convenience model, not distributed synchronization. Per-key time
 
 ### Release Boundary
 
-GitHub Releases publish source tags and binary archives. Release checksums help detect accidental corruption or mismatched downloads, but they do not replace a signed release process.
+GitHub Releases publish source tags, binary archives, and installable packages. Release checksums help detect accidental corruption or mismatched downloads. Release workflow artifacts also receive GitHub artifact attestations, which provide signed build provenance for assets produced by GitHub Actions.
 
-The project does not currently sign commits, tags, release archives, or checksums.
+The project does not currently require manually signed commits or tags, and release packages are not notarized or signed with platform-specific installer certificates.
 
 ## Runtime Files
 
@@ -265,7 +265,7 @@ Current mitigations:
 | Terminal capture | Out of scope once plaintext is printed |
 | Clipboard capture | Partially mitigated by TTL clearing, but not prevented |
 | Runtime file tampering | Partially mitigated by authenticated encryption and checksums |
-| Supply-chain compromise | Mostly out of scope; CI and releases help reproducibility but are not signatures |
+| Supply-chain compromise | Partially mitigated by CI, checksums, and GitHub artifact attestations; still not a full external audit or platform signing process |
 
 ## Operational Guidance
 
@@ -336,5 +336,5 @@ Recommended next steps:
 - decide whether revision counters, merge-base metadata, or fuller delete tombstones are needed
 - consider log rotation or retention controls if logs become more detailed
 - consider macOS Keychain or another OS key store for protecting `vault-token.key`
-- consider signed tags, signed release checksums, or provenance later in the release process
+- consider signed tags, signed release checksums, SBOMs, or platform-specific package signing later in the release process
 - avoid claiming production security without an external audit

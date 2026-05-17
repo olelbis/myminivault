@@ -1,0 +1,156 @@
+.TH VAULT 1 "May 18, 2026" "myminivault 0.4.4" "User Commands"
+.SH NAME
+vault \- local encrypted command-line key/value vault
+.SH SYNOPSIS
+.B vault
+\fIcommand\fR [\fIargs\fR]
+.SH DESCRIPTION
+.B myminivault
+stores key/value secrets in an encrypted local vault file. Runtime files are
+stored under
+.B ~/.myminivault
+by default, or under the directory selected by
+.BR MYMINIVAULT_HOME .
+
+The tool is an experimental personal project. It is not independently audited
+and should not be treated as a production password manager.
+.SH BASIC COMMANDS
+.TP
+.B set <key> <value>
+Store or update a secret value.
+.TP
+.B get <key>
+Print a stored value to the terminal.
+.TP
+.B copy <key> [--ttl=30s]
+Copy a stored value to the clipboard and clear it after the TTL when supported.
+.TP
+.B delete <key>
+Delete a key.
+.TP
+.B list
+List key names without printing values.
+.TP
+.B search <pattern>
+Search key names.
+.TP
+.B export [--output <file>]
+Print shell-safe export lines or write them to a restrictive plaintext file.
+.TP
+.B import <file>
+Import shell-style key/value entries.
+.TP
+.B backup
+Create a timestamped backup of the current vault file.
+.TP
+.B stats
+Print vault metadata and summary counts.
+.SH RECOVERY COMMANDS
+.TP
+.B setup-recovery
+Create or replace a high-entropy recovery key and recovery snapshot.
+.TP
+.B test-recovery
+Validate a recovery key against the configured recovery metadata.
+.TP
+.B recover
+Reset the master password from the recovery snapshot.
+.TP
+.B change-password
+Change the master password.
+.SH TOKEN COMMANDS
+.TP
+.B create-token --keys=<pattern> --duration=<duration> [--permissions=read,write] [--max-uses=N]
+Create a compact signed token with scope, expiry, permissions, and usage limit.
+.TP
+.B use-token <token> <cmd> [args...]
+Run a permitted token command such as
+.BR get ,
+.BR set ,
+.BR list ,
+or
+.BR search .
+.TP
+.B list-tokens
+List configured token records.
+.TP
+.B token-info <token-id>
+Show details for one token record.
+.TP
+.B revoke-token <token-id>
+Remove a token from the token manager and shared token vault.
+.TP
+.B cleanup-tokens
+Remove expired or fully used tokens.
+.TP
+.B sync-tokens
+Import staged shared-token-vault writes into the main vault.
+.TP
+.B regenerate-token-key
+Generate a new local token master key and invalidate existing tokens.
+.SH SECURITY AND HEALTH COMMANDS
+.TP
+.B doctor
+Check local runtime file permissions, config validity, backups, recovery
+freshness, token freshness, and lock state.
+.TP
+.B inspect-runtime
+List active and legacy runtime files without decrypting vault data.
+.TP
+.B security-audit
+Print a local vault security summary.
+.TP
+.B config
+Show effective configuration.
+.SH ENVIRONMENT
+.TP
+.B MYMINIVAULT_HOME
+Overrides the default runtime directory. Use it for isolated test vaults,
+automation, or separate local vault contexts.
+.SH FILES
+.TP
+.B ~/.myminivault/vault.db
+Main encrypted vault.
+.TP
+.B ~/.myminivault/vault.db.bak
+Previous main vault backup.
+.TP
+.B ~/.myminivault/vault.db.recovery
+Recovery-encrypted vault snapshot.
+.TP
+.B ~/.myminivault/vault-token.key
+Local token master key.
+.TP
+.B ~/.myminivault/shared-token-vault.json
+Encrypted shared vault used by token commands.
+.TP
+.B ~/.myminivault/vault-tokens.json
+Token registry metadata.
+.TP
+.B ~/.myminivault/vault.log
+Redacted audit log.
+.TP
+.B ~/.myminivault/vault-config.json
+Optional configuration override.
+.SH SECURITY NOTES
+Values printed by
+.B get
+or plain
+.B export
+may remain in terminal scrollback or logs. Prefer
+.B copy
+or
+.B export --output
+when terminal exposure matters.
+
+Release artifacts include SHA-256 checksums and GitHub artifact attestations
+when built by the release workflow. Verify release assets before installing
+them in sensitive environments.
+.SH SEE ALSO
+Project documentation:
+.B README.md,
+.B docs/user-manual.md,
+.B docs/security.md,
+.B docs/recovery-policy.md,
+and
+.B docs/token-sync-policy.md.

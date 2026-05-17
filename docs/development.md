@@ -51,6 +51,8 @@ internal/
   export/
     export.go           shell export rendering and restrictive export-file writes
 docs/
+  man/
+    vault.1              manual page installed by release packages
   user-manual.md        user-facing workflows and operational notes
   development.md        architecture, test, and release workflow notes
   security.md           security model, assumptions, limits, and compromise guidance
@@ -193,13 +195,23 @@ For each completed branch:
 9. Run `go test ./...` again on `main`.
 10. Create and push the release tag.
 11. Create the GitHub release.
-12. Delete the completed branch locally and remotely.
+12. Wait for the release package workflow to upload archives, `.deb`, `.rpm`, `.pkg`, checksums, and artifact attestations.
+13. Delete the completed branch locally and remotely.
 
 Current versioning style:
 
 - use `v0.x.y` while the CLI is evolving quickly
 - patch releases such as `v0.3.1` for docs, tests, fixes, and small refactors after `v0.3.0`
 - reserve minor releases such as `v0.3.0` for user-facing behavior changes
+
+Release packaging currently publishes:
+
+- `.tar.gz` archives for Linux amd64, Linux arm64, and macOS arm64
+- `.deb` packages for Linux amd64 and Linux arm64
+- `.rpm` packages for Linux x86_64 and Linux aarch64
+- `.pkg` packages for macOS arm64
+- SHA-256 checksum manifests for each target
+- GitHub artifact attestations for workflow-built artifacts
 
 ## Runtime Files
 

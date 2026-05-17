@@ -34,6 +34,14 @@ Keep these rules in mind:
 
 ## Build And Run
 
+Install the latest tagged release with Go:
+
+```bash
+go install github.com/olelbis/myminivault/cmd/vault@latest
+```
+
+GitHub Releases also provide `.tar.gz`, `.deb`, `.rpm`, and macOS `.pkg` assets. Release workflow assets include SHA-256 checksum manifests and GitHub artifact attestations.
+
 Build the CLI from the repository root:
 
 ```bash

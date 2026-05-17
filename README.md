@@ -35,6 +35,15 @@ Install the latest tagged release with Go:
 go install github.com/olelbis/myminivault/cmd/vault@latest
 ```
 
+GitHub Releases also publish installable packages:
+
+- `.deb` for Debian/Ubuntu-style Linux systems
+- `.rpm` for RPM-based Linux systems
+- `.pkg` for macOS arm64
+- `.tar.gz` archives for direct unpacking
+
+Release assets include SHA-256 checksum files and GitHub artifact attestations when built by the release workflow.
+
 Build the CLI from the repository root:
 
 ```bash
@@ -180,7 +189,7 @@ The command prints active runtime files, legacy current-directory files, modifie
 
 `myminivault` uses `v0.x.y` releases while the CLI is still evolving.
 
-Each release is published as a Git tag and a GitHub Release, with notes recorded in `CHANGELOG.md`. Release assets currently include Linux and macOS archives plus SHA-256 checksum files.
+Each release is published as a Git tag and a GitHub Release, with notes recorded in `CHANGELOG.md`. Release assets currently include Linux and macOS archives, Linux `.deb`/`.rpm` packages, macOS `.pkg` packages, SHA-256 checksum files, and GitHub artifact attestations.
 
 The CLI-visible version is kept in sync with the current release tag. Patch releases are used for documentation, tests, packaging, fixes, and small refactors. Minor releases are reserved for user-facing behavior changes or larger security/compatibility work.
 
