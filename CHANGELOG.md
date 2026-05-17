@@ -2,6 +2,15 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.3.5] - 2026-05-17
+
+### Changed
+
+- Added focused `internal/token` coverage for master-key creation/loading, registry parse errors, encrypted-vault error paths, malformed token parsing, missing token-manager cases, helper functions, generated token IDs, and expiry/max-use checks.
+- Raised `internal/token` coverage to `82.0%`, full repository coverage to `34.1%`, and internal package coverage to `81.2%`.
+- Updated the internal coverage badge, documentation baselines, CLI-visible version, and project score.
+- Switched future branch examples away from the old `codex/` prefix.
+
 ## [v0.3.4] - 2026-05-17
 
 ### Changed

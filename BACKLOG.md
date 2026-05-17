@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.3.4`
+- Current baseline release: `v0.3.5`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -15,9 +15,9 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `8.9 / 10`.
+Current assessment score: `9.0 / 10`.
 
-`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
+`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
 Main strengths:
 
@@ -33,6 +33,7 @@ Main strengths:
 - tested `internal/commands` package for export/import/key validation helpers
 - tested `internal/clipboard` package for backend selection and clear-if-unchanged behavior
 - tested `internal/export` package for shell export rendering and restrictive file writes
+- `internal/token` coverage above 80% for master-key handling, compact-token parsing, token helper behavior, expiry/max-use checks, and important error paths
 - automated CLI smoke coverage for critical workflows
 - explicit handling for recovery, token sync, locking, backups, export, and password changes
 - a handoff backlog that can restart work from a fresh chat
@@ -41,7 +42,7 @@ Main risks:
 
 - the project handles real secrets, so the threat model must stay current as behavior changes
 - token/shared-vault synchronization is better guarded than before, but still conceptually complex
-- package-level unit coverage is improving, but more edge-case coverage is still useful as behavior grows
+- package-level unit coverage is now strong across the core internal packages, but more edge-case coverage is still useful as behavior grows
 - `cmd/vault` still contains some orchestration and command logic that may deserve future extraction
 - the security model is clearer, but it is still self-reviewed and not an external audit
 
@@ -129,6 +130,7 @@ Strategic guidance:
 - Moved export/import/key validation helpers into `internal/commands`.
 - Moved clipboard backend detection and clear-if-unchanged behavior into `internal/clipboard`.
 - Moved shell export rendering and restrictive file writes into `internal/export`.
+- Added focused `internal/token` hardening coverage for master-key creation/loading, registry parse errors, encrypted-vault error paths, malformed token parsing, missing token-manager cases, generated token IDs, permission helpers, expiry checks, and max-use checks.
 
 ## Current Verification
 
@@ -146,7 +148,7 @@ GitHub Actions runs the normal checks on Linux and macOS, plus a Linux coverage 
 Package-level coverage now includes:
 
 - `internal/storage`: checksum failure, legacy vault JSON, `.bak` fallback only when primary is missing, and atomic write behavior
-- `internal/token`: token master key validation, registry load/save, encrypted shared vault tamper rejection, forged token rejection, and usage count persistence
+- `internal/token`: token master key validation and creation, registry load/save and parse errors, encrypted shared vault tamper rejection and error paths, malformed token parsing, missing token-manager cases, forged token rejection, generated token IDs, permission helpers, expiry/max-use checks, and usage count persistence
 - `internal/recovery`: grouped key generation, verifier validation, valid recovery decrypt, wrong-key rejection, checksum failure, missing verifier rejection, and atomic recovery file writes
 - `internal/crypto`: round trip, wrong key rejection, tampered ciphertext rejection, and short ciphertext rejection
 - `internal/sync`: import conflict decisions, delete markers, metadata helpers, and copy behavior
@@ -169,7 +171,7 @@ Manual smoke tests were run in `/private/tmp` with fake data:
 Automated CLI smoke coverage includes:
 
 - basic vault commands, backup, wrong password rejection, and `change-password`
-- token create/get/set, automatic token-write import, expired token rejection, used-up token rejection, revocation rejection, `list-tokens`, and `token-info`
+- token create/get/set, automatic token-write import, expired token rejection, used-up token rejection, revocation rejection, token helper behavior, `list-tokens`, and `token-info`
 - recovery setup, recovery validation, and master password recovery
 - shell-safe export output and export/import round-trip behavior for apostrophes and embedded newlines
 - export to `0600` files and clipboard clear behavior
@@ -258,14 +260,14 @@ Suggested branch:
 ```bash
 git switch main
 git pull
-git switch -c codex/token-sync-next
+git switch -c token-sync-next
 ```
 
-### 2. Quality Roadmap Beyond 8.9
+### 2. Quality Roadmap Beyond 9.0
 
 Priority: medium-high.
 
-These items are the most direct path beyond the current `8.9 / 10` assessment. Prefer them before adding new product features.
+These items are the most direct path beyond the current `9.0 / 10` assessment. Prefer them before adding new product features.
 
 Recommended order:
 
@@ -278,13 +280,13 @@ Suggested branches:
 ```bash
 git switch main
 git pull
-git switch -c codex/install-packaging
+git switch -c install-packaging
 ```
 
 ```bash
 git switch main
 git pull
-git switch -c codex/coverage-follow-up
+git switch -c coverage-follow-up
 ```
 
 ### 3. Coverage Follow-Up
@@ -303,7 +305,7 @@ Suggested branch:
 ```bash
 git switch main
 git pull
-git switch -c codex/coverage-follow-up
+git switch -c coverage-follow-up
 ```
 
 ### 4. Install And Release Packaging
@@ -314,7 +316,7 @@ The README now documents `go install`, and release package automation builds Lin
 
 Recommended progression:
 
-- verify the package workflow run after publishing `v0.3.4`
+- verify the package workflow run after publishing `v0.3.5`
 - decide whether Linux/macOS amd64 and arm64 are enough for the first public phase
 - consider Homebrew only after release binaries and public positioning are more mature
 - keep checksums in release assets if binaries are published
@@ -324,7 +326,7 @@ Suggested branch:
 ```bash
 git switch main
 git pull
-git switch -c codex/install-packaging
+git switch -c install-packaging
 ```
 
 ### 5. Additional CLI Smoke Tests
@@ -366,7 +368,7 @@ Suggested branch:
 ```bash
 git switch main
 git pull
-git switch -c codex/cli-smoke-tests-more
+git switch -c cli-smoke-tests-more
 ```
 
 ### 6. Import/Export Format Review
@@ -399,7 +401,7 @@ Suggested branch:
 ```bash
 git switch main
 git pull
-git switch -c codex/import-export-format
+git switch -c import-export-format
 ```
 
 ### 7. Future Refactor Candidates
@@ -451,7 +453,7 @@ Suggested branch:
 ```bash
 git switch main
 git pull
-git switch -c codex/memory-exposure-next
+git switch -c memory-exposure-next
 ```
 
 ## Product Ideas After Hardening
@@ -472,7 +474,7 @@ Suggested branch:
 ```bash
 git switch main
 git pull
-git switch -c codex/vault-run-command
+git switch -c vault-run-command
 ```
 
 ### 10. Project Profiles
@@ -490,7 +492,7 @@ Suggested branch:
 ```bash
 git switch main
 git pull
-git switch -c codex/project-profiles
+git switch -c project-profiles
 ```
 
 ### 11. Namespaces
@@ -507,7 +509,7 @@ Suggested branch:
 ```bash
 git switch main
 git pull
-git switch -c codex/namespaces
+git switch -c namespaces
 ```
 
 ### 12. Token UX Cleanup
@@ -525,7 +527,7 @@ Suggested branch:
 ```bash
 git switch main
 git pull
-git switch -c codex/token-ux
+git switch -c token-ux
 ```
 
 ### 13. Terminal UI
@@ -541,7 +543,7 @@ Suggested branch:
 ```bash
 git switch main
 git pull
-git switch -c codex/tui
+git switch -c tui
 ```
 
 ### 14. Secret Rotation Hooks
@@ -557,7 +559,7 @@ Suggested branch:
 ```bash
 git switch main
 git pull
-git switch -c codex/secret-rotation
+git switch -c secret-rotation
 ```
 
 ### 15. Hook System
@@ -573,7 +575,7 @@ Suggested branch:
 ```bash
 git switch main
 git pull
-git switch -c codex/hooks
+git switch -c hooks
 ```
 
 ## Useful Commands
