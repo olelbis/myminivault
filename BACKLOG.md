@@ -15,9 +15,9 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `8.5 / 10`.
+Current assessment score: `8.6 / 10`.
 
-`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
+`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, tested internal file locking, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
 Main strengths:
 
@@ -27,6 +27,7 @@ Main strengths:
 - CI coverage reporting with downloadable artifacts and documented baseline coverage
 - formal threat model covering assets, attackers, trust boundaries, data flows, residual risks, and incident response
 - focused `internal/...` packages for crypto, config, model, recovery, storage, and token logic
+- tested `internal/lock` package for advisory file locking
 - automated CLI smoke coverage for critical workflows
 - explicit handling for recovery, token sync, locking, backups, export, and password changes
 - a handoff backlog that can restart work from a fresh chat
@@ -117,6 +118,7 @@ Strategic guidance:
 - Expanded GitHub Actions CI to run `gofmt`, `go vet`, and `go test ./...` on Linux and macOS.
 - Reworked `docs/security.md` into a formal threat model with assets, attacker assumptions, trust boundaries, data flows, residual risks, and incident response guidance.
 - Added CI coverage reporting, a downloadable coverage artifact, coverage notes, and an internal coverage badge.
+- Moved file lock handling into `internal/lock` and added unit coverage for permissions, callback errors, and concurrent serialization.
 
 ## Current Verification
 
@@ -386,11 +388,11 @@ Stable internal packages already extracted:
 - `internal/recovery`
 - `internal/storage`
 - `internal/token`
+- `internal/lock`
 
 Possible future extractions:
 
 - `internal/sync`: main/shared vault synchronization policy
-- `internal/lock`: file lock handling
 - `internal/commands`: command-independent key/value operations
 - `internal/audit`: security audit reporting
 

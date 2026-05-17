@@ -35,6 +35,8 @@ internal/
     storage.go          vault load/save, checksum, and atomic writes
   token/
     token.go            token signing, validation, registry, and shared token vault persistence
+  lock/
+    lock.go             advisory file lock helper
 docs/
   user-manual.md        user-facing workflows and operational notes
   development.md        architecture, test, and release workflow notes
@@ -55,6 +57,7 @@ docs/
 - `internal/recovery`: recovery keys, verifier checks, recovery snapshot decrypt, recovery file write
 - `internal/storage`: main vault load/save, checksum, atomic writes
 - `internal/token`: token signing, validation, registry, encrypted shared token vault
+- `internal/lock`: advisory file locking for cooperating local CLI processes
 
 The project still keeps some orchestration in `cmd/vault`, especially sync and command behavior. Future extractions should happen only when tests cover the behavior well enough.
 

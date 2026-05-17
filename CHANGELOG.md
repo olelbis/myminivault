@@ -9,6 +9,7 @@ All notable project changes are recorded here. Application releases use Git tags
 - Expanded GitHub Actions CI to run formatting, `go vet`, and tests on Linux and macOS.
 - Reworked `docs/security.md` into a formal threat model with assets, attacker assumptions, trust boundaries, data flows, residual risks, and incident response guidance.
 - Added CI coverage reporting, a coverage artifact, coverage notes, and an internal coverage badge.
+- Moved file lock handling into `internal/lock` with focused unit coverage.
 
 ## [v0.3.2] - 2026-05-17
 
