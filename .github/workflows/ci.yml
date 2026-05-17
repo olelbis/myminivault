@@ -58,13 +58,32 @@ jobs:
         run: |
           go test -covermode=atomic -coverprofile=coverage.out ./...
           go tool cover -func=coverage.out > coverage.txt
+          go test -covermode=atomic -coverprofile=internal-coverage.out ./internal/...
+          go tool cover -func=internal-coverage.out > internal-coverage.txt
           {
             echo "## Coverage"
             echo
+            echo "Full repository:"
             echo '```text'
             tail -n 1 coverage.txt
             echo '```'
+            echo
+            echo "Internal packages:"
+            echo '```text'
+            tail -n 1 internal-coverage.txt
+            echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Enforce internal coverage floor
+        run: |
+          internal_total="$(tail -n 1 internal-coverage.txt | awk '{print $3}' | tr -d '%')"
+          awk -v coverage="$internal_total" 'BEGIN {
+            if (coverage < 80.0) {
+              printf("internal coverage %.1f%% is below the 80.0%% floor\n", coverage)
+              exit 1
+            }
+            printf("internal coverage %.1f%% meets the 80.0%% floor\n", coverage)
+          }'
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v6
@@ -73,3 +92,5 @@ jobs:
           path: |
             coverage.out
             coverage.txt
+            internal-coverage.out
+            internal-coverage.txt

@@ -4,9 +4,33 @@
 
 > Experimental personal project. Not audited. Do not rely on it as a production password manager.
 
-Read the [Security Model](security.md) before using real secrets.
+Read the [Security Model](security.md) before using real secrets. Recovery behavior is documented in [Recovery Policy](recovery-policy.md), and token synchronization behavior is documented in [Token Sync Policy](token-sync-policy.md).
 
-Token synchronization behavior is documented in [Token Sync Policy](token-sync-policy.md).
+## Before You Use It
+
+Keep these rules in mind:
+
+- use a strong, unique master password
+- keep runtime files out of Git, shared folders, and chat uploads
+- treat `vault.db.recovery` plus its recovery key like access to the recovered vault snapshot
+- treat `vault-token.key` as critical token-system material
+- prefer `copy` or `export --output` when terminal scrollback matters
+- rotate exposed secrets rather than relying only on file deletion
+
+## Common Workflows
+
+| Goal | Command |
+| --- | --- |
+| Add or update a secret | `vault set KEY value` |
+| Print one secret | `vault get KEY` |
+| Copy one secret without terminal output | `vault copy KEY --ttl=30s` |
+| Export secrets to a restrictive file | `vault export --output secrets.env` |
+| Import shell-style secrets | `vault import secrets.env` |
+| Check local file health | `vault doctor` |
+| Create recovery access | `vault setup-recovery` |
+| Test recovery access | `vault test-recovery` |
+| Create scoped temporary access | `vault create-token --keys="API_*" --duration="2h"` |
+| Import staged token writes | `vault sync-tokens` |
 
 ## Build And Run
 
@@ -30,6 +54,8 @@ Most commands ask for the master password. If the vault does not exist yet, ente
 ./bin/vault set API_KEY secret-value
 ```
 
+The master password is never stored directly. It derives the encryption key used to open `vault.db`.
+
 ## Basic Workflows
 
 ### Set A Secret
@@ -49,6 +75,8 @@ Keys must:
 ```bash
 ./bin/vault get API_KEY
 ```
+
+`get` prints plaintext to the terminal. Use `copy` when terminal scrollback is a concern.
 
 ### Delete A Secret
 
@@ -73,6 +101,8 @@ Lists key names only. Values are not printed.
 ```
 
 Searches keys by case-insensitive substring and prints matching key/value pairs.
+
+Search prints values for matching keys. Avoid it on recorded or shared terminals.
 
 ### Clear Vault
 
@@ -107,6 +137,8 @@ Printing exports to a terminal exposes plaintext secrets in terminal scrollback.
 ```
 
 The output file is written with `0600` permissions.
+
+Export files are plaintext. Delete them when they are no longer needed and rotate any exposed secrets.
 
 ### Import
 
@@ -175,6 +207,8 @@ For the exact snapshot, divergence, verifier, and rotation policy, see [Recovery
 Generates a high-entropy recovery key and asks you to retype it to confirm that you saved it. The key is a grouped base32 string derived from 32 secure random bytes.
 
 Setup writes a recovery-encrypted snapshot to `vault.db.recovery`.
+
+The recovery key alone is not enough to recover the vault, and `vault.db.recovery` alone is not enough. Together, they are enough to recover the secrets present in that recovery snapshot.
 
 ### Test Recovery
 
@@ -289,6 +323,8 @@ Regenerate the token master key:
 
 This invalidates all existing tokens.
 
+If `vault-token.key` is exposed, run `regenerate-token-key` and treat existing tokens and shared-token-vault state as compromised.
+
 ## Main And Shared Vault Synchronization
 
 The CLI keeps a main vault and a shared token vault:
@@ -316,6 +352,8 @@ Sync policy:
 ## Locking And Concurrent CLI Usage
 
 Vault commands use `.myminivault.lock` to serialize separate CLI processes while they access runtime vault files. This reduces cross-process write races around `vault.db`, token files, and the shared token vault.
+
+The lock is advisory. It coordinates cooperating `vault` processes, but it does not stop unrelated programs from editing or deleting files.
 
 ## Security Audit
 

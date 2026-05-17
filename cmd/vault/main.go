@@ -102,7 +102,7 @@ func runPasswordCommand(command, password string) error {
 	extendedVault.Metadata.LastAccess = time.Now()
 	extendedVault.Metadata.AccessCount++
 
-	if command != "get" && command != "list" && command != "export" && command != "search" && command != "stats" {
+	if shouldLogAccessForCommand(command) {
 		logAccess(command, getKeyFromArgs())
 	}
 
@@ -214,15 +214,6 @@ func runPasswordCommand(command, password string) error {
 	}
 
 	return nil
-}
-
-func shouldMirrorMainVaultToShared(command string) bool {
-	switch command {
-	case "set", "delete", "clear", "import":
-		return true
-	default:
-		return false
-	}
 }
 
 func showUsage() {

@@ -11,6 +11,7 @@ assets/
 cmd/
   vault/
     main.go             CLI dispatch and top-level command flow
+    command_policy.go   command logging and shared-vault mirror policy
     commands.go         basic key/value commands, import/export, stats
     config_cli.go       config loading/display
     core_dump_unix.go   best-effort core dump disabling on Unix-like systems
@@ -127,6 +128,13 @@ Run with verbose output when diagnosing a failure:
 go test -v ./cmd/vault -run TestCLISmokeTokenReadAndWrite
 ```
 
+Run the coverage gate locally:
+
+```bash
+go test -covermode=atomic -coverprofile=internal-coverage.out ./internal/...
+go tool cover -func=internal-coverage.out
+```
+
 Clear the Go test cache if a cached result is hiding a behavior change:
 
 ```bash
@@ -152,7 +160,7 @@ printf 'oldpass\n' | ./vault get TEST_KEY
 
 The automated CLI smoke tests create temporary directories and fake data. Do not run manual smoke commands in a directory that contains real vault files unless that is intentional.
 
-Current automated checks cover CLI smoke flows, token lifecycle behavior, config error handling, `vault doctor`, shell-safe import/export round trips, export-to-file behavior, clipboard clear behavior, audit-log redaction, disabled audit logging, token sync metadata decisions, token master-key and compact-token helper behavior, core unit behavior, and package-level coverage for `internal/storage`, `internal/token`, `internal/recovery`, `internal/lock`, `internal/audit`, `internal/sync`, `internal/commands`, `internal/clipboard`, and `internal/export`.
+Current automated checks cover CLI smoke flows, token lifecycle behavior, config error handling, `vault doctor`, shell-safe import/export round trips, export-to-file behavior, clipboard clear behavior, audit-log redaction, disabled audit logging, token sync metadata decisions, token master-key and compact-token helper behavior, core unit behavior, and package-level coverage for `internal/storage`, `internal/token`, `internal/recovery`, `internal/lock`, `internal/audit`, `internal/sync`, `internal/commands`, `internal/clipboard`, and `internal/export`. CI enforces `80.0%` minimum coverage for `./internal/...`.
 
 ## Branch Workflow
 

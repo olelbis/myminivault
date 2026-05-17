@@ -6,7 +6,7 @@ This document defines the current security goals, assumptions, trust boundaries,
 
 ## Scope
 
-This model covers the local CLI, local runtime files, recovery workflow, token workflow, import/export behavior, clipboard behavior, and release artifacts.
+This model covers the local CLI, local runtime files, recovery workflow, token workflow, import/export behavior, clipboard behavior, coverage/release checks, and release artifacts.
 
 It does not cover hosted infrastructure, remote synchronization services, browser extensions, mobile clients, multi-user deployments, or enterprise administration because those features do not exist in the project.
 
@@ -23,6 +23,7 @@ It does not cover hosted infrastructure, remote synchronization services, browse
 - keep runtime vault files out of Git by default
 - avoid printing plaintext where a safer workflow exists, such as `copy` or `export --output`
 - document operational risks clearly before claiming stronger guarantees
+- keep security-sensitive behavior covered by automated tests where practical
 
 ## Non-Goals
 
@@ -83,11 +84,17 @@ The project does not defend against:
 - malware running as the same OS user
 - debuggers, memory dump tools, or process inspection by the same user
 - a compromised terminal emulator, shell, OS account, or machine
-- a malicious or replaced binary/source tree
+- a malicious or replaced binary/source tree that the user later runs
 - a compromised Go toolchain or dependency supply chain
 - a user intentionally exporting or pasting secrets into unsafe locations
 
 ## Trust Boundaries
+
+### Build And Source Boundary
+
+The source tree and executable are trusted inputs. Changing the source code does not make an already encrypted `vault.db` decryptable by itself, because decryption still requires the master password, a valid recovery path, or secrets already available at runtime.
+
+A modified executable becomes dangerous when a user runs it and provides credentials. It could capture the master password, write derived keys to disk, print decrypted secrets, weaken command checks, or exfiltrate plaintext after a successful decrypt. This is treated as a supply-chain or local-code-execution compromise, not as a supported threat the vault can defend against.
 
 ### Local Process Boundary
 
@@ -180,6 +187,7 @@ Primary risks:
 
 - recovery follows the recovery snapshot, not necessarily the latest main vault
 - anyone with both recovery key and recovery file can attempt recovery
+- recovery file plus recovery key is effectively equivalent to the master password for that recovery snapshot
 - historical backups may contain older recovery state
 
 Current mitigations:
@@ -240,7 +248,8 @@ Current mitigations:
 | Copied plaintext export | Not mitigated after export; rotate exposed secrets |
 | Stolen compact token | Limited by expiry, max uses, scope, and revocation |
 | Stolen `vault-token.key` | Serious; regenerate token key and treat tokens as compromised |
-| Stolen recovery key and recovery file | Serious; replace recovery setup and rotate sensitive secrets |
+| Stolen recovery key and recovery file | Critical for that recovery snapshot; replace recovery setup and rotate sensitive secrets |
+| Malicious modified executable | Out of scope once the user runs it with credentials |
 | Same-user malware | Out of scope |
 | Process memory inspection | Mostly out of scope; core dump disabling is best-effort only |
 | Terminal capture | Out of scope once plaintext is printed |
@@ -292,6 +301,13 @@ If the recovery key is exposed:
 - replace recovery setup
 - rotate sensitive secrets if the recovery file may also have been exposed
 - review backups for older recovery snapshots
+
+If both the recovery key and `vault.db.recovery` are exposed:
+
+- treat the recovery snapshot as compromised
+- assume an attacker can recover the secrets present in that snapshot
+- replace recovery setup after regaining control
+- rotate secrets that may have existed in the exposed snapshot
 
 If exported plaintext or clipboard contents are exposed:
 

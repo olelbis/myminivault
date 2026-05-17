@@ -2,6 +2,16 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [Unreleased]
+
+### Changed
+
+- Clarified recovery-file plus recovery-key risk across security, recovery, and user documentation.
+- Added an `80.0%` internal package coverage floor to CI and documented the local coverage gate.
+- Extracted command logging and shared-vault mirror policy helpers from `cmd/vault` orchestration and added focused unit coverage.
+- Raised the full repository coverage baseline to `34.4%`.
+- Refined the user manual with a practical pre-use checklist, common workflows, and clearer plaintext/recovery/token warnings.
+
 ## [v0.3.5] - 2026-05-17
 
 ### Changed

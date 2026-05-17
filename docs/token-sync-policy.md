@@ -20,6 +20,8 @@ Token metadata also uses:
 - `vault-token.key`: local token master key
 - `vault-tokens.json`: token registry metadata
 
+`vault-token.key` is critical token-system material. If it is exposed, regenerate it and treat existing compact tokens and shared-token-vault state as compromised. See [Security Model](security.md#token-flow) for the broader token threat model.
+
 ## Current Flow
 
 ### Master-Password Commands
@@ -68,6 +70,8 @@ If both the main vault and shared token vault have update timestamps for a key, 
 Legacy vaults without sync metadata keep the previous import behavior for compatibility.
 
 There is still no merge base or rich conflict object. If metadata is absent or incomplete, behavior falls back to simple import semantics.
+
+This policy is local and best-effort. It should not be described as multi-device sync, distributed conflict resolution, or a shared source of truth.
 
 ## Delete Semantics
 

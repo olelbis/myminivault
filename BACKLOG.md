@@ -131,6 +131,10 @@ Strategic guidance:
 - Moved clipboard backend detection and clear-if-unchanged behavior into `internal/clipboard`.
 - Moved shell export rendering and restrictive file writes into `internal/export`.
 - Added focused `internal/token` hardening coverage for master-key creation/loading, registry parse errors, encrypted-vault error paths, malformed token parsing, missing token-manager cases, generated token IDs, permission helpers, expiry checks, and max-use checks.
+- Clarified recovery-file plus recovery-key exposure across security, recovery, and user documentation.
+- Added an `80.0%` internal package coverage floor to CI.
+- Extracted command logging and shared-vault mirror policy helpers from `cmd/vault` orchestration.
+- Refined `docs/user-manual.md` with a pre-use checklist, common workflows, and clearer plaintext/recovery/token warnings.
 
 ## Current Verification
 
@@ -141,9 +145,10 @@ test -z "$(gofmt -l .)"
 go vet ./...
 go test ./...
 go test -covermode=atomic -coverprofile=coverage.out ./...
+go test -covermode=atomic -coverprofile=internal-coverage.out ./internal/...
 ```
 
-GitHub Actions runs the normal checks on Linux and macOS, plus a Linux coverage job that uploads `coverage.out` and `coverage.txt` as the `coverage-report` artifact.
+GitHub Actions runs the normal checks on Linux and macOS, plus a Linux coverage job that uploads full and internal coverage reports as the `coverage-report` artifact. CI enforces `80.0%` minimum coverage for `./internal/...`.
 
 Package-level coverage now includes:
 
@@ -186,6 +191,7 @@ assets/
 cmd/
   vault/
     main.go             CLI dispatch and command flow
+    command_policy.go   command logging and shared-vault mirror policy
     commands.go         basic key/value commands, import/export, stats
     config_cli.go       config loading/display
     core_dump_unix.go   best-effort core dump disabling on Unix-like systems
@@ -271,8 +277,8 @@ These items are the most direct path beyond the current `9.0 / 10` assessment. P
 
 Recommended order:
 
-1. decide whether coverage should remain informational or eventually enforce a minimum threshold
-2. continue improving release binaries and install paths after the first package workflow
+1. continue improving release binaries and install paths after the first package workflow
+2. keep the internal coverage floor healthy as new internal packages are added
 3. continue reducing broad orchestration in `cmd/vault` only where tests already protect behavior
 
 Suggested branches:
@@ -293,12 +299,12 @@ git switch -c coverage-follow-up
 
 Priority: medium.
 
-Current CI runs formatting, `go vet`, `go test ./...`, and coverage reporting. The coverage artifact is informational and not enforced as a release gate.
+Current CI runs formatting, `go vet`, `go test ./...`, full coverage reporting, and an enforced internal package coverage floor.
 
 Next actions:
 
-- decide whether coverage should remain informational only or enforce a minimum threshold
-- raise `cmd/vault` coverage with focused unit tests or further extraction of command-independent logic
+- keep `./internal/...` coverage at or above the current `80.0%` floor
+- raise `cmd/vault` coverage with focused unit tests or further extraction of command-independent logic where it improves clarity
 
 Suggested branch:
 

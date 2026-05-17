@@ -18,6 +18,8 @@ Recovery uses:
 
 `vault.db.recovery` is a sensitive secret-bearing file. Anyone with both the recovery key and `vault.db.recovery` can attempt recovery.
 
+Treat `vault.db.recovery` plus the matching recovery key as equivalent to the master password for that recovery snapshot. The recovery key alone is not enough, and the recovery file alone is not enough, but together they can recover the secrets stored in that snapshot. See [Security Model](security.md#recovery-flow) for the threat-model summary and incident response guidance.
+
 ## Snapshot Behavior
 
 `vault.db.recovery` is updated only when the application can save a vault while the recovery key is available in memory.
@@ -71,6 +73,8 @@ To rotate recovery today:
 5. Consider deleting older backups that contain older recovery snapshots if those older recovery keys should no longer work.
 
 Important caveat: older backup files may still contain snapshots encrypted for older recovery keys. Rotating the current recovery setup does not rewrite historical backup files.
+
+After rotating recovery, review old backups and exported copies of `vault.db.recovery`. Keeping old recovery snapshots is sometimes useful for disaster recovery, but each retained snapshot extends the period during which an old recovery key may matter.
 
 ## Deferred Decisions
 
