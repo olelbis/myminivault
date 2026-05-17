@@ -10,6 +10,7 @@ All notable project changes are recorded here. Application releases use Git tags
 - Reworked `docs/security.md` into a formal threat model with assets, attacker assumptions, trust boundaries, data flows, residual risks, and incident response guidance.
 - Added CI coverage reporting, a coverage artifact, coverage notes, and an internal coverage badge.
 - Moved file lock handling into `internal/lock` with focused unit coverage.
+- Moved redacted audit log formatting and writing into `internal/audit` with focused unit coverage.
 
 ## [v0.3.2] - 2026-05-17
 

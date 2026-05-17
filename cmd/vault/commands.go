@@ -7,13 +7,14 @@ import (
 	"fmt"
 	"golang.org/x/term"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"sort"
 	"strings"
 	"syscall"
 	"time"
+
+	vaultaudit "github.com/olelbis/myminivault/internal/audit"
 )
 
 // Command handlers (unchanged)
@@ -530,13 +531,5 @@ func logAccess(action, key string) {
 	if !config.AuditLog {
 		return
 	}
-	file, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-	if err != nil {
-		return
-	}
-	defer file.Close()
-	_ = os.Chmod(logFile, 0600)
-
-	logger := log.New(file, "", log.LstdFlags)
-	logger.Printf("%s", action)
+	_ = vaultaudit.Write(logFile, vaultaudit.VaultEntry, action)
 }

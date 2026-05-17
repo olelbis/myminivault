@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	vaultaudit "github.com/olelbis/myminivault/internal/audit"
 	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
 	vaulttoken "github.com/olelbis/myminivault/internal/token"
 )
@@ -425,15 +426,7 @@ func logTokenAccess(tokenID, action, key string) {
 	if !config.AuditLog {
 		return
 	}
-	file, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-	if err != nil {
-		return
-	}
-	defer file.Close()
-	_ = os.Chmod(logFile, 0600)
-
-	logger := log.New(file, "", log.LstdFlags)
-	logger.Printf("TOKEN Action: %s", action)
+	_ = vaultaudit.Write(logFile, vaultaudit.TokenEntry, action)
 }
 
 func getKeyFromTokenArgs() string {
