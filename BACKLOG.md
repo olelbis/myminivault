@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.3.3`
+- Current baseline release: `v0.3.4`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -15,9 +15,9 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `8.8 / 10`.
+Current assessment score: `8.9 / 10`.
 
-`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
+`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
 Main strengths:
 
@@ -31,6 +31,8 @@ Main strengths:
 - tested `internal/audit` package for redacted audit log formatting and writes
 - tested `internal/sync` package for local shared-vault import and metadata policy
 - tested `internal/commands` package for export/import/key validation helpers
+- tested `internal/clipboard` package for backend selection and clear-if-unchanged behavior
+- tested `internal/export` package for shell export rendering and restrictive file writes
 - automated CLI smoke coverage for critical workflows
 - explicit handling for recovery, token sync, locking, backups, export, and password changes
 - a handoff backlog that can restart work from a fresh chat
@@ -125,6 +127,8 @@ Strategic guidance:
 - Moved redacted audit log formatting and writing into `internal/audit` and added unit coverage for formatting, appends, and permissions.
 - Moved sync metadata and shared-vault import decision logic into `internal/sync`.
 - Moved export/import/key validation helpers into `internal/commands`.
+- Moved clipboard backend detection and clear-if-unchanged behavior into `internal/clipboard`.
+- Moved shell export rendering and restrictive file writes into `internal/export`.
 
 ## Current Verification
 
@@ -145,6 +149,10 @@ Package-level coverage now includes:
 - `internal/token`: token master key validation, registry load/save, encrypted shared vault tamper rejection, forged token rejection, and usage count persistence
 - `internal/recovery`: grouped key generation, verifier validation, valid recovery decrypt, wrong-key rejection, checksum failure, missing verifier rejection, and atomic recovery file writes
 - `internal/crypto`: round trip, wrong key rejection, tampered ciphertext rejection, and short ciphertext rejection
+- `internal/sync`: import conflict decisions, delete markers, metadata helpers, and copy behavior
+- `internal/commands`: shell-safe export/import parsing and key validation
+- `internal/clipboard`: backend detection and best-effort clear-if-unchanged behavior
+- `internal/export`: shell export rendering and restrictive file writes
 
 Manual smoke tests were run in `/private/tmp` with fake data:
 
@@ -201,6 +209,18 @@ internal/
     storage.go          vault load/save, checksum, and atomic writes
   token/
     token.go            token signing, validation, registry, and shared token vault persistence
+  lock/
+    lock.go             advisory file lock helper
+  audit/
+    audit.go            redacted audit log formatting and writes
+  sync/
+    sync.go             sync metadata and shared-vault import policy helpers
+  commands/
+    commands.go         export/import/key validation helpers
+  clipboard/
+    clipboard.go        clipboard backend detection and clear-if-unchanged helper
+  export/
+    export.go           shell export rendering and restrictive export-file writes
 docs/
   user-manual.md        user-facing workflows and operational notes
   development.md        architecture, test, and release workflow notes
@@ -241,11 +261,11 @@ git pull
 git switch -c codex/token-sync-next
 ```
 
-### 2. Quality Roadmap Beyond 8.5
+### 2. Quality Roadmap Beyond 8.9
 
 Priority: medium-high.
 
-These items are the most direct path beyond the current `8.5 / 10` assessment. Prefer them before adding new product features.
+These items are the most direct path beyond the current `8.9 / 10` assessment. Prefer them before adding new product features.
 
 Recommended order:
 
@@ -294,7 +314,7 @@ The README now documents `go install`, and release package automation builds Lin
 
 Recommended progression:
 
-- verify the package workflow run after publishing `v0.3.3`
+- verify the package workflow run after publishing `v0.3.4`
 - decide whether Linux/macOS amd64 and arm64 are enough for the first public phase
 - consider Homebrew only after release binaries and public positioning are more mature
 - keep checksums in release assets if binaries are published
@@ -398,6 +418,8 @@ Stable internal packages already extracted:
 - `internal/audit`
 - `internal/sync`
 - `internal/commands`
+- `internal/clipboard`
+- `internal/export`
 
 Possible future extractions:
 

@@ -58,6 +58,23 @@ func TestMarkKeyUpdatedAndDeleted(t *testing.T) {
 	}
 }
 
+func TestMarkKeyCollections(t *testing.T) {
+	vault := &model.ExtendedVault{Data: map[string]string{"A": "one", "B": "two"}}
+
+	MarkKeysUpdated(vault, []string{"A", "B"})
+	if UpdatedAt(vault, "A").IsZero() || UpdatedAt(vault, "B").IsZero() {
+		t.Fatal("expected update metadata for all keys")
+	}
+
+	MarkAllKeysDeleted(vault, []string{"A", "B"})
+	if DeletedAt(vault, "A").IsZero() || DeletedAt(vault, "B").IsZero() {
+		t.Fatal("expected delete metadata for all keys")
+	}
+	if !UpdatedAt(vault, "A").IsZero() || !UpdatedAt(vault, "B").IsZero() {
+		t.Fatal("delete metadata should clear update metadata for all keys")
+	}
+}
+
 func TestImportSharedVaultImportsDeletesAndSkipsOlderConflicts(t *testing.T) {
 	now := time.Now()
 	mainVault := &model.ExtendedVault{

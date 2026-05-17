@@ -2,6 +2,15 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.3.4] - 2026-05-17
+
+### Changed
+
+- Moved clipboard backend detection and best-effort clear-if-unchanged behavior into `internal/clipboard` with focused unit coverage.
+- Moved shell export rendering and restrictive export-file writes into `internal/export` with focused unit coverage.
+- Kept `cmd/vault` thinner by leaving export and clipboard command handlers as CLI orchestration only.
+- Updated coverage documentation, the internal coverage badge, and the CLI-visible version to `0.3.4`.
+
 ## [v0.3.3] - 2026-05-17
 
 ### Changed

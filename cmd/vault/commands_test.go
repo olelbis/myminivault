@@ -71,33 +71,3 @@ func TestSplitImportLinesPreservesQuotedNewlines(t *testing.T) {
 		t.Fatalf("second line = %q", lines[1])
 	}
 }
-
-func TestClipboardClearIfUnchanged(t *testing.T) {
-	current := "secret"
-	writes := 0
-	manager := clipboardManager{
-		read: func() (string, error) {
-			return current, nil
-		},
-		write: func(value string) error {
-			current = value
-			writes++
-			return nil
-		},
-	}
-
-	if err := manager.clearIfUnchanged("secret"); err != nil {
-		t.Fatalf("clearIfUnchanged: %v", err)
-	}
-	if current != "" || writes != 1 {
-		t.Fatalf("current = %q, writes = %d, want cleared once", current, writes)
-	}
-
-	current = "changed"
-	if err := manager.clearIfUnchanged("secret"); err != nil {
-		t.Fatalf("clearIfUnchanged changed clipboard: %v", err)
-	}
-	if current != "changed" || writes != 1 {
-		t.Fatalf("current = %q, writes = %d, want unchanged", current, writes)
-	}
-}

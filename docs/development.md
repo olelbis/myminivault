@@ -43,6 +43,10 @@ internal/
     sync.go             sync metadata and shared-vault import policy helpers
   commands/
     commands.go         export/import/key validation helpers
+  clipboard/
+    clipboard.go        clipboard backend detection and clear-if-unchanged helper
+  export/
+    export.go           shell export rendering and restrictive export-file writes
 docs/
   user-manual.md        user-facing workflows and operational notes
   development.md        architecture, test, and release workflow notes
@@ -67,8 +71,10 @@ docs/
 - `internal/audit`: redacted audit log formatting and writes
 - `internal/sync`: sync metadata and shared-vault import policy helpers
 - `internal/commands`: export/import/key validation helpers
+- `internal/clipboard`: clipboard backend detection and best-effort clearing
+- `internal/export`: shell export rendering and restrictive export-file writes
 
-The project still keeps some orchestration in `cmd/vault`, especially sync and command behavior. Future extractions should happen only when tests cover the behavior well enough.
+The project still keeps command-line parsing, prompts, output, and top-level orchestration in `cmd/vault`. Future extractions should happen only when tests cover the behavior well enough.
 
 ## Cryptography
 
@@ -146,7 +152,7 @@ printf 'oldpass\n' | ./vault get TEST_KEY
 
 The automated CLI smoke tests create temporary directories and fake data. Do not run manual smoke commands in a directory that contains real vault files unless that is intentional.
 
-Current automated checks cover CLI smoke flows, token lifecycle behavior, config error handling, `vault doctor`, shell-safe import/export round trips, export-to-file behavior, clipboard clear behavior, audit-log redaction, disabled audit logging, token sync metadata decisions, core unit behavior, and package-level coverage for `internal/storage`, `internal/token`, `internal/recovery`, `internal/lock`, `internal/audit`, `internal/sync`, and `internal/commands`.
+Current automated checks cover CLI smoke flows, token lifecycle behavior, config error handling, `vault doctor`, shell-safe import/export round trips, export-to-file behavior, clipboard clear behavior, audit-log redaction, disabled audit logging, token sync metadata decisions, core unit behavior, and package-level coverage for `internal/storage`, `internal/token`, `internal/recovery`, `internal/lock`, `internal/audit`, `internal/sync`, `internal/commands`, `internal/clipboard`, and `internal/export`.
 
 ## Branch Workflow
 
