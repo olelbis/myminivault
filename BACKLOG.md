@@ -135,6 +135,7 @@ Strategic guidance:
 - Moved end-to-end CLI smoke tests into `tests/` and removed stale `cmd/vault` wrapper noise flagged by `gopls`.
 - Moved sensitive runtime files into `~/.myminivault/` by default, with `MYMINIVAULT_HOME` override and legacy cwd migration.
 - Added `vault inspect-runtime` for active and legacy runtime file inspection without decrypting vault data.
+- Documented `vault inspect-runtime` across the README, user manual, security model, development guide, recovery policy, and token sync policy.
 - Clarified recovery-file plus recovery-key exposure across security, recovery, and user documentation.
 - Added an `80.0%` internal package coverage floor to CI.
 - Extracted command logging and shared-vault mirror policy helpers from `cmd/vault` orchestration.
@@ -368,7 +369,7 @@ git switch -c file-container-header
 
 Priority: medium.
 
-`vault inspect-runtime` now explains which files are active and which legacy files may still exist without decrypting vault data. `vault doctor` still covers health checks.
+`vault inspect-runtime` now explains which files are active and which legacy files may still exist without decrypting vault data. `vault doctor` still covers health checks. Documentation has been updated across the main user/developer/security docs.
 
 Remaining direction:
 

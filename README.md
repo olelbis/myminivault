@@ -155,6 +155,15 @@ Operational notes:
 - legacy files from the current working directory are migrated only when the target file does not already exist
 - avoid pointing it at a Git repository, shared folder, cloud-sync folder, or world-readable directory unless that is intentional
 
+Inspect the active runtime location without decrypting secrets:
+
+```bash
+vault inspect-runtime
+MYMINIVAULT_HOME=/tmp/myminivault-demo vault inspect-runtime
+```
+
+The command prints active runtime files, legacy current-directory files, modified times, sizes, and file modes. It never decrypts vault data or prints stored values.
+
 | File | Purpose |
 | --- | --- |
 | `vault.db` | Main encrypted vault |

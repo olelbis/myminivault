@@ -276,6 +276,7 @@ Current mitigations:
 - Treat export files as plaintext secrets.
 - Disable audit logging with `"audit_log": false` if command metadata is too sensitive for your environment.
 - Run `vault doctor` periodically in active vault directories.
+- Run `vault inspect-runtime` when runtime-home confusion, legacy files, or `MYMINIVAULT_HOME` overrides are suspected.
 - Rotate tokens quickly if a compact token may have been exposed.
 - Regenerate the token master key if `vault-token.key` may have been exposed.
 - Do not describe the tool as production secure without external review.
@@ -330,7 +331,7 @@ If exported plaintext or clipboard contents are exposed:
 Recommended next steps:
 
 - add coverage reporting so security-sensitive behavior is easier to track over time
-- keep expanding `vault doctor` checks as runtime behavior grows
+- keep expanding `vault doctor` and `vault inspect-runtime` checks as runtime behavior grows
 - keep hardening token sync if it moves beyond local-file workflows
 - decide whether revision counters, merge-base metadata, or fuller delete tombstones are needed
 - consider log rotation or retention controls if logs become more detailed

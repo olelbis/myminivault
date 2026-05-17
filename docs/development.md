@@ -209,6 +209,7 @@ Examples:
 MYMINIVAULT_HOME="$(mktemp -d /tmp/myminivault-dev-XXXXXX)" go test ./tests
 MYMINIVAULT_HOME=/tmp/myminivault-manual go run ./cmd/vault set DEV_KEY hello
 MYMINIVAULT_HOME=/tmp/myminivault-manual go run ./cmd/vault config
+MYMINIVAULT_HOME=/tmp/myminivault-manual go run ./cmd/vault inspect-runtime
 ```
 
 Development notes:
@@ -217,6 +218,7 @@ Development notes:
 - do not point development runs at the real `~/.myminivault/` unless you intend to use real local vault state
 - path resolution lives in `internal/paths`
 - CLI globals are initialized by `initRuntimePaths`
+- runtime inspection output lives in `cmd/vault/runtime_inspect.go`
 - legacy cwd migration is intentionally conservative and skips files when the runtime-home target already exists
 
 Runtime files are ignored by Git and should not be committed:

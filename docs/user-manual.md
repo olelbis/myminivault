@@ -202,6 +202,19 @@ Sensitive runtime files should normally be readable only by the local user. `vau
 
 Lists the active runtime home, whether it came from `MYMINIVAULT_HOME` or the default `~/.myminivault/`, active runtime files, and legacy current-directory runtime files. It shows path, modified time, size, and mode, but it does not decrypt vaults or print secrets.
 
+Example:
+
+```bash
+MYMINIVAULT_HOME=/tmp/myminivault-demo ./bin/vault inspect-runtime
+```
+
+Use this when:
+
+- you changed `MYMINIVAULT_HOME` and want to confirm which vault context is active
+- you upgraded from an older version and want to check whether legacy files remain in the current directory
+- `vault` looks empty and you suspect you are pointing at a different runtime home
+- you want to review file permissions without unlocking the vault
+
 ## Password Recovery
 
 For the exact snapshot, divergence, verifier, and rotation policy, see [Recovery Policy](recovery-policy.md).
@@ -454,6 +467,7 @@ Important behavior:
 - the runtime directory is created with owner-only `0700` permissions
 - changing `MYMINIVAULT_HOME` changes which vault the CLI sees
 - `vault config` prints the active `runtime_home`
+- `vault inspect-runtime` prints active and legacy runtime files without decrypting vault data
 - legacy runtime files in the current working directory are migrated only if the target file is missing
 - do not use a Git repo, shared folder, or cloud-sync folder unless you understand the exposure and conflict risks
 
