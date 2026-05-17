@@ -279,6 +279,12 @@ func ParseAndValidateProductionToken(tokenStr, sharedTokenVault string, opts Opt
 	if !exists {
 		return model.AccessToken{}, nil, errors.New("token not found or has been revoked")
 	}
+	if now := time.Now(); IsExpiredOrUsedUp(storedToken, now) {
+		if now.After(storedToken.ExpiresAt) {
+			return model.AccessToken{}, nil, errors.New("token has expired")
+		}
+		return model.AccessToken{}, nil, errors.New("token usage limit exceeded")
+	}
 
 	payload := fmt.Sprintf("%s:%s:%d:%s:%d", tokenID, keyPattern, expiresUnix, strings.Join(permissions, ","), maxUses)
 	h := hmac.New(sha256.New, vault.TokenManager.SecretKey)

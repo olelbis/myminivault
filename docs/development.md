@@ -38,6 +38,8 @@ internal/
     token.go            token signing, validation, registry, and shared token vault persistence
   lock/
     lock.go             advisory file lock helper
+  paths/
+    paths.go            runtime home resolution and secure directory creation
   audit/
     audit.go            redacted audit log formatting and writes
   sync/

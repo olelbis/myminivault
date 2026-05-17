@@ -28,7 +28,7 @@ const (
 	sharedTokenVault = "shared-token-vault.json"
 	tokenRegistry    = "vault-tokens.json"
 	saltSize         = 16
-	vaultVersion     = "0.4.1"
+	vaultVersion     = "0.4.3"
 	vaultHomeEnv     = "MYMINIVAULT_HOME"
 )
 
@@ -253,10 +253,35 @@ func TestCLISmokeTokenExpiredAndUsedUpRejected(t *testing.T) {
 	expiredToken := extractCompactToken(t, expiredOutput)
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", expiredToken, "get", "API_KEY")), "token has expired")
 
-	limitedOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=API_*", "--duration=1h", "--permissions=read", "--max-uses=2"))
+	limitedOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=API_*", "--duration=1h", "--permissions=read", "--max-uses=1"))
 	limitedToken := extractCompactToken(t, limitedOutput)
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", limitedToken, "get", "API_KEY")), "hello")
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", limitedToken, "get", "API_KEY")), "token usage limit exceeded")
+}
+
+func TestCLISmokeCreateTokenRejectsInvalidLimits(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "API_KEY", "hello"))
+
+	tests := map[string][]string{
+		"zero duration":     {"create-token", "--keys=API_*", "--duration=0s"},
+		"negative duration": {"create-token", "--keys=API_*", "--duration=-1s"},
+		"zero max uses":     {"create-token", "--keys=API_*", "--duration=1h", "--max-uses=0"},
+		"invalid max uses":  {"create-token", "--keys=API_*", "--duration=1h", "--max-uses=abc"},
+		"colon key pattern": {"create-token", "--keys=API:*", "--duration=1h"},
+		"too long duration": {"create-token", "--keys=API_*", "--duration=25h"},
+	}
+
+	for name, args := range tests {
+		t.Run(name, func(t *testing.T) {
+			output := requireOK(t, runVault(t, bin, dir, "pass\n", args...))
+			if !strings.Contains(output, "❌") {
+				t.Fatalf("expected validation error, got:\n%s", output)
+			}
+		})
+	}
 }
 
 func TestCLISmokeTokenInfoListAndRevoke(t *testing.T) {

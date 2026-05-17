@@ -299,7 +299,7 @@ Token access uses:
 | `--permissions=read,write` | No | Defaults to `read` |
 | `--max-uses=N` | No | Defaults to `100` |
 
-Maximum token duration is 24 hours.
+Token duration and max uses must be greater than zero. Maximum token duration is 24 hours. Token key patterns cannot contain `:` because compact tokens use colon-delimited signed payloads.
 
 ### Use Token
 
@@ -412,6 +412,8 @@ Config validation:
 - `scrypt_p` must be between `1` and `8`
 - `key_size` must be `16`, `24`, or `32`
 - `max_backups` must be between `1` and `100`
+
+Manual timestamped backups keep only the newest `max_backups` files.
 
 If `vault-config.json` is malformed or unsafe, the CLI stops with a config error.
 

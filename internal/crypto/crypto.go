@@ -71,6 +71,8 @@ func Decrypt(ciphertext, key []byte) ([]byte, error) {
 // Random returns cryptographically secure bytes for salts, nonces, and token keys.
 func Random(n int) []byte {
 	b := make([]byte, n)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		panic("crypto random source failed: " + err.Error())
+	}
 	return b
 }

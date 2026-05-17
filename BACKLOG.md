@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.4.2`
+- Current baseline release: `v0.4.3`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -15,7 +15,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `9.3 / 10`.
+Current assessment score: `9.4 / 10`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -34,7 +34,7 @@ Main strengths:
 - tested `internal/commands` package for export/import/key validation helpers
 - tested `internal/clipboard` package for backend selection and clear-if-unchanged behavior
 - tested `internal/export` package for shell export rendering and restrictive file writes
-- internal package coverage at `83.5%`, including token master-key handling, compact-token parsing, token helper behavior, expiry/max-use checks, runtime path handling, and important error paths
+- internal package coverage at `83.3%`, including token master-key handling, compact-token parsing, token helper behavior, expiry/max-use checks, runtime path handling, and important error paths
 - automated CLI smoke coverage for critical workflows in the top-level `tests` package
 - explicit handling for recovery, token sync, locking, backups, export, and password changes
 - a handoff backlog that can restart work from a fresh chat
@@ -137,6 +137,7 @@ Strategic guidance:
 - Added `vault inspect-runtime` for active and legacy runtime file inspection without decrypting vault data.
 - Documented `vault inspect-runtime` across the README, user manual, security model, development guide, recovery policy, and token sync policy.
 - Raised internal package coverage to `83.5%` with focused tests for runtime paths, empty-vault loading, recovery file writes, storage atomic-write behavior, and token vault error paths.
+- Fixed token max-use enforcement, token creation limit validation, compact token pattern validation, random-source failure handling, short token-ID cleanup logging, and manual backup retention.
 - Clarified recovery-file plus recovery-key exposure across security, recovery, and user documentation.
 - Added an `80.0%` internal package coverage floor to CI.
 - Extracted command logging and shared-vault mirror policy helpers from `cmd/vault` orchestration.
@@ -311,7 +312,7 @@ Current CI runs formatting, `go vet`, `go test ./...`, full coverage reporting, 
 
 Next actions:
 
-- keep `./internal/...` coverage at or above the current `80.0%` floor, with `83.5%` as the latest local baseline
+- keep `./internal/...` coverage at or above the current `80.0%` floor, with `83.3%` as the latest local baseline
 - raise `cmd/vault` coverage with focused unit tests or further extraction of command-independent logic where it improves clarity
 
 Suggested branch:

@@ -8,6 +8,8 @@ import (
 	"golang.org/x/term"
 	"io"
 	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -281,7 +283,28 @@ func createTimestampedBackup() error {
 	timestamp := time.Now().Format("2006-01-02_15-04-05")
 	backupFile := fmt.Sprintf("%s.%s.bak", vaultFile, timestamp)
 
-	return copyFile(vaultFile, backupFile)
+	if err := copyFile(vaultFile, backupFile); err != nil {
+		return err
+	}
+	return pruneTimestampedBackups()
+}
+
+func pruneTimestampedBackups() error {
+	backups, err := filepath.Glob(vaultFile + ".*.bak")
+	if err != nil {
+		return err
+	}
+	if len(backups) <= config.MaxBackups {
+		return nil
+	}
+
+	sort.Strings(backups)
+	for _, backup := range backups[:len(backups)-config.MaxBackups] {
+		if err := os.Remove(backup); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func copyFile(src, dst string) error {

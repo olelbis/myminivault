@@ -330,7 +330,7 @@ If exported plaintext or clipboard contents are exposed:
 
 Recommended next steps:
 
-- add coverage reporting so security-sensitive behavior is easier to track over time
+- keep coverage reporting focused on security-sensitive behavior as the code evolves
 - keep expanding `vault doctor` and `vault inspect-runtime` checks as runtime behavior grows
 - keep hardening token sync if it moves beyond local-file workflows
 - decide whether revision counters, merge-base metadata, or fuller delete tombstones are needed

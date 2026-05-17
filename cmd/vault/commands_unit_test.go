@@ -3,8 +3,10 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestValidateKey(t *testing.T) {
@@ -72,5 +74,44 @@ func TestImportFromFile(t *testing.T) {
 		if vault[key] != value {
 			t.Fatalf("vault[%q] = %q, want %q", key, vault[key], value)
 		}
+	}
+}
+
+func TestPruneTimestampedBackupsKeepsNewestConfiguredCount(t *testing.T) {
+	dir := t.TempDir()
+	originalVaultFile := vaultFile
+	originalConfig := config
+	t.Cleanup(func() {
+		vaultFile = originalVaultFile
+		config = originalConfig
+	})
+
+	vaultFile = filepath.Join(dir, "vault.db")
+	config.MaxBackups = 2
+
+	backups := []string{
+		vaultFile + ".2026-05-17_10-00-00.bak",
+		vaultFile + ".2026-05-17_11-00-00.bak",
+		vaultFile + ".2026-05-17_12-00-00.bak",
+	}
+	for _, backup := range backups {
+		if err := os.WriteFile(backup, []byte(filepath.Base(backup)), 0600); err != nil {
+			t.Fatalf("write backup: %v", err)
+		}
+		time.Sleep(time.Millisecond)
+	}
+
+	if err := pruneTimestampedBackups(); err != nil {
+		t.Fatalf("pruneTimestampedBackups: %v", err)
+	}
+
+	remaining, err := filepath.Glob(vaultFile + ".*.bak")
+	if err != nil {
+		t.Fatalf("glob backups: %v", err)
+	}
+	sort.Strings(remaining)
+	want := backups[1:]
+	if strings.Join(remaining, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("remaining backups = %v, want %v", remaining, want)
 	}
 }

@@ -56,7 +56,7 @@ func cleanupExpiredTokens(vault *ExtendedVault) error {
 				reason = "used up"
 			}
 
-			log.Printf("Auto-cleaned token %s (%s)", tokenID[:8], reason)
+			log.Printf("Auto-cleaned token %s (%s)", shortTokenID(tokenID), reason)
 		}
 	}
 
@@ -86,14 +86,6 @@ func executeWithToken() error {
 	token, vault, err := parseAndValidateProductionToken(tokenStr)
 	if err != nil {
 		return fmt.Errorf("token validation failed: %w", err)
-	}
-
-	if time.Now().After(token.ExpiresAt) {
-		return errors.New("token has expired")
-	}
-
-	if token.UsageCount >= token.MaxUses {
-		return errors.New("token usage limit exceeded")
 	}
 
 	logTokenAccess(command)
@@ -282,14 +274,21 @@ func handleCreateToken(vault *ExtendedVault) {
 		} else if strings.HasPrefix(arg, "--permissions=") {
 			permissions = strings.TrimPrefix(arg, "--permissions=")
 		} else if strings.HasPrefix(arg, "--max-uses=") {
-			if uses, err := strconv.Atoi(strings.TrimPrefix(arg, "--max-uses=")); err == nil {
-				maxUses = uses
+			uses, err := strconv.Atoi(strings.TrimPrefix(arg, "--max-uses="))
+			if err != nil {
+				fmt.Printf("❌ Invalid max uses: %v\n", err)
+				return
 			}
+			maxUses = uses
 		}
 	}
 
 	if keyPattern == "" || duration == "" {
 		fmt.Println("❌ Both --keys and --duration are required")
+		return
+	}
+	if strings.Contains(keyPattern, ":") {
+		fmt.Println("❌ Token key patterns cannot contain ':'")
 		return
 	}
 
@@ -299,8 +298,16 @@ func handleCreateToken(vault *ExtendedVault) {
 		return
 	}
 
+	if dur <= 0 {
+		fmt.Println("❌ Token duration must be greater than zero")
+		return
+	}
 	if dur > 24*time.Hour {
 		fmt.Println("❌ Maximum duration is 24 hours for security")
+		return
+	}
+	if maxUses <= 0 {
+		fmt.Println("❌ Max uses must be greater than zero")
 		return
 	}
 
@@ -416,6 +423,13 @@ func logTokenAccess(action string) {
 
 func contains(slice []string, item string) bool {
 	return vaulttoken.Contains(slice, item)
+}
+
+func shortTokenID(tokenID string) string {
+	if len(tokenID) <= 8 {
+		return tokenID
+	}
+	return tokenID[:8]
 }
 
 func tokenOptions() vaulttoken.Options {

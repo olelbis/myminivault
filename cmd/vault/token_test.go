@@ -43,6 +43,21 @@ func TestContains(t *testing.T) {
 	}
 }
 
+func TestShortTokenID(t *testing.T) {
+	tests := map[string]string{
+		"":              "",
+		"short":         "short",
+		"12345678":      "12345678",
+		"1234567890abc": "12345678",
+	}
+
+	for input, want := range tests {
+		if got := shortTokenID(input); got != want {
+			t.Fatalf("shortTokenID(%q) = %q, want %q", input, got, want)
+		}
+	}
+}
+
 func TestCreateShortSignedTokenRoundTrip(t *testing.T) {
 	secretKey := generateRandom(32)
 	token := AccessToken{

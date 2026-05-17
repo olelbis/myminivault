@@ -2,6 +2,21 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.4.3] - 2026-05-17
+
+### Fixed
+
+- Fixed token max-use enforcement so a token with `--max-uses=1` can complete its first allowed command and is rejected on the next use.
+- Rejected invalid token creation limits, including zero or negative durations, zero or negative max uses, malformed max-use values, and colon-delimited key patterns that would break compact token parsing.
+- Made cryptographic random byte generation fail fast if the OS random source fails instead of silently returning weak random data.
+- Made token cleanup logging robust for unexpectedly short token IDs.
+- Enforced `max_backups` retention for timestamped manual backups.
+
+### Changed
+
+- Updated the coverage baselines to `34.8%` full repository and `83.3%` internal packages.
+- Updated security/development documentation and the CLI-visible version to `0.4.3`.
+
 ## [v0.4.2] - 2026-05-17
 
 ### Added

@@ -341,6 +341,49 @@ func TestParseAndValidateProductionTokenRejectsForgeryAndPersistsUsage(t *testin
 	}
 }
 
+func TestParseAndValidateProductionTokenAllowsFinalUse(t *testing.T) {
+	dir := t.TempDir()
+	sharedVault := filepath.Join(dir, "shared-token-vault.json")
+	secretKey := bytesOf(0x22, 32)
+	opts := tokenTestOptions(bytesOf(0x33, 32))
+	accessToken := model.AccessToken{
+		TokenID:     "token-id",
+		KeyPattern:  "API_*",
+		ExpiresAt:   time.Now().Add(time.Hour),
+		Permissions: []string{"read"},
+		MaxUses:     1,
+		CreatedAt:   time.Now(),
+	}
+	vault := &model.ExtendedVault{
+		Data: map[string]string{"API_KEY": "secret"},
+		TokenManager: &model.TokenManager{
+			SecretKey: secretKey,
+			Tokens: map[string]model.AccessToken{
+				accessToken.TokenID: accessToken,
+			},
+		},
+	}
+	if err := SaveEncryptedVault(vault, sharedVault, opts); err != nil {
+		t.Fatalf("SaveEncryptedVault: %v", err)
+	}
+
+	signedToken, err := CreateShortSignedToken(accessToken, secretKey)
+	if err != nil {
+		t.Fatalf("CreateShortSignedToken: %v", err)
+	}
+
+	parsed, _, err := ParseAndValidateProductionToken(signedToken, sharedVault, opts)
+	if err != nil {
+		t.Fatalf("ParseAndValidateProductionToken first use: %v", err)
+	}
+	if parsed.UsageCount != 1 {
+		t.Fatalf("usage count after final allowed use = %d, want 1", parsed.UsageCount)
+	}
+	if _, _, err := ParseAndValidateProductionToken(signedToken, sharedVault, opts); err == nil {
+		t.Fatal("expected second use to exceed limit")
+	}
+}
+
 func TestParseAndValidateProductionTokenRejectsMalformedInputs(t *testing.T) {
 	dir := t.TempDir()
 	sharedVault := filepath.Join(dir, "shared-token-vault.json")
