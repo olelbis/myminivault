@@ -363,7 +363,32 @@ git pull
 git switch -c file-container-header
 ```
 
-### 6. Additional CLI Smoke Tests
+### 6. Runtime Inspect And Doctor Improvements
+
+Priority: medium.
+
+`vault doctor` already checks runtime health, but the runtime-home migration makes it useful to have a clearer inspection workflow that explains which files are active and which legacy files may still exist.
+
+Future direction:
+
+- add `vault inspect-runtime` or extend `vault doctor --runtime`
+- print the active runtime home, including whether it came from `MYMINIVAULT_HOME` or the default `~/.myminivault/`
+- list active runtime files with path, modified time, size, and mode
+- list legacy current-directory runtime files that were skipped because active runtime-home files already exist
+- show which file appears newer by `mtime`
+- once file container headers exist, show cleartext file container version without decrypting
+- never decrypt vaults or print secrets in this inspection mode
+- add smoke coverage for conflict reporting and runtime inspection output
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c runtime-inspect
+```
+
+### 7. Additional CLI Smoke Tests
 
 Automated smoke tests currently cover:
 
@@ -405,7 +430,7 @@ git pull
 git switch -c cli-smoke-tests-more
 ```
 
-### 7. Import/Export Format Review
+### 8. Import/Export Format Review
 
 Priority: low-medium.
 
@@ -438,7 +463,7 @@ git pull
 git switch -c import-export-format
 ```
 
-### 8. Future Refactor Candidates
+### 9. Future Refactor Candidates
 
 Priority: low unless a bug or feature makes the extraction useful.
 
@@ -469,7 +494,7 @@ Future token sync simplification:
 - Per-key timestamps now exist; consider revision counters, merge-base metadata, or fuller delete tombstones before changing the policy further.
 - Document the final behavior in the user manual once the policy is stable.
 
-### 9. Memory Exposure Hardening Next Steps
+### 10. Memory Exposure Hardening Next Steps
 
 Priority: low-medium.
 
@@ -494,7 +519,7 @@ git switch -c memory-exposure-next
 
 These are intentionally lower priority than the stability/security work above. Revisit them after documentation cleanup, security review, token sync policy review, and test-depth work are in better shape.
 
-### 10. `vault run -- <command>`
+### 11. `vault run -- <command>`
 
 Run a command with vault entries injected as environment variables, without printing secrets:
 
@@ -511,7 +536,7 @@ git pull
 git switch -c vault-run-command
 ```
 
-### 11. Project Profiles
+### 12. Project Profiles
 
 Support separate vault contexts for different projects or environments:
 
@@ -529,7 +554,7 @@ git pull
 git switch -c project-profiles
 ```
 
-### 12. Namespaces
+### 13. Namespaces
 
 Support namespaced keys for environments such as `dev`, `staging`, and `prod`:
 
@@ -546,7 +571,7 @@ git pull
 git switch -c namespaces
 ```
 
-### 13. Token UX Cleanup
+### 14. Token UX Cleanup
 
 Make token commands more consistent and automation-friendly:
 
@@ -564,7 +589,7 @@ git pull
 git switch -c token-ux
 ```
 
-### 14. Terminal UI
+### 15. Terminal UI
 
 Add an optional TUI for browsing/searching keys, viewing token status, editing values, and triggering copy/export flows:
 
@@ -580,7 +605,7 @@ git pull
 git switch -c tui
 ```
 
-### 15. Secret Rotation Hooks
+### 16. Secret Rotation Hooks
 
 Support command-driven rotation workflows:
 
@@ -596,7 +621,7 @@ git pull
 git switch -c secret-rotation
 ```
 
-### 16. Hook System
+### 17. Hook System
 
 Allow local scripts to run after selected events such as `set`, `delete`, `backup`, or `token create`:
 
