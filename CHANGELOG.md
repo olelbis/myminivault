@@ -2,6 +2,12 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.4.1] - 2026-05-17
+
+### Added
+
+- Added `inspect-runtime` to list active and legacy runtime files without decrypting vault data.
+
 ## [v0.4.0] - 2026-05-17
 
 ### Changed

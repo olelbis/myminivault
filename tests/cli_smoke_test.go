@@ -28,7 +28,7 @@ const (
 	sharedTokenVault = "shared-token-vault.json"
 	tokenRegistry    = "vault-tokens.json"
 	saltSize         = 16
-	vaultVersion     = "0.4.0"
+	vaultVersion     = "0.4.1"
 	vaultHomeEnv     = "MYMINIVAULT_HOME"
 )
 
@@ -320,6 +320,39 @@ func TestCLISmokeDoctorChecksRuntimeHealth(t *testing.T) {
 	insecureOutput := requireOK(t, runVault(t, bin, dir, "", "doctor"))
 	requireContains(t, insecureOutput, "main vault")
 	requireContains(t, insecureOutput, "mode 0644")
+}
+
+func TestCLISmokeInspectRuntimeShowsActiveAndLegacyFiles(t *testing.T) {
+	bin := buildVaultBinary(t)
+	workDir := t.TempDir()
+	runtimeDir := t.TempDir()
+
+	cmd := exec.Command(bin, "set", "API_KEY", "hello")
+	cmd.Dir = workDir
+	cmd.Env = append(os.Environ(), vaultHomeEnv+"="+runtimeDir)
+	cmd.Stdin = strings.NewReader("pass\n")
+	out, err := cmd.CombinedOutput()
+	requireOK(t, cliResult{output: string(out), err: err})
+
+	if err := os.WriteFile(filepath.Join(workDir, vaultFile), []byte("legacy encrypted bytes"), 0600); err != nil {
+		t.Fatalf("write legacy vault file: %v", err)
+	}
+
+	cmd = exec.Command(bin, "inspect-runtime")
+	cmd.Dir = workDir
+	cmd.Env = append(os.Environ(), vaultHomeEnv+"="+runtimeDir)
+	out, err = cmd.CombinedOutput()
+	inspect := requireOK(t, cliResult{output: string(out), err: err})
+	requireContains(t, inspect, "Runtime Inspect")
+	requireContains(t, inspect, "Runtime home: "+runtimeDir)
+	requireContains(t, inspect, "Runtime source: "+vaultHomeEnv)
+	requireContains(t, inspect, "Secrets: not decrypted or printed")
+	requireContains(t, inspect, "Active runtime files:")
+	requireContains(t, inspect, filepath.Join(runtimeDir, vaultFile))
+	requireContains(t, inspect, "Legacy current-directory files:")
+	requireContains(t, inspect, filepath.Join(workDir, vaultFile))
+	requireContains(t, inspect, "newer by mtime:")
+	requireContains(t, inspect, "migration: skipped")
 }
 
 func TestCLISmokeAuditLogOmitsKeyNamesAndCanBeDisabled(t *testing.T) {

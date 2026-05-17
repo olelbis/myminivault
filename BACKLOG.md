@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.4.0`
+- Current baseline release: `v0.4.1`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -134,6 +134,7 @@ Strategic guidance:
 - Added focused `internal/token` hardening coverage for master-key creation/loading, registry parse errors, encrypted-vault error paths, malformed token parsing, missing token-manager cases, generated token IDs, permission helpers, expiry checks, and max-use checks.
 - Moved end-to-end CLI smoke tests into `tests/` and removed stale `cmd/vault` wrapper noise flagged by `gopls`.
 - Moved sensitive runtime files into `~/.myminivault/` by default, with `MYMINIVAULT_HOME` override and legacy cwd migration.
+- Added `vault inspect-runtime` for active and legacy runtime file inspection without decrypting vault data.
 - Clarified recovery-file plus recovery-key exposure across security, recovery, and user documentation.
 - Added an `80.0%` internal package coverage floor to CI.
 - Extracted command logging and shared-vault mirror policy helpers from `cmd/vault` orchestration.
@@ -327,7 +328,7 @@ The README now documents `go install`, and release package automation builds Lin
 
 Recommended progression:
 
-- verify the package workflow run after publishing `v0.4.0`
+- verify the package workflow run after publishing `v0.4.1`
 - decide whether Linux/macOS amd64 and arm64 are enough for the first public phase
 - consider Homebrew only after release binaries and public positioning are more mature
 - keep checksums in release assets if binaries are published
@@ -367,18 +368,13 @@ git switch -c file-container-header
 
 Priority: medium.
 
-`vault doctor` already checks runtime health, but the runtime-home migration makes it useful to have a clearer inspection workflow that explains which files are active and which legacy files may still exist.
+`vault inspect-runtime` now explains which files are active and which legacy files may still exist without decrypting vault data. `vault doctor` still covers health checks.
 
-Future direction:
+Remaining direction:
 
-- add `vault inspect-runtime` or extend `vault doctor --runtime`
-- print the active runtime home, including whether it came from `MYMINIVAULT_HOME` or the default `~/.myminivault/`
-- list active runtime files with path, modified time, size, and mode
-- list legacy current-directory runtime files that were skipped because active runtime-home files already exist
-- show which file appears newer by `mtime`
 - once file container headers exist, show cleartext file container version without decrypting
-- never decrypt vaults or print secrets in this inspection mode
-- add smoke coverage for conflict reporting and runtime inspection output
+- consider whether `vault doctor` should link to or embed `inspect-runtime` output
+- keep smoke coverage for conflict reporting and runtime inspection output
 
 Suggested branch:
 

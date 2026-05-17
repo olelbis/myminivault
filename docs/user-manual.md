@@ -194,6 +194,14 @@ Checks local runtime health without asking for the master password. It reports c
 
 Sensitive runtime files should normally be readable only by the local user. `vault doctor` warns when files such as `vault.db`, backups, recovery snapshots, token files, or logs are group/world-readable.
 
+## Runtime Inspection
+
+```bash
+./bin/vault inspect-runtime
+```
+
+Lists the active runtime home, whether it came from `MYMINIVAULT_HOME` or the default `~/.myminivault/`, active runtime files, and legacy current-directory runtime files. It shows path, modified time, size, and mode, but it does not decrypt vaults or print secrets.
+
 ## Password Recovery
 
 For the exact snapshot, divergence, verifier, and rotation policy, see [Recovery Policy](recovery-policy.md).

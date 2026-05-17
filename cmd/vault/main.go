@@ -35,6 +35,10 @@ func main() {
 		handleDoctorCommand()
 		return
 	}
+	if command == "inspect-runtime" {
+		handleInspectRuntimeCommand()
+		return
+	}
 
 	if err := loadConfig(); err != nil {
 		fmt.Printf("Config error: %v\n", err)
@@ -229,11 +233,11 @@ func showUsage() {
 	fmt.Println("Recovery: setup-recovery, recover, test-recovery, change-password")
 	fmt.Println("Tokens: create-token, list-tokens, revoke-token, use-token, token-info, cleanup-tokens")
 	fmt.Println("Sync: sync-tokens")
-	fmt.Println("Security: security-audit, doctor, config, regenerate-token-key, help")
+	fmt.Println("Security: security-audit, doctor, inspect-runtime, config, regenerate-token-key, help")
 }
 
 func showHelp() {
-	fmt.Println(`🔐 myminivault CLI v0.4.0
+	fmt.Println(`🔐 myminivault CLI v0.4.1
 Author: olelbis
 
 BASIC COMMANDS:
@@ -275,6 +279,7 @@ SYNCHRONIZATION:
 SECURITY:
   security-audit        Comprehensive security audit
   doctor                Check runtime file permissions and local health
+  inspect-runtime       List active and legacy runtime files without decrypting
   config                Show configuration
   regenerate-token-key  Generate new token master key
 

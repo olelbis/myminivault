@@ -98,6 +98,7 @@ Create a backup:
 | `use-token` | Use a temporary token |
 | `security-audit` | Print local vault status |
 | `doctor` | Check runtime file permissions and local health |
+| `inspect-runtime` | List active and legacy runtime files without decrypting |
 
 ## Screenshots
 
