@@ -117,15 +117,15 @@ go test ./internal/config
 Run one focused test by name:
 
 ```bash
-go test ./cmd/vault -run TestCLISmokeTokenReadAndWrite
-go test ./cmd/vault -run TestCLISmokeSetupAndTestRecovery
+go test ./tests -run TestCLISmokeTokenReadAndWrite
+go test ./tests -run TestCLISmokeSetupAndTestRecovery
 go test ./cmd/vault -run TestCreateShortSignedTokenRoundTrip
 ```
 
 Run with verbose output when diagnosing a failure:
 
 ```bash
-go test -v ./cmd/vault -run TestCLISmokeTokenReadAndWrite
+go test -v ./tests -run TestCLISmokeTokenReadAndWrite
 ```
 
 Run the coverage gate locally:
@@ -158,7 +158,7 @@ printf 'oldpass\n' | ./vault set TEST_KEY hello
 printf 'oldpass\n' | ./vault get TEST_KEY
 ```
 
-The automated CLI smoke tests create temporary directories and fake data. Do not run manual smoke commands in a directory that contains real vault files unless that is intentional.
+The automated CLI smoke tests live in `./tests`, create temporary directories, and use fake data. Do not run manual smoke commands in a directory that contains real vault files unless that is intentional.
 
 Current automated checks cover CLI smoke flows, token lifecycle behavior, config error handling, `vault doctor`, shell-safe import/export round trips, export-to-file behavior, clipboard clear behavior, audit-log redaction, disabled audit logging, token sync metadata decisions, token master-key and compact-token helper behavior, core unit behavior, and package-level coverage for `internal/storage`, `internal/token`, `internal/recovery`, `internal/lock`, `internal/audit`, `internal/sync`, `internal/commands`, `internal/clipboard`, and `internal/export`. CI enforces `80.0%` minimum coverage for `./internal/...`.
 

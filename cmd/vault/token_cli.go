@@ -31,10 +31,6 @@ func getOrCreateTokenMasterKey() ([]byte, error) {
 	return key, nil
 }
 
-func loadTokenMasterKey() ([]byte, error) {
-	return vaulttoken.LoadMasterKey(tokenKeyFile)
-}
-
 func saveTokenMasterKey(key []byte) error {
 	return vaulttoken.SaveMasterKey(tokenKeyFile, key)
 }
@@ -100,7 +96,7 @@ func executeWithToken() error {
 		return errors.New("token usage limit exceeded")
 	}
 
-	logTokenAccess(token.TokenID, command, getKeyFromTokenArgs())
+	logTokenAccess(command)
 
 	switch command {
 	case "get":
@@ -137,23 +133,12 @@ func addBase64Padding(s string) string {
 	return vaulttoken.AddBase64Padding(s)
 }
 
-func loadSharedTokenVault() (*ExtendedVault, error) {
-	tokenVaultMutex.Lock()
-	defer tokenVaultMutex.Unlock()
-
-	return loadVaultFromTokenFileEncrypted(sharedTokenVault)
-}
-
 func saveTokenVaultEncrypted(vault *ExtendedVault, tokenVaultPath string) error {
 	return vaulttoken.SaveEncryptedVault(vault, tokenVaultPath, tokenOptions())
 }
 
 func loadVaultFromTokenFileEncrypted(tokenFilePath string) (*ExtendedVault, error) {
 	return vaulttoken.LoadEncryptedVault(tokenFilePath, tokenOptions())
-}
-
-func saveTokenVaultFileAtomic(tokenVaultPath string, salt, data []byte) error {
-	return vaulttoken.SaveVaultFileAtomic(tokenVaultPath, salt, data)
 }
 
 func loadTokenRegistry() (*TokenRegistry, error) {
@@ -422,18 +407,11 @@ func handleRevokeToken(vault *ExtendedVault) {
 	fmt.Printf("✅ Token %s revoked and removed from shared vault\n", tokenID)
 }
 
-func logTokenAccess(tokenID, action, key string) {
+func logTokenAccess(action string) {
 	if !config.AuditLog {
 		return
 	}
 	_ = vaultaudit.Write(logFile, vaultaudit.TokenEntry, action)
-}
-
-func getKeyFromTokenArgs() string {
-	if len(os.Args) >= 5 && (os.Args[3] == "get" || os.Args[3] == "set") {
-		return os.Args[4]
-	}
-	return ""
 }
 
 func contains(slice []string, item string) bool {

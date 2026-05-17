@@ -34,10 +34,6 @@ func syncSharedVaultToMainVault(mainVault *ExtendedVault) error {
 	return nil
 }
 
-func shouldImportSharedValue(mainVault, sharedVault *ExtendedVault, key string) bool {
-	return vaultsync.ShouldImportSharedValue(mainVault, sharedVault, key)
-}
-
 func syncMainVaultToSharedVault(vault *ExtendedVault) error {
 	tokenVaultMutex.Lock()
 	defer tokenVaultMutex.Unlock()

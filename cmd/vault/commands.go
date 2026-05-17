@@ -228,15 +228,6 @@ func readPasswordPrompt(prompt string) (string, error) {
 	return readLinePrompt(prompt)
 }
 
-func readPasswordFallback() (string, error) {
-	reader := bufio.NewReader(os.Stdin)
-	pwd, err := reader.ReadString('\n')
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(pwd), nil
-}
-
 func readLinePrompt(prompt string) (string, error) {
 	fmt.Print(prompt)
 
@@ -346,14 +337,7 @@ func showStats(vault *ExtendedVault) {
 	}
 }
 
-func getKeyFromArgs() string {
-	if len(os.Args) >= 3 {
-		return os.Args[2]
-	}
-	return ""
-}
-
-func logAccess(action, key string) {
+func logAccess(action string) {
 	if !config.AuditLog {
 		return
 	}

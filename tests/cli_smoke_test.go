@@ -1,4 +1,4 @@
-package main
+package tests
 
 import (
 	"context"
@@ -11,6 +11,24 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	vaultcommands "github.com/olelbis/myminivault/internal/commands"
+	vaultconfig "github.com/olelbis/myminivault/internal/config"
+	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
+	"github.com/olelbis/myminivault/internal/model"
+	vaultrecovery "github.com/olelbis/myminivault/internal/recovery"
+	vaultstorage "github.com/olelbis/myminivault/internal/storage"
+)
+
+const (
+	vaultFile        = "vault.db"
+	configFile       = vaultconfig.FileName
+	logFile          = "vault.log"
+	tokenKeyFile     = "vault-token.key"
+	sharedTokenVault = "shared-token-vault.json"
+	tokenRegistry    = "vault-tokens.json"
+	saltSize         = 16
+	vaultVersion     = "0.3.7"
 )
 
 type cliResult struct {
@@ -22,7 +40,8 @@ func buildVaultBinary(t *testing.T) string {
 	t.Helper()
 
 	bin := filepath.Join(t.TempDir(), "vault")
-	cmd := exec.Command("go", "build", "-o", bin, ".")
+	cmd := exec.Command("go", "build", "-o", bin, "./cmd/vault")
+	cmd.Dir = ".."
 	cmd.Env = append(os.Environ(), "GOCACHE="+filepath.Join(t.TempDir(), "gocache"))
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -460,40 +479,35 @@ func runSetupRecovery(t *testing.T, bin, dir, password string) (string, string) 
 func seedRecoverableVault(t *testing.T, dir, password string) string {
 	t.Helper()
 
-	originalDir, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd: %v", err)
-	}
-	if err := os.Chdir(dir); err != nil {
-		t.Fatalf("chdir temp vault dir: %v", err)
-	}
-	defer func() {
-		if err := os.Chdir(originalDir); err != nil {
-			t.Fatalf("restore working dir: %v", err)
-		}
-	}()
-
-	recoveryKey, err := generateRecoveryKey()
+	recoveryKey, err := vaultrecovery.GenerateKey()
 	if err != nil {
 		t.Fatalf("generateRecoveryKey: %v", err)
 	}
 
-	vault := &ExtendedVault{
+	vault := &model.ExtendedVault{
 		Data: map[string]string{"API_KEY": "hello"},
-		Recovery: &RecoveryData{
+		Recovery: &model.RecoveryData{
 			CreatedAt: time.Now(),
 		},
-		Metadata: VaultMetadata{
+		Metadata: model.VaultMetadata{
 			Version:   vaultVersion,
 			CreatedAt: time.Now(),
 		},
 	}
-	hashRecoveryKey(vault.Recovery, recoveryKey)
+	vaultrecovery.HashKey(vault.Recovery, recoveryKey)
 
-	setCurrentRecoveryKey(recoveryKey)
-	defer setCurrentRecoveryKey("")
+	opts := vaultstorage.Options{
+		VaultFile:   filepath.Join(dir, vaultFile),
+		SaltSize:    saltSize,
+		Version:     vaultVersion,
+		RecoveryKey: recoveryKey,
+		Scrypt:      vaultcrypto.ScryptConfig{N: vaultconfig.Default.ScryptN, R: vaultconfig.Default.ScryptR, P: vaultconfig.Default.ScryptP, KeySize: vaultconfig.Default.KeySize},
+		SaveRecoveryFile: func(salt, recoveryCiphertext []byte) error {
+			return vaultrecovery.SaveFile(filepath.Join(dir, vaultFile), salt, recoveryCiphertext)
+		},
+	}
 
-	if err := saveExtendedVault(vault, password, generateRandom(saltSize)); err != nil {
+	if err := vaultstorage.Save(vault, password, vaultcrypto.Random(saltSize), opts); err != nil {
 		t.Fatalf("save recoverable vault: %v", err)
 	}
 
@@ -514,7 +528,7 @@ func extractCompactToken(t *testing.T, output string) string {
 
 func onlyExportLines(output string) string {
 	var exports []string
-	for _, line := range splitImportLines(output) {
+	for _, line := range vaultcommands.SplitImportLines(output) {
 		if idx := strings.Index(line, "export "); idx >= 0 {
 			line = line[idx:]
 		}

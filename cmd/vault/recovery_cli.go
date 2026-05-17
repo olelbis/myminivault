@@ -161,10 +161,6 @@ func generateRecoveryKey() (string, error) {
 	return vaultrecovery.GenerateKey()
 }
 
-func groupRecoveryKey(encoded string) string {
-	return vaultrecovery.GroupKey(encoded)
-}
-
 func validateRecoveryKey(recovery *RecoveryData, key string) bool {
 	return vaultrecovery.ValidateKey(recovery, key)
 }

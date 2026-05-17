@@ -103,7 +103,7 @@ func runPasswordCommand(command, password string) error {
 	extendedVault.Metadata.AccessCount++
 
 	if shouldLogAccessForCommand(command) {
-		logAccess(command, getKeyFromArgs())
+		logAccess(command)
 	}
 
 	switch command {
@@ -226,7 +226,7 @@ func showUsage() {
 }
 
 func showHelp() {
-	fmt.Println(`🔐 myminivault CLI v0.3.6
+	fmt.Println(`🔐 myminivault CLI v0.3.7
 Author: olelbis
 
 BASIC COMMANDS:

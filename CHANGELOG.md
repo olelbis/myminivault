@@ -2,6 +2,15 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.3.7] - 2026-05-17
+
+### Changed
+
+- Moved end-to-end CLI smoke tests into the top-level `tests` package.
+- Removed duplicate sync wrapper tests from `cmd/vault`; equivalent behavior remains covered by `internal/sync`.
+- Removed unused CLI wrapper functions and unused logger parameters flagged by `gopls`.
+- Kept audit logging redacted while simplifying call sites that no longer pass key or token identifiers.
+
 ## [v0.3.6] - 2026-05-17
 
 ### Changed
