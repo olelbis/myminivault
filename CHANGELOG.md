@@ -2,7 +2,7 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
-## [Unreleased]
+## [v0.3.6] - 2026-05-17
 
 ### Changed
 

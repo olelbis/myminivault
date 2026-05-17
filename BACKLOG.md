@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.3.5`
+- Current baseline release: `v0.3.6`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -322,7 +322,7 @@ The README now documents `go install`, and release package automation builds Lin
 
 Recommended progression:
 
-- verify the package workflow run after publishing `v0.3.5`
+- verify the package workflow run after publishing `v0.3.6`
 - decide whether Linux/macOS amd64 and arm64 are enough for the first public phase
 - consider Homebrew only after release binaries and public positioning are more mature
 - keep checksums in release assets if binaries are published
