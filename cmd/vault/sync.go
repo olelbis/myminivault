@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
+
+	vaultsync "github.com/olelbis/myminivault/internal/sync"
 )
 
 func syncSharedVaultToMainVault(mainVault *ExtendedVault) error {
@@ -17,61 +20,22 @@ func syncSharedVaultToMainVault(mainVault *ExtendedVault) error {
 		return fmt.Errorf("failed to load shared vault: %w", err)
 	}
 
-	importedCount := 0
-	deletedCount := 0
-	skippedConflicts := 0
+	result := vaultsync.ImportSharedVault(mainVault, sharedVault, time.Now())
 
-	for key, value := range sharedVault.Data {
-		if shouldImportSharedValue(mainVault, sharedVault, key) {
-			mainVault.Data[key] = value
-			markKeyUpdated(mainVault, key)
-			importedCount++
-		} else if mainVault.Data[key] != value {
-			skippedConflicts++
-		}
-	}
-
-	if sharedVault.Sync != nil {
-		for key, sharedDeletedAt := range sharedVault.Sync.DeletedAt {
-			if sharedDeletedAt.IsZero() {
-				continue
-			}
-			mainUpdatedAt := syncUpdatedAt(mainVault, key)
-			if mainUpdatedAt.IsZero() || sharedDeletedAt.After(mainUpdatedAt) {
-				if _, exists := mainVault.Data[key]; exists {
-					delete(mainVault.Data, key)
-					markKeyDeleted(mainVault, key)
-					deletedCount++
-				}
-			}
-		}
-	}
-
-	if importedCount > 0 || deletedCount > 0 {
-		total := importedCount + deletedCount
+	if result.Imported > 0 || result.Deleted > 0 {
+		total := result.Imported + result.Deleted
 		log.Printf("Synced %d changes from token vault to main vault", total)
 		fmt.Printf("📥 Synchronized %d token changes to main vault\n", total)
 	}
-	if skippedConflicts > 0 {
-		fmt.Printf("⚠️  Skipped %d older token conflict(s); main vault values were newer\n", skippedConflicts)
+	if result.SkippedConflicts > 0 {
+		fmt.Printf("⚠️  Skipped %d older token conflict(s); main vault values were newer\n", result.SkippedConflicts)
 	}
 
 	return nil
 }
 
 func shouldImportSharedValue(mainVault, sharedVault *ExtendedVault, key string) bool {
-	if mainVault.Data[key] == sharedVault.Data[key] {
-		return false
-	}
-
-	sharedUpdatedAt := syncUpdatedAt(sharedVault, key)
-	mainUpdatedAt := syncUpdatedAt(mainVault, key)
-
-	if sharedUpdatedAt.IsZero() || mainUpdatedAt.IsZero() {
-		return true
-	}
-
-	return sharedUpdatedAt.After(mainUpdatedAt)
+	return vaultsync.ShouldImportSharedValue(mainVault, sharedVault, key)
 }
 
 func syncMainVaultToSharedVault(vault *ExtendedVault) error {
@@ -115,9 +79,5 @@ func syncMainVaultToSharedVault(vault *ExtendedVault) error {
 }
 
 func copyVaultData(data map[string]string) map[string]string {
-	copied := make(map[string]string, len(data))
-	for key, value := range data {
-		copied[key] = value
-	}
-	return copied
+	return vaultsync.CopyVaultData(data)
 }

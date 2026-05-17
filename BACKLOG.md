@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.3.2`
+- Current baseline release: `v0.3.3`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are ignored by Git.
@@ -15,9 +15,9 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `8.7 / 10`.
+Current assessment score: `8.8 / 10`.
 
-`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
+`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
 Main strengths:
 
@@ -29,6 +29,8 @@ Main strengths:
 - focused `internal/...` packages for crypto, config, model, recovery, storage, and token logic
 - tested `internal/lock` package for advisory file locking
 - tested `internal/audit` package for redacted audit log formatting and writes
+- tested `internal/sync` package for local shared-vault import and metadata policy
+- tested `internal/commands` package for export/import/key validation helpers
 - automated CLI smoke coverage for critical workflows
 - explicit handling for recovery, token sync, locking, backups, export, and password changes
 - a handoff backlog that can restart work from a fresh chat
@@ -121,6 +123,8 @@ Strategic guidance:
 - Added CI coverage reporting, a downloadable coverage artifact, coverage notes, and an internal coverage badge.
 - Moved file lock handling into `internal/lock` and added unit coverage for permissions, callback errors, and concurrent serialization.
 - Moved redacted audit log formatting and writing into `internal/audit` and added unit coverage for formatting, appends, and permissions.
+- Moved sync metadata and shared-vault import decision logic into `internal/sync`.
+- Moved export/import/key validation helpers into `internal/commands`.
 
 ## Current Verification
 
@@ -290,7 +294,7 @@ The README now documents `go install`, and release package automation builds Lin
 
 Recommended progression:
 
-- verify the first package workflow run after publishing `v0.3.2`
+- verify the package workflow run after publishing `v0.3.3`
 - decide whether Linux/macOS amd64 and arm64 are enough for the first public phase
 - consider Homebrew only after release binaries and public positioning are more mature
 - keep checksums in release assets if binaries are published
@@ -392,11 +396,12 @@ Stable internal packages already extracted:
 - `internal/token`
 - `internal/lock`
 - `internal/audit`
+- `internal/sync`
+- `internal/commands`
 
 Possible future extractions:
 
-- `internal/sync`: main/shared vault synchronization policy
-- `internal/commands`: command-independent key/value operations
+- continue extracting small command-independent helpers only when tests stay clear
 
 Continue only with well-covered areas and add concise English comments for non-obvious invariants.
 

@@ -9,12 +9,12 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"sort"
 	"strings"
 	"syscall"
 	"time"
 
 	vaultaudit "github.com/olelbis/myminivault/internal/audit"
+	vaultcommands "github.com/olelbis/myminivault/internal/commands"
 )
 
 // Command handlers (unchanged)
@@ -91,25 +91,11 @@ func handleExportCommand(vault map[string]string) {
 }
 
 func renderExport(vault map[string]string) string {
-	keys := make([]string, 0, len(vault))
-	for key := range vault {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-
-	var output strings.Builder
-	for _, key := range keys {
-		fmt.Fprintf(&output, "export %s=%s\n", key, shellQuote(vault[key]))
-	}
-	return output.String()
+	return vaultcommands.RenderExport(vault)
 }
 
 func shellQuote(value string) string {
-	if value == "" {
-		return "''"
-	}
-
-	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
+	return vaultcommands.ShellQuote(value)
 }
 
 func handleListCommand(vault map[string]string) {
@@ -335,125 +321,24 @@ func readLinePrompt(prompt string) (string, error) {
 }
 
 func validateKey(key string) error {
-	if len(key) == 0 {
-		return errors.New("key cannot be empty")
-	}
-	if len(key) > 255 {
-		return errors.New("key too long")
-	}
-	if strings.ContainsAny(key, " \t\n\r\"'\\=:;,") {
-		return errors.New("key contains invalid characters")
-	}
-	return nil
+	return vaultcommands.ValidateKey(key)
 }
 
 func importFromFile(vault map[string]string, filename string) ([]string, error) {
-	data, err := os.ReadFile(filename)
+	importedKeys, err := vaultcommands.ImportFromFile(vault, filename)
 	if err != nil {
 		return nil, err
 	}
-
-	imported := 0
-	importedKeys := make([]string, 0)
-	for _, line := range splitImportLines(string(data)) {
-		line = strings.TrimSpace(line)
-		if len(line) == 0 || strings.HasPrefix(line, "#") {
-			continue
-		}
-
-		if after, ok := strings.CutPrefix(line, "export "); ok {
-			line = after
-		}
-
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) != 2 {
-			continue
-		}
-
-		key := strings.TrimSpace(parts[0])
-		value, err := parseImportValue(strings.TrimSpace(parts[1]))
-		if err != nil {
-			continue
-		}
-
-		if err := validateKey(key); err != nil {
-			continue
-		}
-
-		vault[key] = value
-		importedKeys = append(importedKeys, key)
-		imported++
-	}
-
-	fmt.Printf("Imported %d entries\n", imported)
+	fmt.Printf("Imported %d entries\n", len(importedKeys))
 	return importedKeys, nil
 }
 
 func splitImportLines(content string) []string {
-	lines := make([]string, 0)
-	var current strings.Builder
-	inSingleQuote := false
-
-	for i := 0; i < len(content); i++ {
-		if inSingleQuote && i+3 < len(content) && content[i] == '\'' && content[i+1] == '\\' && content[i+2] == '\'' && content[i+3] == '\'' {
-			current.WriteString("'\\''")
-			i += 3
-			continue
-		}
-
-		switch content[i] {
-		case '\'':
-			inSingleQuote = !inSingleQuote
-			current.WriteByte(content[i])
-		case '\n':
-			if inSingleQuote {
-				current.WriteByte(content[i])
-				continue
-			}
-			lines = append(lines, current.String())
-			current.Reset()
-		default:
-			current.WriteByte(content[i])
-		}
-	}
-
-	if current.Len() > 0 {
-		lines = append(lines, current.String())
-	}
-	return lines
+	return vaultcommands.SplitImportLines(content)
 }
 
 func parseImportValue(value string) (string, error) {
-	if value == "" {
-		return "", nil
-	}
-	if value[0] != '\'' {
-		return strings.Trim(value, "\""), nil
-	}
-
-	var parsed strings.Builder
-	for len(value) > 0 {
-		if value[0] != '\'' {
-			return "", errors.New("unsupported shell value")
-		}
-		value = value[1:]
-
-		end := strings.IndexByte(value, '\'')
-		if end < 0 {
-			return "", errors.New("unterminated quoted value")
-		}
-		parsed.WriteString(value[:end])
-		value = value[end+1:]
-
-		if strings.HasPrefix(value, "\\''") {
-			parsed.WriteByte('\'')
-			value = value[2:]
-			continue
-		}
-		value = strings.TrimSpace(value)
-	}
-
-	return parsed.String(), nil
+	return vaultcommands.ParseImportValue(value)
 }
 
 func createTimestampedBackup() error {

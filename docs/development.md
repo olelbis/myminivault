@@ -39,6 +39,10 @@ internal/
     lock.go             advisory file lock helper
   audit/
     audit.go            redacted audit log formatting and writes
+  sync/
+    sync.go             sync metadata and shared-vault import policy helpers
+  commands/
+    commands.go         export/import/key validation helpers
 docs/
   user-manual.md        user-facing workflows and operational notes
   development.md        architecture, test, and release workflow notes
@@ -61,6 +65,8 @@ docs/
 - `internal/token`: token signing, validation, registry, encrypted shared token vault
 - `internal/lock`: advisory file locking for cooperating local CLI processes
 - `internal/audit`: redacted audit log formatting and writes
+- `internal/sync`: sync metadata and shared-vault import policy helpers
+- `internal/commands`: export/import/key validation helpers
 
 The project still keeps some orchestration in `cmd/vault`, especially sync and command behavior. Future extractions should happen only when tests cover the behavior well enough.
 
@@ -140,7 +146,7 @@ printf 'oldpass\n' | ./vault get TEST_KEY
 
 The automated CLI smoke tests create temporary directories and fake data. Do not run manual smoke commands in a directory that contains real vault files unless that is intentional.
 
-Current automated checks cover CLI smoke flows, token lifecycle behavior, config error handling, `vault doctor`, shell-safe import/export round trips, export-to-file behavior, clipboard clear behavior, audit-log redaction, disabled audit logging, token sync metadata decisions, core unit behavior, and package-level coverage for `internal/storage`, `internal/token`, `internal/recovery`, `internal/lock`, and `internal/audit`.
+Current automated checks cover CLI smoke flows, token lifecycle behavior, config error handling, `vault doctor`, shell-safe import/export round trips, export-to-file behavior, clipboard clear behavior, audit-log redaction, disabled audit logging, token sync metadata decisions, core unit behavior, and package-level coverage for `internal/storage`, `internal/token`, `internal/recovery`, `internal/lock`, `internal/audit`, `internal/sync`, and `internal/commands`.
 
 ## Branch Workflow
 

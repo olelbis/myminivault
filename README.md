@@ -13,7 +13,7 @@
   <img alt="Go" src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white">
   <img alt="Latest release" src="https://img.shields.io/github/v/release/olelbis/myminivault?sort=semver">
   <img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/olelbis/myminivault.svg">
-  <img alt="Internal coverage" src="https://img.shields.io/badge/internal_coverage-71.5%25-yellowgreen">
+  <img alt="Internal coverage" src="https://img.shields.io/badge/internal_coverage-76.2%25-green">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
   <img alt="Status" src="https://img.shields.io/badge/status-experimental-orange">
   <img alt="CLI" src="https://img.shields.io/badge/interface-CLI-2f3337">

@@ -2,7 +2,7 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
-## [Unreleased]
+## [v0.3.3] - 2026-05-17
 
 ### Changed
 
@@ -11,6 +11,9 @@ All notable project changes are recorded here. Application releases use Git tags
 - Added CI coverage reporting, a coverage artifact, coverage notes, and an internal coverage badge.
 - Moved file lock handling into `internal/lock` with focused unit coverage.
 - Moved redacted audit log formatting and writing into `internal/audit` with focused unit coverage.
+- Moved sync metadata and import decision logic into `internal/sync` with focused unit coverage.
+- Moved export/import/key validation helpers into `internal/commands` with focused unit coverage.
+- Updated the CLI-visible version to `0.3.3`.
 
 ## [v0.3.2] - 2026-05-17
 
