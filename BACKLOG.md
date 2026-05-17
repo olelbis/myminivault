@@ -54,6 +54,17 @@ Strategic guidance:
 - document behavior before changing user-facing semantics
 - avoid claiming production security without external review
 
+Docs-only maintenance can be done on `main` without creating a new release when it does not change Go code, workflows, generated package contents, CLI-visible behavior, release assets, or version numbers. Prefer a normal commit and push for those changes, then include them in the next functional release notes if they materially clarify user behavior.
+
+Docs-only candidates:
+
+- backlog cleanup, priority ordering, and handoff notes
+- README wording, examples, screenshots, and badge explanations
+- user manual examples and warnings that describe existing behavior
+- development guide workflow notes
+- threat model clarifications that do not claim new mitigations
+- release-history notes such as documenting that `v0.4.5` supersedes the failed `v0.4.4` package workflow
+
 ## What Has Been Done
 
 - Initialized Git for the project.
@@ -279,24 +290,26 @@ git pull
 git switch -c token-sync-next
 ```
 
-### 2. Quality Roadmap Beyond 9.0
+### 2. Quality Roadmap Beyond 9.5
 
 Priority: medium-high.
 
-These items are the most direct path beyond the current `9.0 / 10` assessment. Prefer them before adding new product features.
+These items are the most direct path beyond the current `9.5 / 10` assessment. Prefer them before adding new product features.
 
 Recommended order:
 
-1. continue improving release binaries and install paths after the first package workflow
-2. keep the internal coverage floor healthy as new internal packages are added
-3. continue reducing broad orchestration in `cmd/vault` only where tests already protect behavior
+1. add a clear file container header with magic bytes and container version
+2. evaluate OS keychain support for `vault-token.key`, starting with macOS Keychain and a documented file fallback
+3. keep the internal coverage floor healthy as new internal packages are added
+4. continue reducing broad orchestration in `cmd/vault` only where tests already protect behavior
+5. add supply-chain hardening such as SBOMs, signed checksum files, or platform-specific package signing when the release process is ready
 
 Suggested branches:
 
 ```bash
 git switch main
 git pull
-git switch -c install-packaging
+git switch -c file-container-header
 ```
 
 ```bash
@@ -332,10 +345,11 @@ The README now documents `go install`, and release package automation builds Lin
 
 Recommended progression:
 
-- verify the expanded package workflow run after publishing `v0.4.5`
+- expanded package workflow for `v0.4.5` has been verified successfully
 - decide whether Linux/macOS amd64 and arm64 are enough for the first public phase
 - consider Homebrew only after release binaries and public positioning are more mature
 - keep checksums and attestations in release assets/workflow outputs if binaries are published
+- consider SBOM generation and signed checksum files before treating release distribution as hardened
 
 Suggested branch:
 

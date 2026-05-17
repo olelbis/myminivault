@@ -180,6 +180,10 @@ git switch -c <task-name>
 
 Keep branches small and merge with fast-forward when possible.
 
+Docs-only maintenance can be committed directly on `main` when it only changes documentation or handoff notes and does not change Go code, workflows, release assets, generated package contents, CLI-visible behavior, version numbers, or tests. Examples include backlog cleanup, README wording, user manual clarification, development notes, and threat-model wording that documents existing behavior.
+
+Create a normal task branch and release tag when a change affects executable behavior, packaging, CI workflows, tests, versioned man-page content, or generated release artifacts.
+
 ## Release Workflow
 
 For each completed branch:
