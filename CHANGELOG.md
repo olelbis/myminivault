@@ -2,6 +2,16 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.4.5] - 2026-05-18
+
+### Fixed
+
+- Fixed RPM package generation by accepting the automatically compressed `vault(1)` man page in the RPM file manifest.
+
+### Changed
+
+- Updated the CLI-visible version to `0.4.5`.
+
 ## [v0.4.4] - 2026-05-18
 
 ### Added

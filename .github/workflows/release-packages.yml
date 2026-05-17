@@ -116,7 +116,7 @@ jobs:
           %license /usr/share/doc/${PACKAGE}/LICENSE
           %doc /usr/share/doc/${PACKAGE}/README.md
           /usr/bin/vault
-          /usr/share/man/man1/vault.1
+          /usr/share/man/man1/vault.1*
           EOF
           sed -i 's/^          //' "$RPM_TOPDIR/SPECS/${PACKAGE}.spec"
           rpmbuild --define "_topdir ${RPM_TOPDIR}" --target "${RPM_ARCH}" -bb "$RPM_TOPDIR/SPECS/${PACKAGE}.spec"
