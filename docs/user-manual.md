@@ -412,6 +412,43 @@ By default, runtime files live in:
 
 Set `MYMINIVAULT_HOME=/path/to/dir` to use a separate runtime directory. This is useful for tests, disposable demos, or intentionally isolated vaults.
 
+### Runtime Home Override
+
+`MYMINIVAULT_HOME` controls the complete runtime home. Every runtime file is resolved relative to that directory:
+
+- main vault
+- recovery snapshot
+- backups
+- token master key
+- shared token vault
+- token registry
+- audit log
+- config file
+- lock file
+
+Temporary isolated vault:
+
+```bash
+MYMINIVAULT_HOME=/tmp/myminivault-demo vault set API_KEY hello
+MYMINIVAULT_HOME=/tmp/myminivault-demo vault list
+```
+
+Persistent alternate vault:
+
+```bash
+export MYMINIVAULT_HOME="$HOME/.myminivault-work"
+vault set WORK_API_KEY hello
+```
+
+Important behavior:
+
+- if `MYMINIVAULT_HOME` is not set, the default is `~/.myminivault/`
+- the runtime directory is created with owner-only `0700` permissions
+- changing `MYMINIVAULT_HOME` changes which vault the CLI sees
+- `vault config` prints the active `runtime_home`
+- legacy runtime files in the current working directory are migrated only if the target file is missing
+- do not use a Git repo, shared folder, or cloud-sync folder unless you understand the exposure and conflict risks
+
 | File | Purpose |
 | --- | --- |
 | `vault.db` | Main encrypted vault |

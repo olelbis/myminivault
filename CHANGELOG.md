@@ -7,7 +7,7 @@ All notable project changes are recorded here. Application releases use Git tags
 ### Changed
 
 - Moved sensitive runtime files into `~/.myminivault/` by default.
-- Added `MYMINIVAULT_HOME` to override the runtime directory for tests, automation, and isolated vaults.
+- Added and documented `MYMINIVAULT_HOME` to override the runtime directory for tests, automation, and isolated vaults.
 - Added startup migration for legacy runtime files found in the current working directory when the runtime directory does not already contain matching files.
 - Added focused runtime path and legacy migration tests.
 - Updated the coverage baselines to `34.7%` full repository and `80.5%` internal packages.

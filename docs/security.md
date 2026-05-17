@@ -138,6 +138,14 @@ The project does not currently sign commits, tags, release archives, or checksum
 
 Runtime files are stored under `~/.myminivault/` by default. `MYMINIVAULT_HOME` can override this location for tests, automation, or intentionally isolated vaults. The runtime directory is created with `0700` permissions, and sensitive files are written with restrictive file modes where the platform supports them.
 
+Security notes for `MYMINIVAULT_HOME`:
+
+- it changes the active vault context, so a different value may look like an empty or different vault
+- it should point to a local directory controlled by the current user
+- avoid Git repositories, shared folders, cloud-sync folders, network mounts, or world-readable paths unless that exposure is intentional
+- the CLI creates the runtime directory with `0700`, but parent directory permissions and external sync tools remain outside the CLI's control
+- legacy cwd migration does not overwrite existing runtime-home files, which avoids accidental replacement but may leave old files behind for manual review
+
 | File | Sensitivity | Primary Risk | Current Mitigation |
 | --- | --- | --- | --- |
 | `vault.db` | High | Offline password guessing, copied encrypted secrets | AES-GCM encryption, scrypt, restrictive writes |

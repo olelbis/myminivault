@@ -10,6 +10,8 @@ Recovery is snapshot-based.
 
 ## Runtime Files
 
+Recovery files are resolved inside the active runtime home. By default this is `~/.myminivault/`; set `MYMINIVAULT_HOME=/path/to/dir` to use an isolated runtime home.
+
 Recovery uses:
 
 - `vault.db`: main master-password encrypted vault

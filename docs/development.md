@@ -203,6 +203,22 @@ Current versioning style:
 
 Runtime files live in `~/.myminivault/` by default. Set `MYMINIVAULT_HOME=/path/to/dir` to isolate a development or test run from the real user runtime directory.
 
+Examples:
+
+```bash
+MYMINIVAULT_HOME="$(mktemp -d /tmp/myminivault-dev-XXXXXX)" go test ./tests
+MYMINIVAULT_HOME=/tmp/myminivault-manual go run ./cmd/vault set DEV_KEY hello
+MYMINIVAULT_HOME=/tmp/myminivault-manual go run ./cmd/vault config
+```
+
+Development notes:
+
+- tests should set `MYMINIVAULT_HOME` when executing the compiled CLI
+- do not point development runs at the real `~/.myminivault/` unless you intend to use real local vault state
+- path resolution lives in `internal/paths`
+- CLI globals are initialized by `initRuntimePaths`
+- legacy cwd migration is intentionally conservative and skips files when the runtime-home target already exists
+
 Runtime files are ignored by Git and should not be committed:
 
 - `vault.db`

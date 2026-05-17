@@ -10,6 +10,8 @@ Per-key update timestamps and delete markers are stored as sync metadata. There 
 
 ## Runtime Files
 
+Token sync files are resolved inside the active runtime home. By default this is `~/.myminivault/`; set `MYMINIVAULT_HOME=/path/to/dir` to use an isolated runtime home.
+
 Token synchronization uses two encrypted vault files:
 
 - `vault.db`: the main master-password vault

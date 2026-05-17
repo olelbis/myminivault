@@ -128,6 +128,32 @@ Set `MYMINIVAULT_HOME=/path/to/dir` to use a different runtime directory for tes
 
 These files are ignored by Git because they may contain encrypted secrets, keys, logs, or local runtime state.
 
+### `MYMINIVAULT_HOME`
+
+`MYMINIVAULT_HOME` changes where every runtime file is read and written. It does not change the source tree, release assets, or Go build cache.
+
+Use it for temporary or isolated vaults:
+
+```bash
+MYMINIVAULT_HOME=/tmp/myminivault-demo vault set API_KEY hello
+MYMINIVAULT_HOME=/tmp/myminivault-demo vault get API_KEY
+```
+
+Use a persistent custom location:
+
+```bash
+export MYMINIVAULT_HOME="$HOME/.myminivault-work"
+vault set API_KEY hello
+```
+
+Operational notes:
+
+- the directory is created with `0700` permissions
+- all vault, token, recovery, config, log, backup, and lock files move under that directory
+- changing `MYMINIVAULT_HOME` selects a different vault context
+- legacy files from the current working directory are migrated only when the target file does not already exist
+- avoid pointing it at a Git repository, shared folder, cloud-sync folder, or world-readable directory unless that is intentional
+
 | File | Purpose |
 | --- | --- |
 | `vault.db` | Main encrypted vault |
