@@ -682,6 +682,41 @@ git pull
 git switch -c hooks
 ```
 
+### 19. Rotating One-Time Secret Tokens
+
+Create token flows that can reveal a secret once and then rotate that secret immediately after successful use.
+
+Possible shape:
+
+```bash
+vault create-token --read API_KEY --max-uses 1 --rotate-after-use=random
+vault use-token <token> get API_KEY
+```
+
+Useful scenarios:
+
+- one-time onboarding secrets
+- temporary shared credentials
+- local secrets generated and owned by the vault
+- controlled handoff where the old value should stop being the active value after disclosure
+
+Important design notes:
+
+- start with `--max-uses 1` only
+- distinguish local random rotation from provider-backed hook rotation
+- local rotation can change the vault value, but cannot rotate an external provider secret by itself
+- hook rotation should be designed after the broader hook/rotation policy exists
+- define failure semantics before implementation, especially whether a token is consumed if post-use rotation fails
+- audit should record the rotation event without leaking key names or values unless the audit policy changes
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c rotating-one-time-tokens
+```
+
 ## Useful Commands
 
 Run all checks:
