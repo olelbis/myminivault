@@ -26,6 +26,8 @@ cmd/
 internal/
   config/
     config.go           config defaults, loading, and validation
+  container/
+    container.go        cleartext MYMV runtime file framing
   crypto/
     crypto.go           key derivation, encryption, decryption, secure random bytes
   model/
@@ -67,6 +69,7 @@ docs/
 `internal/...` packages own reusable behavior:
 
 - `internal/config`: config defaults, JSON loading, validation
+- `internal/container`: cleartext `MYMV` framing for encrypted runtime files
 - `internal/crypto`: scrypt, AES-GCM, secure random bytes
 - `internal/model`: persisted data structures
 - `internal/recovery`: recovery keys, verifier checks, recovery snapshot decrypt, recovery file write
@@ -80,6 +83,8 @@ docs/
 - `internal/export`: shell export rendering and restrictive export-file writes
 
 The project still keeps command-line parsing, prompts, output, and top-level orchestration in `cmd/vault`. Future extractions should happen only when tests cover the behavior well enough.
+
+Encrypted runtime file framing lives in `internal/container`. Current saves write a cleartext `MYMV` container header containing the container version and file kind before the existing salt+ciphertext payload. Legacy salt+ciphertext files remain readable, and `vault doctor` plus `vault inspect-runtime` use the header for non-decrypting format inspection.
 
 ## Cryptography
 
@@ -164,7 +169,7 @@ printf 'oldpass\n' | ./vault get TEST_KEY
 
 The automated CLI smoke tests live in `./tests`, create temporary directories, and use fake data. Do not run manual smoke commands in a directory that contains real vault files unless that is intentional.
 
-Current automated checks cover CLI smoke flows, token lifecycle behavior, config error handling, `vault doctor`, `vault inspect-runtime`, shell-safe import/export round trips, export-to-file behavior, clipboard clear behavior, audit-log redaction, disabled audit logging, token sync metadata decisions, token master-key and compact-token helper behavior, core unit behavior, and package-level coverage for `internal/storage`, `internal/token`, `internal/recovery`, `internal/lock`, `internal/audit`, `internal/sync`, `internal/commands`, `internal/clipboard`, and `internal/export`. CI enforces `80.0%` minimum coverage for `./internal/...`.
+Current automated checks cover CLI smoke flows, token lifecycle behavior, config error handling, `vault doctor`, `vault inspect-runtime`, shell-safe import/export round trips, export-to-file behavior, clipboard clear behavior, audit-log redaction, disabled audit logging, token sync metadata decisions, token master-key and compact-token helper behavior, core unit behavior, and package-level coverage for `internal/storage`, `internal/token`, `internal/recovery`, `internal/lock`, `internal/audit`, `internal/sync`, `internal/commands`, `internal/clipboard`, `internal/export`, and `internal/container`. CI enforces `80.0%` minimum coverage for `./internal/...`.
 
 ## Branch Workflow
 

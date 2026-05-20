@@ -1,4 +1,4 @@
-.TH VAULT 1 "May 18, 2026" "myminivault 0.4.5" "User Commands"
+.TH VAULT 1 "May 20, 2026" "myminivault 0.4.6" "User Commands"
 .SH NAME
 vault \- local encrypted command-line key/value vault
 .SH SYNOPSIS
@@ -95,7 +95,8 @@ Check local runtime file permissions, config validity, backups, recovery
 freshness, token freshness, and lock state.
 .TP
 .B inspect-runtime
-List active and legacy runtime files without decrypting vault data.
+List active and legacy runtime files without decrypting vault data. Encrypted
+runtime files also show cleartext container format details when available.
 .TP
 .B security-audit
 Print a local vault security summary.

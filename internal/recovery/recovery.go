@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/olelbis/myminivault/internal/container"
 	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
 	"github.com/olelbis/myminivault/internal/model"
 )
@@ -99,13 +100,14 @@ func SaveFile(vaultFile string, salt, recoveryCiphertext []byte) error {
 		return fmt.Errorf("failed to create recovery file: %w", err)
 	}
 
-	if _, err := f.Write(salt); err != nil {
+	wrapped, err := container.Wrap(container.KindRecoveryVault, salt, recoveryCiphertext)
+	if err != nil {
 		f.Close()
 		os.Remove(tempFile)
-		return fmt.Errorf("failed to write salt to recovery file: %w", err)
+		return err
 	}
 
-	if _, err := f.Write(recoveryCiphertext); err != nil {
+	if _, err := f.Write(wrapped); err != nil {
 		f.Close()
 		os.Remove(tempFile)
 		return fmt.Errorf("failed to write data to recovery file: %w", err)

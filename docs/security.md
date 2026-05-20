@@ -108,6 +108,8 @@ Runtime files are local files under `~/.myminivault/` by default. Encrypted vaul
 
 File permissions are an important local mitigation, not a complete security boundary.
 
+Newly saved encrypted runtime files include a small cleartext `MYMV` container header with a container format version and file kind. This supports safer inspection and future migrations without decrypting secrets. The header reveals that a file is a myminivault encrypted container and whether it is a main, recovery, or shared-token vault file; it does not reveal key names, values, recovery metadata, token contents, or encrypted vault metadata.
+
 ### Terminal Boundary
 
 Anything printed to the terminal can be captured by terminal scrollback, shell wrappers, logs, screen recording, remote desktop software, or clipboard copy.
@@ -159,6 +161,8 @@ Security notes for `MYMINIVAULT_HOME`:
 | `.myminivault.lock` | Low | Write coordination confusion | Advisory lock only |
 
 Runtime files should stay out of Git and should normally be readable only by the local user. Legacy runtime files in the current working directory are migrated into the runtime directory when possible, unless the target file already exists.
+
+Legacy encrypted files without a `MYMV` header remain readable as salt-plus-ciphertext files. Once a legacy main, recovery, or shared token vault is saved again, the rewritten file uses the current headered container format.
 
 ## Data Flows
 

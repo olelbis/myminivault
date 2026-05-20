@@ -7,13 +7,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/olelbis/myminivault/internal/container"
 	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
 	"github.com/olelbis/myminivault/internal/model"
 )
@@ -115,20 +115,17 @@ func SaveEncryptedVault(vault *model.ExtendedVault, tokenVaultPath string, opts 
 
 // LoadEncryptedVault decrypts and parses the shared token vault.
 func LoadEncryptedVault(tokenFilePath string, opts Options) (*model.ExtendedVault, error) {
-	f, err := os.Open(tokenFilePath)
+	data, err := os.ReadFile(tokenFilePath)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
 
-	salt := make([]byte, opts.SaltSize)
-	if _, err := io.ReadFull(f, salt); err != nil {
-		return nil, fmt.Errorf("failed to read salt: %w", err)
-	}
-
-	encryptedData, err := io.ReadAll(f)
+	parsed, err := container.Parse(data, opts.SaltSize)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read encrypted data: %w", err)
+		return nil, fmt.Errorf("failed to parse token vault container: %w", err)
+	}
+	if !parsed.Legacy && parsed.Kind != container.KindSharedTokenVault {
+		return nil, errors.New("unexpected container kind for shared token vault")
 	}
 
 	tokenKey, err := masterKey(opts)
@@ -136,23 +133,23 @@ func LoadEncryptedVault(tokenFilePath string, opts Options) (*model.ExtendedVaul
 		return nil, fmt.Errorf("failed to get token master key: %w", err)
 	}
 
-	key, err := vaultcrypto.DeriveKey(tokenKey, salt, opts.Scrypt)
+	key, err := vaultcrypto.DeriveKey(tokenKey, parsed.Salt, opts.Scrypt)
 	if err != nil {
 		return nil, err
 	}
 
-	decrypted, err := vaultcrypto.Decrypt(encryptedData, key)
+	decrypted, err := vaultcrypto.Decrypt(parsed.Ciphertext, key)
 	if err != nil {
 		return nil, fmt.Errorf("decryption failed: %w", err)
 	}
 
-	data, err := StripChecksum(decrypted)
+	vaultData, err := StripChecksum(decrypted)
 	if err != nil {
 		return nil, err
 	}
 
 	var vault model.ExtendedVault
-	if err := json.Unmarshal(data, &vault); err != nil {
+	if err := json.Unmarshal(vaultData, &vault); err != nil {
 		return nil, fmt.Errorf("cannot parse vault data: %w", err)
 	}
 
@@ -168,13 +165,14 @@ func SaveVaultFileAtomic(tokenVaultPath string, salt, data []byte) error {
 		return fmt.Errorf("failed to create temp file: %w", err)
 	}
 
-	if _, err := f.Write(salt); err != nil {
+	wrapped, err := container.Wrap(container.KindSharedTokenVault, salt, data)
+	if err != nil {
 		f.Close()
 		os.Remove(tempFile)
-		return fmt.Errorf("failed to write salt: %w", err)
+		return err
 	}
 
-	if _, err := f.Write(data); err != nil {
+	if _, err := f.Write(wrapped); err != nil {
 		f.Close()
 		os.Remove(tempFile)
 		return fmt.Errorf("failed to write data: %w", err)

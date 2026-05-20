@@ -237,7 +237,7 @@ func showUsage() {
 }
 
 func showHelp() {
-	fmt.Println(`🔐 myminivault CLI v0.4.5
+	fmt.Println(`🔐 myminivault CLI v0.4.6
 Author: olelbis
 
 BASIC COMMANDS:

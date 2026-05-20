@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/olelbis/myminivault/internal/container"
 	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
 	"github.com/olelbis/myminivault/internal/model"
 	"github.com/olelbis/myminivault/internal/recovery"
@@ -139,8 +140,18 @@ func TestSaveFileAtomicCreatesBackupAndReplacesPrimary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read current: %v", err)
 	}
-	if string(current) != "new-saltnew-data" {
-		t.Fatalf("current file = %q", current)
+	parsed, err := container.Parse(current, len("new-salt"))
+	if err != nil {
+		t.Fatalf("parse current: %v", err)
+	}
+	if parsed.Legacy {
+		t.Fatal("current file should use MYMV container header")
+	}
+	if parsed.Version != container.Version || parsed.Kind != container.KindMainVault {
+		t.Fatalf("container version/kind = %d/%d", parsed.Version, parsed.Kind)
+	}
+	if string(parsed.Salt)+string(parsed.Ciphertext) != "new-saltnew-data" {
+		t.Fatalf("current payload = %q%q", parsed.Salt, parsed.Ciphertext)
 	}
 
 	backup, err := os.ReadFile(vaultFile + ".bak")
@@ -185,8 +196,12 @@ func TestSaveFileAtomicCreatesNewFileWithoutBackup(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read current: %v", err)
 	}
-	if string(current) != "new-saltnew-data" {
-		t.Fatalf("current file = %q", current)
+	parsed, err := container.Parse(current, len("new-salt"))
+	if err != nil {
+		t.Fatalf("parse current: %v", err)
+	}
+	if string(parsed.Salt)+string(parsed.Ciphertext) != "new-saltnew-data" {
+		t.Fatalf("current payload = %q%q", parsed.Salt, parsed.Ciphertext)
 	}
 	if _, err := os.Stat(vaultFile + ".bak"); !os.IsNotExist(err) {
 		t.Fatalf("backup file should not exist, stat err = %v", err)
@@ -195,6 +210,21 @@ func TestSaveFileAtomicCreatesNewFileWithoutBackup(t *testing.T) {
 		t.Fatalf("stat current: %v", err)
 	} else if info.Mode().Perm() != 0600 {
 		t.Fatalf("current mode = %04o, want 0600", info.Mode().Perm())
+	}
+}
+
+func TestTryLoadSupportsLegacySaltCiphertextLayout(t *testing.T) {
+	vaultFile := filepath.Join(t.TempDir(), "vault.db")
+	if err := os.WriteFile(vaultFile, []byte("1234567890123456encrypted"), 0600); err != nil {
+		t.Fatalf("write legacy vault: %v", err)
+	}
+
+	salt, ciphertext, err := TryLoad(vaultFile, 16)
+	if err != nil {
+		t.Fatalf("TryLoad legacy: %v", err)
+	}
+	if string(salt) != "1234567890123456" || string(ciphertext) != "encrypted" {
+		t.Fatalf("legacy parsed as salt=%q ciphertext=%q", salt, ciphertext)
 	}
 }
 

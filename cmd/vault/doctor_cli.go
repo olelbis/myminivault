@@ -90,6 +90,11 @@ func checkRuntimeFileHealth() []doctorCheck {
 	for _, spec := range specs {
 		check := checkFileMode(spec.path, spec.mode, spec.required)
 		check.name = spec.name
+		if check.detail != "not present" {
+			if detail := encryptedRuntimeFormat(filepath.Base(spec.path), spec.path); detail != "" {
+				check.detail += ", " + detail
+			}
+		}
 		checks = append(checks, check)
 	}
 	return checks

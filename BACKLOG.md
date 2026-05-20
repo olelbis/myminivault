@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.4.5`
+- Current baseline release: `v0.4.6`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -34,7 +34,7 @@ Main strengths:
 - tested `internal/commands` package for export/import/key validation helpers
 - tested `internal/clipboard` package for backend selection and clear-if-unchanged behavior
 - tested `internal/export` package for shell export rendering and restrictive file writes
-- internal package coverage at `83.3%`, including token master-key handling, compact-token parsing, token helper behavior, expiry/max-use checks, runtime path handling, and important error paths
+- internal package coverage at `82.8%`, including token master-key handling, compact-token parsing, token helper behavior, expiry/max-use checks, runtime path handling, container parsing, and important error paths
 - automated CLI smoke coverage for critical workflows in the top-level `tests` package
 - explicit handling for recovery, token sync, locking, backups, export, and password changes
 - a handoff backlog that can restart work from a fresh chat
@@ -150,6 +150,8 @@ Docs-only candidates:
 - Raised internal package coverage to `83.5%` with focused tests for runtime paths, empty-vault loading, recovery file writes, storage atomic-write behavior, and token vault error paths.
 - Fixed token max-use enforcement, token creation limit validation, compact token pattern validation, random-source failure handling, short token-ID cleanup logging, and manual backup retention.
 - Added a `vault(1)` man page and expanded release packaging to Linux `.deb`, Linux `.rpm`, macOS `.pkg`, SHA-256 checksum manifests, and GitHub artifact attestations.
+- Added a cleartext `MYMV` container header for newly saved encrypted runtime files, with legacy salt-plus-ciphertext read compatibility and non-decrypting format reporting in `vault doctor` and `vault inspect-runtime`.
+- Updated coverage baselines to `35.4%` full repository and `82.8%` internal packages after adding `internal/container`.
 - Clarified recovery-file plus recovery-key exposure across security, recovery, and user documentation.
 - Added an `80.0%` internal package coverage floor to CI.
 - Extracted command logging and shared-vault mirror policy helpers from `cmd/vault` orchestration.
@@ -179,6 +181,7 @@ Package-level coverage now includes:
 - `internal/commands`: shell-safe export/import parsing and key validation
 - `internal/clipboard`: backend detection and best-effort clear-if-unchanged behavior
 - `internal/export`: shell export rendering and restrictive file writes
+- `internal/container`: MYMV container wrapping, legacy parsing, unsupported header rejection, and format descriptions
 
 Manual smoke tests were run in `/private/tmp` with fake data:
 
@@ -226,6 +229,8 @@ cmd/
 internal/
   config/
     config.go           config defaults, loading, and validation
+  container/
+    container.go        cleartext MYMV runtime file framing
   crypto/
     crypto.go           key derivation, encryption, decryption, secure random bytes
   model/
@@ -298,18 +303,17 @@ These items are the most direct path beyond the current `9.5 / 10` assessment. P
 
 Recommended order:
 
-1. add a clear file container header with magic bytes and container version
-2. evaluate OS keychain support for `vault-token.key`, starting with macOS Keychain and a documented file fallback
-3. keep the internal coverage floor healthy as new internal packages are added
-4. continue reducing broad orchestration in `cmd/vault` only where tests already protect behavior
-5. add supply-chain hardening such as SBOMs, signed checksum files, or platform-specific package signing when the release process is ready
+1. evaluate OS keychain support for `vault-token.key`, starting with macOS Keychain and a documented file fallback
+2. keep the internal coverage floor healthy as new internal packages are added
+3. continue reducing broad orchestration in `cmd/vault` only where tests already protect behavior
+4. add supply-chain hardening such as SBOMs, signed checksum files, or platform-specific package signing when the release process is ready
 
 Suggested branches:
 
 ```bash
 git switch main
 git pull
-git switch -c file-container-header
+git switch -c token-keychain
 ```
 
 ```bash
@@ -326,7 +330,7 @@ Current CI runs formatting, `go vet`, `go test ./...`, full coverage reporting, 
 
 Next actions:
 
-- keep `./internal/...` coverage at or above the current `80.0%` floor, with `83.3%` as the latest local baseline
+- keep `./internal/...` coverage at or above the current `80.0%` floor, with `82.8%` as the latest local baseline
 - raise `cmd/vault` coverage with focused unit tests or further extraction of command-independent logic where it improves clarity
 
 Suggested branch:
@@ -361,25 +365,30 @@ git switch -c install-packaging
 
 ### 5. File Container Header
 
-Priority: medium.
+Status: completed in `v0.4.6`.
 
-Current vault schema version is stored inside the encrypted vault payload. This is good for confidentiality, but it means startup conflict warnings cannot compare vault schema versions before unlock.
+Newly saved main vault, recovery snapshot, and shared token vault files use a cleartext `MYMV` container header before the existing salt+ciphertext payload. The header records the container version and file kind without exposing encrypted vault contents.
+
+Current behavior:
+
+- current saves write `MYMV` container version `1`
+- main vault, recovery vault, and shared token vault have distinct file kinds
+- legacy salt-plus-ciphertext files remain readable
+- `vault doctor` and `vault inspect-runtime` report headered versus legacy format without decrypting
+- encrypted user data, key names, values, recovery metadata, token contents, and vault metadata remain encrypted
 
 Future direction:
 
-- add cleartext magic bytes to encrypted runtime files, such as `MYMV`
-- add a cleartext file container version, separate from the encrypted vault schema version
-- keep user data, vault metadata, key names, token data, and recovery metadata encrypted
-- keep backward compatibility with legacy salt-plus-ciphertext files
-- document that the cleartext header identifies the file as a myminivault file and reveals container format version only
-- update `doctor` and legacy conflict warnings to show container format version without decrypting
+- use the container version during future migration planning
+- add more explicit migration prompts only if a future incompatible container version appears
+- keep old-format read tests when evolving the format again
 
 Suggested branch:
 
 ```bash
 git switch main
 git pull
-git switch -c file-container-header
+git switch -c file-container-header-next
 ```
 
 ### 6. Runtime Inspect And Doctor Improvements
@@ -390,9 +399,9 @@ Priority: medium.
 
 Remaining direction:
 
-- once file container headers exist, show cleartext file container version without decrypting
-- consider whether `vault doctor` should link to or embed `inspect-runtime` output
+- consider whether `vault doctor` should link to or embed fuller `inspect-runtime` output
 - keep smoke coverage for conflict reporting and runtime inspection output
+- add future checks that warn about unsupported container versions if format evolution requires it
 
 Suggested branch:
 
@@ -484,6 +493,7 @@ Priority: low unless a bug or feature makes the extraction useful.
 Stable internal packages already extracted:
 
 - `internal/config`
+- `internal/container`
 - `internal/crypto`
 - `internal/model`
 - `internal/recovery`

@@ -2,6 +2,20 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.4.6] - 2026-05-20
+
+### Added
+
+- Added a cleartext `MYMV` container header with a container version and file kind for newly saved encrypted runtime files.
+- Added `vault doctor` and `vault inspect-runtime` reporting for encrypted runtime file format without decrypting vault contents.
+- Added focused coverage for container wrapping, legacy parsing, unsupported header rejection, and non-decrypting format descriptions.
+
+### Changed
+
+- Kept legacy salt-plus-ciphertext vault files readable while writing new main, recovery, and shared-token vault files with the headered container format.
+- Updated coverage baselines to `35.4%` full repository and `82.8%` internal packages.
+- Updated the CLI-visible version to `0.4.6`.
+
 ## [v0.4.5] - 2026-05-18
 
 ### Fixed

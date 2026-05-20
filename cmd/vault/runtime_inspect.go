@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/olelbis/myminivault/internal/container"
 	vaultpaths "github.com/olelbis/myminivault/internal/paths"
 )
 
@@ -129,6 +130,9 @@ func printRuntimeInspectionLine(name, path string) {
 	fmt.Printf("    modified: %s\n", info.ModTime().Format(time.RFC3339))
 	fmt.Printf("    size: %d bytes\n", info.Size())
 	fmt.Printf("    mode: %04o\n", info.Mode().Perm())
+	if detail := encryptedRuntimeFormat(name, path); detail != "" {
+		fmt.Printf("    format: %s\n", detail)
+	}
 }
 
 func newerRuntimeFile(activePath, legacyPath string) string {
@@ -145,4 +149,23 @@ func newerRuntimeFile(activePath, legacyPath string) string {
 	default:
 		return "same timestamp"
 	}
+}
+
+func encryptedRuntimeFormat(name, path string) string {
+	if !isEncryptedContainerRuntimeFile(name) {
+		return ""
+	}
+	parsed, err := container.ReadFile(path, saltSize)
+	if err != nil {
+		return "unreadable: " + err.Error()
+	}
+	return container.Description(parsed)
+}
+
+func isEncryptedContainerRuntimeFile(name string) bool {
+	return name == vaultFileName ||
+		name == vaultFileName+".bak" ||
+		name == vaultFileName+".recovery" ||
+		name == sharedTokenVaultName ||
+		(strings.HasPrefix(name, vaultFileName+".") && strings.HasSuffix(name, ".bak"))
 }

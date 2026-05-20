@@ -13,7 +13,7 @@
   <img alt="Go" src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white">
   <img alt="Latest release" src="https://img.shields.io/github/v/release/olelbis/myminivault?sort=semver">
   <img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/olelbis/myminivault.svg">
-  <img alt="Internal coverage" src="https://img.shields.io/badge/internal_coverage-83.3%25-brightgreen">
+  <img alt="Internal coverage" src="https://img.shields.io/badge/internal_coverage-82.8%25-brightgreen">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
   <img alt="Status" src="https://img.shields.io/badge/status-experimental-orange">
   <img alt="CLI" src="https://img.shields.io/badge/interface-CLI-2f3337">
@@ -171,7 +171,9 @@ vault inspect-runtime
 MYMINIVAULT_HOME=/tmp/myminivault-demo vault inspect-runtime
 ```
 
-The command prints active runtime files, legacy current-directory files, modified times, sizes, and file modes. It never decrypts vault data or prints stored values.
+The command prints active runtime files, legacy current-directory files, modified times, sizes, file modes, and encrypted container format details where available. It never decrypts vault data or prints stored values.
+
+Encrypted runtime files saved by current releases start with a small cleartext `MYMV` container header. The header identifies the file as a myminivault encrypted container and records the container format version and file kind, such as main vault, recovery vault, or shared token vault. It does not expose stored keys, values, recovery metadata, token contents, or encrypted vault metadata. Older salt-plus-ciphertext files remain readable and are reported as legacy format until they are rewritten by a save operation.
 
 | File | Purpose |
 | --- | --- |

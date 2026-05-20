@@ -28,7 +28,7 @@ const (
 	sharedTokenVault = "shared-token-vault.json"
 	tokenRegistry    = "vault-tokens.json"
 	saltSize         = 16
-	vaultVersion     = "0.4.5"
+	vaultVersion     = "0.4.6"
 	vaultHomeEnv     = "MYMINIVAULT_HOME"
 )
 
@@ -334,6 +334,7 @@ func TestCLISmokeDoctorChecksRuntimeHealth(t *testing.T) {
 	doctorOutput := requireOK(t, runVault(t, bin, dir, "", "doctor"))
 	requireContains(t, doctorOutput, "main vault")
 	requireContains(t, doctorOutput, "mode 0600")
+	requireContains(t, doctorOutput, "MYMV v1 main-vault")
 	requireContains(t, doctorOutput, "timestamped backups")
 	requireContains(t, doctorOutput, "recovery freshness")
 	requireContains(t, doctorOutput, "token sync freshness")
@@ -374,8 +375,10 @@ func TestCLISmokeInspectRuntimeShowsActiveAndLegacyFiles(t *testing.T) {
 	requireContains(t, inspect, "Secrets: not decrypted or printed")
 	requireContains(t, inspect, "Active runtime files:")
 	requireContains(t, inspect, filepath.Join(runtimeDir, vaultFile))
+	requireContains(t, inspect, "format: MYMV v1 main-vault")
 	requireContains(t, inspect, "Legacy current-directory files:")
 	requireContains(t, inspect, filepath.Join(workDir, vaultFile))
+	requireContains(t, inspect, "format: legacy salt+ciphertext")
 	requireContains(t, inspect, "newer by mtime:")
 	requireContains(t, inspect, "migration: skipped")
 }

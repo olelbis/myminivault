@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/olelbis/myminivault/internal/container"
 	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
 	"github.com/olelbis/myminivault/internal/model"
 )
@@ -263,8 +264,16 @@ func TestSaveVaultFileAtomicWritesFileAndRemovesTemp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read shared vault: %v", err)
 	}
-	if !bytes.Equal(data, append(salt, ciphertext...)) {
-		t.Fatalf("shared vault = %q, want salt+ciphertext", data)
+	parsed, err := container.Parse(data, len(salt))
+	if err != nil {
+		t.Fatalf("parse shared vault: %v", err)
+	}
+	if parsed.Legacy || parsed.Kind != container.KindSharedTokenVault {
+		t.Fatalf("container legacy/kind = %t/%d", parsed.Legacy, parsed.Kind)
+	}
+	got := append(append([]byte{}, parsed.Salt...), parsed.Ciphertext...)
+	if !bytes.Equal(got, append(salt, ciphertext...)) {
+		t.Fatalf("shared vault payload = %q, want salt+ciphertext", got)
 	}
 	if _, err := os.Stat(sharedVault + ".tmp"); !os.IsNotExist(err) {
 		t.Fatalf("temp file should not remain, stat err = %v", err)

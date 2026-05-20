@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/olelbis/myminivault/internal/container"
 	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
 	"github.com/olelbis/myminivault/internal/model"
 )
@@ -104,8 +105,15 @@ func TestSaveFileAtomic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read recovery file: %v", err)
 	}
-	if !bytes.Equal(data, append(salt, ciphertext...)) {
-		t.Fatalf("recovery file = %q, want salt+ciphertext", data)
+	parsed, err := container.Parse(data, len(salt))
+	if err != nil {
+		t.Fatalf("parse recovery file: %v", err)
+	}
+	if parsed.Legacy || parsed.Kind != container.KindRecoveryVault {
+		t.Fatalf("container legacy/kind = %t/%d", parsed.Legacy, parsed.Kind)
+	}
+	if !bytes.Equal(append(parsed.Salt, parsed.Ciphertext...), append(salt, ciphertext...)) {
+		t.Fatalf("recovery payload = %q%q, want salt+ciphertext", parsed.Salt, parsed.Ciphertext)
 	}
 	if _, err := os.Stat(recoveryFile + ".tmp"); !os.IsNotExist(err) {
 		t.Fatalf("temp recovery file should not remain, stat err = %v", err)
@@ -129,8 +137,12 @@ func TestSaveFileReplacesExistingRecoveryFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read recovery file: %v", err)
 	}
-	if !bytes.Equal(data, append(salt, ciphertext...)) {
-		t.Fatalf("recovery file = %q, want salt+ciphertext", data)
+	parsed, err := container.Parse(data, len(salt))
+	if err != nil {
+		t.Fatalf("parse recovery file: %v", err)
+	}
+	if !bytes.Equal(append(parsed.Salt, parsed.Ciphertext...), append(salt, ciphertext...)) {
+		t.Fatalf("recovery payload = %q%q, want salt+ciphertext", parsed.Salt, parsed.Ciphertext)
 	}
 	if info, err := os.Stat(recoveryFile); err != nil {
 		t.Fatalf("stat recovery file: %v", err)

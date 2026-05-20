@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"testing"
+
+	"github.com/olelbis/myminivault/internal/container"
 )
 
 func TestGenerateRecoveryKeyIsHighEntropyAndGrouped(t *testing.T) {
@@ -53,9 +55,14 @@ func TestSaveRecoveryFileAtomic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read recovery file: %v", err)
 	}
+	parsed, err := container.Parse(data, len(salt))
+	if err != nil {
+		t.Fatalf("parse recovery file: %v", err)
+	}
 	expected := append(append([]byte{}, salt...), ciphertext...)
-	if !bytes.Equal(data, expected) {
-		t.Fatalf("unexpected recovery file contents: %q", data)
+	got := append(append([]byte{}, parsed.Salt...), parsed.Ciphertext...)
+	if !bytes.Equal(got, expected) {
+		t.Fatalf("unexpected recovery payload: %q", got)
 	}
 	if _, err := os.Stat(vaultFile + ".recovery.tmp"); !os.IsNotExist(err) {
 		t.Fatalf("temporary recovery file still exists or stat failed: %v", err)

@@ -4,10 +4,10 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
-	"io"
 	"os"
 	"time"
 
+	"github.com/olelbis/myminivault/internal/container"
 	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
 	"github.com/olelbis/myminivault/internal/model"
 )
@@ -56,17 +56,20 @@ func Load(password string, opts Options) (*model.ExtendedVault, []byte, error) {
 // LoadFile decrypts a specific vault file and returns both the vault payload
 // and the salt needed to save it again.
 func LoadFile(file, password string, opts Options) (*model.ExtendedVault, []byte, error) {
-	salt, vaultData, err := TryLoad(file, opts.SaltSize)
+	parsed, err := tryLoadContainer(file, opts.SaltSize)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !parsed.Legacy && parsed.Kind != container.KindMainVault {
+		return nil, nil, errors.New("unexpected container kind for main vault")
+	}
+
+	key, err := vaultcrypto.DeriveKey([]byte(password), parsed.Salt, opts.Scrypt)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	key, err := vaultcrypto.DeriveKey([]byte(password), salt, opts.Scrypt)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	decrypted, err := vaultcrypto.Decrypt(vaultData, key)
+	decrypted, err := vaultcrypto.Decrypt(parsed.Ciphertext, key)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -108,7 +111,7 @@ func LoadFile(file, password string, opts Options) (*model.ExtendedVault, []byte
 		vault.Data = make(map[string]string)
 	}
 
-	return &vault, salt, nil
+	return &vault, parsed.Salt, nil
 }
 
 // Save encrypts the vault payload and writes it atomically. When recovery is
@@ -164,13 +167,14 @@ func SaveFileAtomic(vaultFile string, salt, data []byte) error {
 		return err
 	}
 
-	if _, err := f.Write(salt); err != nil {
+	wrapped, err := container.Wrap(container.KindMainVault, salt, data)
+	if err != nil {
 		f.Close()
 		os.Remove(tempFile)
 		return err
 	}
 
-	if _, err := f.Write(data); err != nil {
+	if _, err := f.Write(wrapped); err != nil {
 		f.Close()
 		os.Remove(tempFile)
 		return err
@@ -182,32 +186,39 @@ func SaveFileAtomic(vaultFile string, salt, data []byte) error {
 		return err
 	}
 
-	f.Close()
+	if err := f.Close(); err != nil {
+		os.Remove(tempFile)
+		return err
+	}
 	if err := os.Rename(tempFile, vaultFile); err != nil {
 		return err
 	}
 	return os.Chmod(vaultFile, 0600)
 }
 
-// TryLoad reads the salt prefix and encrypted payload from a vault file.
+// TryLoad reads either a headered MYMV container or the legacy salt prefix and
+// encrypted payload from a vault file.
 func TryLoad(file string, saltSize int) ([]byte, []byte, error) {
-	f, err := os.Open(file)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer f.Close()
-
-	salt := make([]byte, saltSize)
-	if _, err := io.ReadFull(f, salt); err != nil {
-		return nil, nil, err
-	}
-
-	data, err := io.ReadAll(f)
+	parsed, err := tryLoadContainer(file, saltSize)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return salt, data, nil
+	return parsed.Salt, parsed.Ciphertext, nil
+}
+
+func tryLoadContainer(file string, saltSize int) (container.Parsed, error) {
+	data, err := os.ReadFile(file)
+	if err != nil {
+		return container.Parsed{}, err
+	}
+
+	parsed, err := container.Parse(data, saltSize)
+	if err != nil {
+		return container.Parsed{}, err
+	}
+
+	return parsed, nil
 }
 
 // marshalWithChecksum prefixes a SHA-256 checksum to the JSON payload. The
