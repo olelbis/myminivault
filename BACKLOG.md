@@ -15,7 +15,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `9.5 / 10`.
+Current assessment score: `9.6 / 10`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -295,25 +295,27 @@ git pull
 git switch -c token-sync-next
 ```
 
-### 2. Quality Roadmap Beyond 9.5
+### 2. Quality Roadmap Beyond 9.6
 
 Priority: medium-high.
 
-These items are the most direct path beyond the current `9.5 / 10` assessment. Prefer them before adding new product features.
+These items are the most direct path beyond the current `9.6 / 10` assessment. Prefer them before adding new product features.
 
 Recommended order:
 
-1. evaluate OS keychain support for `vault-token.key`, starting with macOS Keychain and a documented file fallback
-2. keep the internal coverage floor healthy as new internal packages are added
-3. continue reducing broad orchestration in `cmd/vault` only where tests already protect behavior
-4. add supply-chain hardening such as SBOMs, signed checksum files, or platform-specific package signing when the release process is ready
+1. design and implement OS keychain detection/configuration before moving token key storage
+2. evaluate macOS Keychain storage for `vault-token.key` or a wrapping key with a documented file fallback
+3. evaluate Linux Secret Service/libsecret detection, keeping headless/server fallback behavior explicit
+4. keep the internal coverage floor healthy as new internal packages are added
+5. continue reducing broad orchestration in `cmd/vault` only where tests already protect behavior
+6. add supply-chain hardening such as SBOMs, signed checksum files, or platform-specific package signing when the release process is ready
 
 Suggested branches:
 
 ```bash
 git switch main
 git pull
-git switch -c token-keychain
+git switch -c token-keychain-detection
 ```
 
 ```bash
@@ -545,19 +547,37 @@ Priority: medium.
 
 `vault-token.key` is local token-system key material. It is stored as a restrictive runtime file today, but a future hardening pass should evaluate OS-backed secret storage for platforms that support it.
 
-Possible direction:
+Recommended policy:
+
+- add config first, before changing token key storage:
+  - `token_key_storage = "auto"`: prefer OS keychain when available, otherwise use the current file fallback
+  - `token_key_storage = "file"`: always use the current `vault-token.key` file behavior
+  - `token_key_storage = "keychain"`: require OS keychain and fail clearly if unavailable
+- expose keychain status in `vault doctor`, such as `available`, `unavailable`, `using file fallback`, or `configured but unavailable`
+- keep `vault inspect-runtime` clear about whether `vault-token.key` is present and whether keychain storage is configured
+- document migration and fallback behavior before storing real token key material outside the file
+
+Platform direction:
 
 - use macOS Keychain for `vault-token.key` or a wrapping key on macOS
-- evaluate Linux Secret Service/libsecret only if it can fail gracefully in headless CLI environments
+- on Linux, first detect Secret Service/libsecret availability through the user session and fail gracefully when no DBus/keyring session exists
+- keep Linux headless/server usage explicitly supported through the file fallback
+- keep Windows Credential Manager or DPAPI as a future option if Windows support becomes a project goal
 - keep file-based fallback for portability, automation, and minimal environments
-- document migration, fallback behavior, and recovery expectations before changing storage semantics
+- treat any actual migration from file storage to keychain storage as a separate release from detection/configuration unless the implementation remains very small and well tested
+
+Suggested implementation phases:
+
+1. `token-keychain-detection`: config validation, platform detection, `doctor` reporting, documentation, no storage behavior change.
+2. `token-keychain-macos`: macOS Keychain backend, fallback behavior, migration tests where practical.
+3. `token-keychain-linux`: Secret Service/libsecret backend only if it is reliable in desktop sessions and harmless in headless sessions.
 
 Suggested branch:
 
 ```bash
 git switch main
 git pull
-git switch -c token-keychain
+git switch -c token-keychain-detection
 ```
 
 ## Product Ideas After Hardening
