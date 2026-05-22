@@ -28,7 +28,7 @@ const (
 	sharedTokenVault = "shared-token-vault.json"
 	tokenRegistry    = "vault-tokens.json"
 	saltSize         = 16
-	vaultVersion     = "0.4.6"
+	vaultVersion     = "0.4.7"
 	vaultHomeEnv     = "MYMINIVAULT_HOME"
 )
 
@@ -319,6 +319,33 @@ func TestCLISmokeMalformedConfigRejected(t *testing.T) {
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "config")), "Config error")
 }
 
+func TestCLISmokeInvalidTokenKeyStorageRejected(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(dir, configFile), []byte(`{"token_key_storage":"cloud"}`), 0600); err != nil {
+		t.Fatalf("write invalid config: %v", err)
+	}
+
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "config")), "token_key_storage")
+}
+
+func TestCLISmokeKeychainStorageIsDetectionOnly(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(dir, configFile), []byte(`{"token_key_storage":"keychain"}`), 0600); err != nil {
+		t.Fatalf("write keychain config: %v", err)
+	}
+
+	doctorOutput := requireOK(t, runVault(t, bin, dir, "", "doctor"))
+	requireContains(t, doctorOutput, "token key storage")
+	requireContains(t, doctorOutput, "keychain configured")
+
+	createOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=API_*", "--duration=1h"))
+	requireContains(t, createOutput, "detection-only")
+}
+
 func TestCLISmokeDoctorChecksRuntimeHealth(t *testing.T) {
 	bin := buildVaultBinary(t)
 	dir := t.TempDir()
@@ -327,6 +354,7 @@ func TestCLISmokeDoctorChecksRuntimeHealth(t *testing.T) {
 	requireContains(t, initialOutput, "Vault Doctor")
 	requireContains(t, initialOutput, "config")
 	requireContains(t, initialOutput, "using defaults")
+	requireContains(t, initialOutput, "token key storage")
 
 	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "API_KEY", "hello"))
 	requireOK(t, runVault(t, bin, dir, "pass\n", "backup"))
@@ -338,6 +366,7 @@ func TestCLISmokeDoctorChecksRuntimeHealth(t *testing.T) {
 	requireContains(t, doctorOutput, "timestamped backups")
 	requireContains(t, doctorOutput, "recovery freshness")
 	requireContains(t, doctorOutput, "token sync freshness")
+	requireContains(t, doctorOutput, "file fallback")
 	requireContains(t, doctorOutput, "Status: usable with warnings")
 
 	if err := os.Chmod(filepath.Join(dir, vaultFile), 0644); err != nil {

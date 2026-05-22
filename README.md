@@ -13,7 +13,7 @@
   <img alt="Go" src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white">
   <img alt="Latest release" src="https://img.shields.io/github/v/release/olelbis/myminivault?sort=semver">
   <img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/olelbis/myminivault.svg">
-  <img alt="Internal coverage" src="https://img.shields.io/badge/internal_coverage-82.8%25-brightgreen">
+  <img alt="Internal coverage" src="https://img.shields.io/badge/internal_coverage-83.0%25-brightgreen">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
   <img alt="Status" src="https://img.shields.io/badge/status-experimental-orange">
   <img alt="CLI" src="https://img.shields.io/badge/interface-CLI-2f3337">
@@ -43,6 +43,8 @@ GitHub Releases also publish installable packages:
 - `.tar.gz` archives for direct unpacking
 
 Release assets include SHA-256 checksum files and GitHub artifact attestations when built by the release workflow.
+
+Token keychain support is being introduced incrementally. Current releases validate the `token_key_storage` setting and report OS keychain availability in `vault doctor`, but token master-key material still uses the existing `vault-token.key` file fallback.
 
 Build the CLI from the repository root:
 

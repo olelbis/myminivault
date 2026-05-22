@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	vaultconfig "github.com/olelbis/myminivault/internal/config"
+	"github.com/olelbis/myminivault/internal/keychain"
 )
 
 type doctorCheck struct {
@@ -17,9 +18,14 @@ type doctorCheck struct {
 }
 
 func handleDoctorCommand() {
+	if cfg, err := vaultconfig.LoadFile(configFile); err == nil {
+		config = cfg
+	}
+
 	checks := []doctorCheck{
 		checkConfigHealth(),
 		checkLockFileHealth(),
+		checkTokenKeyStorageHealth(),
 		checkBackupHealth(),
 		checkRecoveryFreshness(),
 		checkSharedVaultFreshness(),
@@ -67,7 +73,26 @@ func checkConfigHealth() doctorCheck {
 		check.name = "config permissions"
 		return check
 	}
-	return doctorCheck{name: "config", status: "OK", detail: fmt.Sprintf("valid, max_backups=%d, audit_log=%t", cfg.MaxBackups, cfg.AuditLog)}
+	return doctorCheck{name: "config", status: "OK", detail: fmt.Sprintf("valid, max_backups=%d, audit_log=%t, token_key_storage=%s", cfg.MaxBackups, cfg.AuditLog, cfg.TokenKeyStorage)}
+}
+
+func checkTokenKeyStorageHealth() doctorCheck {
+	result := keychain.Detect(keychain.Detector{})
+
+	switch config.TokenKeyStorage {
+	case vaultconfig.TokenKeyStorageFile:
+		return doctorCheck{name: "token key storage", status: "OK", detail: "file mode configured; using vault-token.key"}
+	case vaultconfig.TokenKeyStorageKeychain:
+		if result.Status == keychain.StatusAvailable {
+			return doctorCheck{name: "token key storage", status: "WARN", detail: fmt.Sprintf("keychain configured; %s available, storage migration not implemented yet", result.Backend)}
+		}
+		return doctorCheck{name: "token key storage", status: "FAIL", detail: fmt.Sprintf("keychain configured but unavailable: %s", result.Detail)}
+	default:
+		if result.Status == keychain.StatusAvailable {
+			return doctorCheck{name: "token key storage", status: "OK", detail: fmt.Sprintf("auto; %s available, current release still uses file fallback", result.Backend)}
+		}
+		return doctorCheck{name: "token key storage", status: "OK", detail: fmt.Sprintf("auto; using file fallback (%s)", result.Detail)}
+	}
 }
 
 func checkRuntimeFileHealth() []doctorCheck {

@@ -14,13 +14,14 @@ func TestValidateAcceptsDefaults(t *testing.T) {
 
 func TestValidateRejectsUnsafeValues(t *testing.T) {
 	tests := map[string]Config{
-		"scrypt_n too low":     {ScryptN: 16384, ScryptR: 8, ScryptP: 1, KeySize: 32, MaxBackups: 5},
-		"scrypt_n not power":   {ScryptN: 65535, ScryptR: 8, ScryptP: 1, KeySize: 32, MaxBackups: 5},
-		"scrypt_r too high":    {ScryptN: 32768, ScryptR: 17, ScryptP: 1, KeySize: 32, MaxBackups: 5},
-		"scrypt_p too high":    {ScryptN: 32768, ScryptR: 8, ScryptP: 9, KeySize: 32, MaxBackups: 5},
-		"invalid key size":     {ScryptN: 32768, ScryptR: 8, ScryptP: 1, KeySize: 31, MaxBackups: 5},
-		"max_backups too low":  {ScryptN: 32768, ScryptR: 8, ScryptP: 1, KeySize: 32, MaxBackups: 0},
-		"max_backups too high": {ScryptN: 32768, ScryptR: 8, ScryptP: 1, KeySize: 32, MaxBackups: 101},
+		"scrypt_n too low":     withConfigChange(func(cfg Config) Config { cfg.ScryptN = 16384; return cfg }),
+		"scrypt_n not power":   withConfigChange(func(cfg Config) Config { cfg.ScryptN = 65535; return cfg }),
+		"scrypt_r too high":    withConfigChange(func(cfg Config) Config { cfg.ScryptR = 17; return cfg }),
+		"scrypt_p too high":    withConfigChange(func(cfg Config) Config { cfg.ScryptP = 9; return cfg }),
+		"invalid key size":     withConfigChange(func(cfg Config) Config { cfg.KeySize = 31; return cfg }),
+		"max_backups too low":  withConfigChange(func(cfg Config) Config { cfg.MaxBackups = 0; return cfg }),
+		"max_backups too high": withConfigChange(func(cfg Config) Config { cfg.MaxBackups = 101; return cfg }),
+		"token key storage":    withConfigChange(func(cfg Config) Config { cfg.TokenKeyStorage = "sometimes"; return cfg }),
 	}
 
 	for name, cfg := range tests {
@@ -30,6 +31,10 @@ func TestValidateRejectsUnsafeValues(t *testing.T) {
 			}
 		})
 	}
+}
+
+func withConfigChange(change func(Config) Config) Config {
+	return change(Default)
 }
 
 func TestLoadUsesDefaultsWhenFileIsMissing(t *testing.T) {
@@ -53,9 +58,23 @@ func TestLoadAppliesValidOverride(t *testing.T) {
 			t.Fatalf("Load: %v", err)
 		}
 
-		want := Config{ScryptN: 65536, ScryptR: 8, ScryptP: 2, KeySize: 24, MaxBackups: 10, AuditLog: true}
+		want := Config{ScryptN: 65536, ScryptR: 8, ScryptP: 2, KeySize: 24, MaxBackups: 10, AuditLog: true, TokenKeyStorage: TokenKeyStorageAuto}
 		if cfg != want {
 			t.Fatalf("config = %+v, want %+v", cfg, want)
+		}
+	})
+}
+
+func TestLoadAppliesTokenKeyStorageOverride(t *testing.T) {
+	withTempWorkingDir(t, func() {
+		writeConfigFile(t, `{"token_key_storage":"file"}`)
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		if cfg.TokenKeyStorage != TokenKeyStorageFile {
+			t.Fatalf("token_key_storage = %q, want %q", cfg.TokenKeyStorage, TokenKeyStorageFile)
 		}
 	})
 }

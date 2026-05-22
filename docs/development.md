@@ -52,6 +52,8 @@ internal/
     clipboard.go        clipboard backend detection and clear-if-unchanged helper
   export/
     export.go           shell export rendering and restrictive export-file writes
+  keychain/
+    keychain.go         OS keychain availability detection for doctor/config readiness
 docs/
   man/
     vault.1              manual page installed by release packages
@@ -81,6 +83,7 @@ docs/
 - `internal/commands`: export/import/key validation helpers
 - `internal/clipboard`: clipboard backend detection and best-effort clearing
 - `internal/export`: shell export rendering and restrictive export-file writes
+- `internal/keychain`: OS keychain availability detection without storing token keys yet
 
 The project still keeps command-line parsing, prompts, output, and top-level orchestration in `cmd/vault`. Future extractions should happen only when tests cover the behavior well enough.
 

@@ -410,6 +410,7 @@ Default values:
 | `key_size` | `32` |
 | `max_backups` | `5` |
 | `audit_log` | `true` |
+| `token_key_storage` | `auto` |
 
 The program loads `vault-config.json` from the runtime directory.
 
@@ -420,10 +421,19 @@ Config validation:
 - `scrypt_p` must be between `1` and `8`
 - `key_size` must be `16`, `24`, or `32`
 - `max_backups` must be between `1` and `100`
+- `token_key_storage` must be `auto`, `file`, or `keychain`
 
 Manual timestamped backups keep only the newest `max_backups` files.
 
 If `vault-config.json` is malformed or unsafe, the CLI stops with a config error.
+
+`token_key_storage` is a preparatory setting for OS keychain support:
+
+- `auto` detects OS keychain availability and uses the current file fallback in this release
+- `file` explicitly keeps the current `vault-token.key` runtime file behavior
+- `keychain` requires an OS keychain in future storage releases; today `vault doctor` reports whether the requested keychain appears available and token commands fail clearly instead of silently using file storage
+
+This release does not move token master-key material into the OS keychain yet.
 
 Audit logging is enabled by default but intentionally avoids key names and token identifiers. To disable audit logging:
 

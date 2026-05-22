@@ -2,6 +2,22 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.4.7] - 2026-05-22
+
+### Added
+
+- Added `token_key_storage` config validation with `auto`, `file`, and `keychain` modes.
+- Added best-effort OS keychain detection for future token master-key storage.
+- Added `vault doctor` reporting for token key storage mode, keychain availability, and file fallback status.
+- Added focused coverage for keychain detection and token key storage config validation.
+
+### Changed
+
+- Documented that this release detects and reports OS keychain availability but does not move `vault-token.key` storage yet.
+- Made explicit `token_key_storage="keychain"` fail token commands clearly until real keychain storage is implemented.
+- Updated coverage baselines to `35.6%` full repository and `83.0%` internal packages.
+- Updated the CLI-visible version to `0.4.7`.
+
 ## [v0.4.6] - 2026-05-20
 
 ### Added

@@ -10,24 +10,32 @@ import (
 // FileName is the optional configuration file name.
 const FileName = "vault-config.json"
 
+const (
+	TokenKeyStorageAuto     = "auto"
+	TokenKeyStorageFile     = "file"
+	TokenKeyStorageKeychain = "keychain"
+)
+
 // Config contains user-tunable runtime and encryption settings.
 type Config struct {
-	ScryptN    int  `json:"scrypt_n"`
-	ScryptR    int  `json:"scrypt_r"`
-	ScryptP    int  `json:"scrypt_p"`
-	KeySize    int  `json:"key_size"`
-	MaxBackups int  `json:"max_backups"`
-	AuditLog   bool `json:"audit_log"`
+	ScryptN         int    `json:"scrypt_n"`
+	ScryptR         int    `json:"scrypt_r"`
+	ScryptP         int    `json:"scrypt_p"`
+	KeySize         int    `json:"key_size"`
+	MaxBackups      int    `json:"max_backups"`
+	AuditLog        bool   `json:"audit_log"`
+	TokenKeyStorage string `json:"token_key_storage"`
 }
 
 // Default is the baseline configuration used when vault-config.json is absent.
 var Default = Config{
-	ScryptN:    32768,
-	ScryptR:    8,
-	ScryptP:    1,
-	KeySize:    32,
-	MaxBackups: 5,
-	AuditLog:   true,
+	ScryptN:         32768,
+	ScryptR:         8,
+	ScryptP:         1,
+	KeySize:         32,
+	MaxBackups:      5,
+	AuditLog:        true,
+	TokenKeyStorage: TokenKeyStorageAuto,
 }
 
 // Load returns defaults when the config file is absent, but rejects malformed
@@ -79,6 +87,11 @@ func Validate(cfg Config) error {
 	}
 	if cfg.MaxBackups < 1 || cfg.MaxBackups > 100 {
 		return errors.New("max_backups must be between 1 and 100")
+	}
+	switch cfg.TokenKeyStorage {
+	case TokenKeyStorageAuto, TokenKeyStorageFile, TokenKeyStorageKeychain:
+	default:
+		return errors.New(`token_key_storage must be "auto", "file", or "keychain"`)
 	}
 	return nil
 }

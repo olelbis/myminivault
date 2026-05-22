@@ -153,7 +153,7 @@ Security notes for `MYMINIVAULT_HOME`:
 | `vault.db` | High | Offline password guessing, copied encrypted secrets | AES-GCM encryption, scrypt, restrictive writes |
 | `vault.db.bak` | High | Historical encrypted secrets | Same encrypted format, restrictive writes |
 | `vault.db.recovery` | High | Recovery-encrypted snapshot exposure | High-entropy recovery key, restrictive writes |
-| `vault-token.key` | Critical | Token system compromise | Restrictive writes, `regenerate-token-key` |
+| `vault-token.key` | Critical | Token system compromise | Restrictive writes, `regenerate-token-key`, preparatory keychain detection |
 | `shared-token-vault.json` | High | Token-access vault exposure | Encrypted shared vault, token master key |
 | `vault-tokens.json` | Medium | Token registry metadata leakage | Restrictive writes |
 | `vault.log` | Medium | Operational metadata leakage | Redacted key/token identifiers, optional logging |
@@ -163,6 +163,8 @@ Security notes for `MYMINIVAULT_HOME`:
 Runtime files should stay out of Git and should normally be readable only by the local user. Legacy runtime files in the current working directory are migrated into the runtime directory when possible, unless the target file already exists.
 
 Legacy encrypted files without a `MYMV` header remain readable as salt-plus-ciphertext files. Once a legacy main, recovery, or shared token vault is saved again, the rewritten file uses the current headered container format.
+
+`token_key_storage` can be set to `auto`, `file`, or `keychain` for keychain-readiness checks. Current releases still store token master-key material in `vault-token.key`; `vault doctor` reports OS keychain availability and whether file fallback remains active. If `keychain` is explicitly configured before a real keychain storage backend exists, token commands fail clearly instead of silently writing `vault-token.key`. Moving token key material into macOS Keychain, Linux Secret Service, or another OS backend is future work.
 
 ## Data Flows
 

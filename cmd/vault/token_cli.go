@@ -11,11 +11,15 @@ import (
 	"time"
 
 	vaultaudit "github.com/olelbis/myminivault/internal/audit"
+	vaultconfig "github.com/olelbis/myminivault/internal/config"
 	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
 	vaulttoken "github.com/olelbis/myminivault/internal/token"
 )
 
 func getOrCreateTokenMasterKey() ([]byte, error) {
+	if err := ensureTokenKeyFileStorage(); err != nil {
+		return nil, err
+	}
 	if key, err := vaulttoken.LoadMasterKey(tokenKeyFile); err == nil {
 		return key, nil
 	}
@@ -32,7 +36,17 @@ func getOrCreateTokenMasterKey() ([]byte, error) {
 }
 
 func saveTokenMasterKey(key []byte) error {
+	if err := ensureTokenKeyFileStorage(); err != nil {
+		return err
+	}
 	return vaulttoken.SaveMasterKey(tokenKeyFile, key)
+}
+
+func ensureTokenKeyFileStorage() error {
+	if config.TokenKeyStorage == vaultconfig.TokenKeyStorageKeychain {
+		return errors.New(`token_key_storage="keychain" is detection-only in this release; use "auto" or "file" until keychain storage is implemented`)
+	}
+	return nil
 }
 
 func cleanupExpiredTokens(vault *ExtendedVault) error {

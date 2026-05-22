@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.4.6`
+- Current baseline release: `v0.4.7`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -34,7 +34,7 @@ Main strengths:
 - tested `internal/commands` package for export/import/key validation helpers
 - tested `internal/clipboard` package for backend selection and clear-if-unchanged behavior
 - tested `internal/export` package for shell export rendering and restrictive file writes
-- internal package coverage at `82.8%`, including token master-key handling, compact-token parsing, token helper behavior, expiry/max-use checks, runtime path handling, container parsing, and important error paths
+- internal package coverage at `83.0%`, including token master-key handling, compact-token parsing, token helper behavior, expiry/max-use checks, runtime path handling, container parsing, keychain detection, and important error paths
 - automated CLI smoke coverage for critical workflows in the top-level `tests` package
 - explicit handling for recovery, token sync, locking, backups, export, and password changes
 - a handoff backlog that can restart work from a fresh chat
@@ -152,6 +152,8 @@ Docs-only candidates:
 - Added a `vault(1)` man page and expanded release packaging to Linux `.deb`, Linux `.rpm`, macOS `.pkg`, SHA-256 checksum manifests, and GitHub artifact attestations.
 - Added a cleartext `MYMV` container header for newly saved encrypted runtime files, with legacy salt-plus-ciphertext read compatibility and non-decrypting format reporting in `vault doctor` and `vault inspect-runtime`.
 - Updated coverage baselines to `35.4%` full repository and `82.8%` internal packages after adding `internal/container`.
+- Added `token_key_storage` config validation and `vault doctor` OS keychain availability reporting without changing token master-key storage semantics.
+- Updated coverage baselines to `35.6%` full repository and `83.0%` internal packages after adding `internal/keychain`.
 - Clarified recovery-file plus recovery-key exposure across security, recovery, and user documentation.
 - Added an `80.0%` internal package coverage floor to CI.
 - Extracted command logging and shared-vault mirror policy helpers from `cmd/vault` orchestration.
@@ -332,7 +334,7 @@ Current CI runs formatting, `go vet`, `go test ./...`, full coverage reporting, 
 
 Next actions:
 
-- keep `./internal/...` coverage at or above the current `80.0%` floor, with `82.8%` as the latest local baseline
+- keep `./internal/...` coverage at or above the current `80.0%` floor, with `83.0%` as the latest local baseline
 - raise `cmd/vault` coverage with focused unit tests or further extraction of command-independent logic where it improves clarity
 
 Suggested branch:
@@ -568,7 +570,7 @@ Platform direction:
 
 Suggested implementation phases:
 
-1. `token-keychain-detection`: config validation, platform detection, `doctor` reporting, documentation, no storage behavior change.
+1. `token-keychain-detection`: config validation, platform detection, `doctor` reporting, documentation, no storage behavior change. Completed in `v0.4.7`.
 2. `token-keychain-macos`: macOS Keychain backend, fallback behavior, migration tests where practical.
 3. `token-keychain-linux`: Secret Service/libsecret backend only if it is reliable in desktop sessions and harmless in headless sessions.
 

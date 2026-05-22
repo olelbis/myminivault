@@ -23,7 +23,7 @@ const (
 	sharedTokenVaultName = "shared-token-vault.json"
 	lockFileName         = ".myminivault.lock"
 	saltSize             = 16
-	vaultVersion         = "0.4.6"
+	vaultVersion         = "0.4.7"
 )
 
 var (
@@ -46,6 +46,7 @@ func showConfig() {
 	fmt.Printf("  key_size: %d\n", config.KeySize)
 	fmt.Printf("  max_backups: %d\n", config.MaxBackups)
 	fmt.Printf("  audit_log: %t\n", config.AuditLog)
+	fmt.Printf("  token_key_storage: %s\n", config.TokenKeyStorage)
 }
 
 func handleConfigCommand() error {
