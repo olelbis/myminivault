@@ -298,33 +298,26 @@ git pull
 git switch -c token-sync-next
 ```
 
-### 2. Quality Roadmap Beyond 9.6
+### 2. Quality Roadmap Beyond 9.65
 
 Priority: medium-high.
 
-These items are the most direct path beyond the current `9.6 / 10` assessment. Prefer them before adding new product features.
+These items are the most direct path beyond the current `9.65 / 10` assessment. Prefer them before adding new product features.
 
 Recommended order:
 
-1. design and implement OS keychain detection/configuration before moving token key storage
-2. evaluate macOS Keychain storage for `vault-token.key` or a wrapping key with a documented file fallback
-3. evaluate Linux Secret Service/libsecret detection, keeping headless/server fallback behavior explicit
-4. keep the internal coverage floor healthy as new internal packages are added
-5. continue reducing broad orchestration in `cmd/vault` only where tests already protect behavior
-6. add supply-chain hardening such as SBOMs, signed checksum files, or platform-specific package signing when the release process is ready
+1. implement macOS Keychain storage for `vault-token.key` or a wrapping key with a documented file fallback
+2. evaluate Linux Secret Service/libsecret detection, keeping headless/server fallback behavior explicit
+3. keep the internal coverage floor healthy as new internal packages are added
+4. continue reducing broad orchestration in `cmd/vault` only where tests already protect behavior
+5. add supply-chain hardening such as SBOMs, signed checksum files, or platform-specific package signing when the release process is ready
 
 Suggested branches:
 
 ```bash
 git switch main
 git pull
-git switch -c token-keychain-detection
-```
-
-```bash
-git switch main
-git pull
-git switch -c coverage-follow-up
+git switch -c token-keychain-macos
 ```
 
 ### 3. Coverage Follow-Up
@@ -335,7 +328,7 @@ Current CI runs formatting, `go vet`, `go test ./...`, full coverage reporting, 
 
 Next actions:
 
-- keep `./internal/...` coverage at or above the current `80.0%` floor, with `83.0%` as the latest local baseline
+- keep `./internal/...` coverage at or above the current `80.0%` floor, with `86.7%` as the latest local baseline
 - raise `cmd/vault` coverage with focused unit tests or further extraction of command-independent logic where it improves clarity
 
 Suggested branch:
@@ -343,7 +336,7 @@ Suggested branch:
 ```bash
 git switch main
 git pull
-git switch -c coverage-follow-up
+git switch -c coverage-next
 ```
 
 ### 4. Install And Release Packaging
@@ -580,7 +573,7 @@ Suggested branch:
 ```bash
 git switch main
 git pull
-git switch -c token-keychain-detection
+git switch -c token-keychain-macos
 ```
 
 ## Product Ideas After Hardening
