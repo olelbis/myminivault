@@ -141,3 +141,15 @@ func TestFileCreatesRuntimeHome(t *testing.T) {
 		t.Fatal("runtime home was not created as a directory")
 	}
 }
+
+func TestFileReturnsEnsureRuntimeHomeError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "not-a-directory")
+	if err := os.WriteFile(path, []byte("file"), 0600); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+	t.Setenv(HomeEnv, path)
+
+	if _, err := File("vault.db"); err == nil {
+		t.Fatal("expected runtime home error")
+	}
+}

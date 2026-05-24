@@ -91,6 +91,19 @@ func TestDecryptVaultRejectsMissingVerifier(t *testing.T) {
 	}
 }
 
+func TestDecryptVaultRejectsInvalidJSON(t *testing.T) {
+	recoveryKey := "RECOVERY-KEY"
+	salt := []byte("1234567890123456")
+	opts := Options{Scrypt: testScrypt}
+	payload := []byte("{not-json")
+	checksum := sha256.Sum256(payload)
+	encrypted := encryptPlaintext(t, append(checksum[:], payload...), recoveryKey, salt, opts)
+
+	if _, err := DecryptVault(salt, encrypted, recoveryKey, opts); err == nil {
+		t.Fatal("expected invalid JSON to fail")
+	}
+}
+
 func TestSaveFileAtomic(t *testing.T) {
 	vaultFile := filepath.Join(t.TempDir(), "vault.db")
 	salt := []byte("1234567890123456")
@@ -160,6 +173,35 @@ func TestSaveFileReportsCreateError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "failed to create recovery file") {
 		t.Fatalf("error = %v, want create recovery file", err)
+	}
+}
+
+func TestSaveFileReportsFinalizeError(t *testing.T) {
+	dir := t.TempDir()
+	vaultFile := filepath.Join(dir, "vault.db")
+	recoveryFile := vaultFile + ".recovery"
+	if err := os.Mkdir(recoveryFile, 0700); err != nil {
+		t.Fatalf("mkdir recovery target: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(recoveryFile, "existing"), []byte("data"), 0600); err != nil {
+		t.Fatalf("write recovery target child: %v", err)
+	}
+
+	err := SaveFile(vaultFile, []byte("1234567890123456"), []byte("encrypted"))
+	if err == nil {
+		t.Fatal("expected finalize error")
+	}
+	if !strings.Contains(err.Error(), "failed to finalize recovery file") {
+		t.Fatalf("error = %v, want finalize recovery file", err)
+	}
+	if _, err := os.Stat(recoveryFile + ".tmp"); !os.IsNotExist(err) {
+		t.Fatalf("temp recovery file should be removed, stat err = %v", err)
+	}
+}
+
+func TestStripChecksumRejectsShortData(t *testing.T) {
+	if _, err := stripChecksum([]byte("short")); err == nil {
+		t.Fatal("expected short recovery data to fail")
 	}
 }
 

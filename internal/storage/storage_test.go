@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -51,6 +52,32 @@ func TestLoadRejectsChecksumMismatch(t *testing.T) {
 	}
 	if !errors.Is(err, errors.New("checksum failed")) && err.Error() != "checksum failed" {
 		t.Fatalf("error = %v, want checksum failed", err)
+	}
+}
+
+func TestLoadFileRejectsInvalidJSON(t *testing.T) {
+	opts := storageTestOptions(t.TempDir())
+	payload := []byte("{not-json")
+	checksum := sha256.Sum256(payload)
+	writeEncryptedPlaintext(t, opts, []byte("password"), []byte("1234567890123456"), append(checksum[:], payload...))
+
+	if _, _, err := LoadFile(opts.VaultFile, "password", opts); err == nil {
+		t.Fatal("expected invalid JSON error")
+	}
+}
+
+func TestLoadFileInitializesMissingDataMap(t *testing.T) {
+	opts := storageTestOptions(t.TempDir())
+	payload := []byte(`{"metadata":{"version":"test"}}`)
+	checksum := sha256.Sum256(payload)
+	writeEncryptedPlaintext(t, opts, []byte("password"), []byte("1234567890123456"), append(checksum[:], payload...))
+
+	loaded, _, err := LoadFile(opts.VaultFile, "password", opts)
+	if err != nil {
+		t.Fatalf("LoadFile: %v", err)
+	}
+	if loaded.Data == nil {
+		t.Fatal("Data map should be initialized")
 	}
 }
 
@@ -171,6 +198,38 @@ func TestSaveFileAtomicReportsCreateError(t *testing.T) {
 
 	if err := SaveFileAtomic(vaultFile, []byte("salt"), []byte("data")); err == nil {
 		t.Fatal("expected create error")
+	}
+}
+
+func TestSaveFileAtomicReportsBackupRenameError(t *testing.T) {
+	dir := t.TempDir()
+	vaultFile := filepath.Join(dir, "vault.db")
+	if err := os.WriteFile(vaultFile, []byte("old"), 0600); err != nil {
+		t.Fatalf("write vault file: %v", err)
+	}
+	if err := os.Mkdir(vaultFile+".bak", 0700); err != nil {
+		t.Fatalf("mkdir backup path: %v", err)
+	}
+
+	if err := SaveFileAtomic(vaultFile, []byte("salt"), []byte("data")); err == nil {
+		t.Fatal("expected backup rename error")
+	}
+}
+
+func TestLoadFileRejectsUnexpectedContainerKind(t *testing.T) {
+	vaultFile := filepath.Join(t.TempDir(), "vault.db")
+	wrapped, err := container.Wrap(container.KindRecoveryVault, []byte("1234567890123456"), []byte("encrypted"))
+	if err != nil {
+		t.Fatalf("Wrap: %v", err)
+	}
+	if err := os.WriteFile(vaultFile, wrapped, 0600); err != nil {
+		t.Fatalf("write vault file: %v", err)
+	}
+
+	opts := storageTestOptions(filepath.Dir(vaultFile))
+	_, _, err = LoadFile(vaultFile, "password", opts)
+	if err == nil || !strings.Contains(err.Error(), "unexpected container kind") {
+		t.Fatalf("error = %v, want unexpected container kind", err)
 	}
 }
 
