@@ -13,7 +13,7 @@
   <img alt="Go" src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white">
   <img alt="Latest release" src="https://img.shields.io/github/v/release/olelbis/myminivault?sort=semver">
   <img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/olelbis/myminivault.svg">
-  <img alt="Internal coverage" src="https://img.shields.io/badge/internal_coverage-86.7%25-brightgreen">
+  <img alt="Internal coverage" src="https://img.shields.io/badge/internal_coverage-86.6%25-brightgreen">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
   <img alt="Status" src="https://img.shields.io/badge/status-experimental-orange">
   <img alt="CLI" src="https://img.shields.io/badge/interface-CLI-2f3337">
@@ -44,7 +44,7 @@ GitHub Releases also publish installable packages:
 
 Release assets include SHA-256 checksum files and GitHub artifact attestations when built by the release workflow.
 
-Token keychain support is being introduced incrementally. Current releases validate the `token_key_storage` setting and report OS keychain availability in `vault doctor`, but token master-key material still uses the existing `vault-token.key` file fallback.
+Token keychain support is being introduced incrementally. On macOS, `token_key_storage=auto` prefers macOS Keychain for token master-key material when available; `file` keeps the portable `vault-token.key` fallback, and `keychain` requires an implemented OS keychain backend.
 
 Build the CLI from the repository root:
 
@@ -182,7 +182,7 @@ Encrypted runtime files saved by current releases start with a small cleartext `
 | `vault.db` | Main encrypted vault |
 | `vault.db.bak` | Backup of previous main vault version |
 | `vault.db.recovery` | Recovery-encrypted vault copy |
-| `vault-token.key` | Local token master key |
+| `vault-token.key` | Local token master key when file-backed token key storage is used |
 | `shared-token-vault.json` | Encrypted shared vault used by token access |
 | `vault-tokens.json` | Token registry metadata |
 | `vault.log` | Audit log |

@@ -8,7 +8,9 @@ import (
 	"strings"
 	"time"
 
+	vaultconfig "github.com/olelbis/myminivault/internal/config"
 	"github.com/olelbis/myminivault/internal/container"
+	"github.com/olelbis/myminivault/internal/keychain"
 	vaultpaths "github.com/olelbis/myminivault/internal/paths"
 )
 
@@ -23,6 +25,7 @@ func handleInspectRuntimeCommand() {
 	fmt.Printf("Runtime home: %s\n", runtimeHome)
 	fmt.Printf("Runtime source: %s\n", runtimeHomeSource())
 	fmt.Println("Secrets: not decrypted or printed")
+	fmt.Printf("Token key storage: %s\n", tokenKeyStorageInspection())
 
 	fmt.Println("\nActive runtime files:")
 	for _, spec := range runtimeFileSpecs() {
@@ -44,6 +47,29 @@ func handleInspectRuntimeCommand() {
 				fmt.Println("    migration: skipped because active runtime-home file exists")
 			}
 		}
+	}
+}
+
+func tokenKeyStorageInspection() string {
+	cfg := config
+	if loaded, err := vaultconfig.LoadFile(configFile); err == nil {
+		cfg = loaded
+	}
+	result := keychain.Detect(keychain.Detector{})
+
+	switch cfg.TokenKeyStorage {
+	case vaultconfig.TokenKeyStorageFile:
+		return "file mode; vault-token.key is expected when tokens are used"
+	case vaultconfig.TokenKeyStorageKeychain:
+		if result.Status == keychain.StatusAvailable && result.Backend == "macOS Keychain" {
+			return "keychain mode; macOS Keychain is used when tokens are used"
+		}
+		return "keychain mode; implemented keychain backend unavailable"
+	default:
+		if result.Status == keychain.StatusAvailable && result.Backend == "macOS Keychain" {
+			return "auto mode; macOS Keychain is preferred when tokens are used"
+		}
+		return "auto mode; vault-token.key file fallback is used when tokens are used"
 	}
 }
 

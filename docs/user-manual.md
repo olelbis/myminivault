@@ -427,13 +427,13 @@ Manual timestamped backups keep only the newest `max_backups` files.
 
 If `vault-config.json` is malformed or unsafe, the CLI stops with a config error.
 
-`token_key_storage` is a preparatory setting for OS keychain support:
+`token_key_storage` controls where token master-key material is stored:
 
-- `auto` detects OS keychain availability and uses the current file fallback in this release
+- `auto` prefers macOS Keychain when available and uses the `vault-token.key` file fallback elsewhere
 - `file` explicitly keeps the current `vault-token.key` runtime file behavior
-- `keychain` requires an OS keychain in future storage releases; today `vault doctor` reports whether the requested keychain appears available and token commands fail clearly instead of silently using file storage
+- `keychain` requires an implemented OS keychain backend and fails clearly when unavailable
 
-This release does not move token master-key material into the OS keychain yet.
+On first token use, `auto` can migrate an existing macOS `vault-token.key` into macOS Keychain and then remove the old file. Linux Secret Service and other OS stores remain future work; on those platforms `auto` keeps using the file fallback.
 
 Audit logging is enabled by default but intentionally avoids key names and token identifiers. To disable audit logging:
 
@@ -496,7 +496,7 @@ Important behavior:
 | `vault.db` | Main encrypted vault |
 | `vault.db.bak` | Backup of previous main vault version |
 | `vault.db.recovery` | Recovery-encrypted vault copy |
-| `vault-token.key` | Local token master key |
+| `vault-token.key` | Local token master key when file-backed token key storage is used |
 | `shared-token-vault.json` | Encrypted shared vault used by token access |
 | `vault-tokens.json` | Token registry metadata |
 | `vault.log` | Audit log |

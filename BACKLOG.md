@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: `/Users/MGIANINI/vscode/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.4.8`
+- Current baseline release: `v0.4.9`
 - Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -15,9 +15,9 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `9.65 / 10`.
+Current assessment score: `9.7 / 10`.
 
-`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
+`myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, macOS Keychain support for token master-key material, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
 Main strengths:
 
@@ -34,7 +34,7 @@ Main strengths:
 - tested `internal/commands` package for export/import/key validation helpers
 - tested `internal/clipboard` package for backend selection and clear-if-unchanged behavior
 - tested `internal/export` package for shell export rendering and restrictive file writes
-- internal package coverage at `86.7%`, with every tested internal package currently above `80.0%`
+- internal package coverage at `86.6%`, with every tested internal package currently above `80.0%`
 - automated CLI smoke coverage for critical workflows in the top-level `tests` package
 - explicit handling for recovery, token sync, locking, backups, export, and password changes
 - a handoff backlog that can restart work from a fresh chat
@@ -159,6 +159,8 @@ Docs-only candidates:
 - Extracted command logging and shared-vault mirror policy helpers from `cmd/vault` orchestration.
 - Refined `docs/user-manual.md` with a pre-use checklist, common workflows, and clearer plaintext/recovery/token warnings.
 - Raised internal package coverage to `86.7%`, with follow-up tests for every tested internal package that was below `80.0%`.
+- Added macOS Keychain storage for token master-key material in `auto`/`keychain` modes, with path-scoped Keychain accounts and file fallback elsewhere.
+- Updated coverage baselines to `37.2%` full repository and `86.6%` internal packages after adding macOS Keychain storage.
 
 ## Current Verification
 
@@ -185,6 +187,7 @@ Package-level coverage now includes:
 - `internal/clipboard`: backend detection, command wrapper execution, and best-effort clear-if-unchanged behavior
 - `internal/export`: shell export rendering and restrictive file writes
 - `internal/container`: MYMV container wrapping, legacy parsing, unsupported header/kind rejection, short data rejection, read errors, and format descriptions
+- `internal/keychain`: platform detection, macOS token key load/save/delete command wrapping, missing item handling, invalid key material rejection, and unavailable-backend errors
 
 Manual smoke tests were run in `/private/tmp` with fake data:
 
@@ -298,26 +301,25 @@ git pull
 git switch -c token-sync-next
 ```
 
-### 2. Quality Roadmap Beyond 9.65
+### 2. Quality Roadmap Beyond 9.7
 
 Priority: medium-high.
 
-These items are the most direct path beyond the current `9.65 / 10` assessment. Prefer them before adding new product features.
+These items are the most direct path beyond the current `9.7 / 10` assessment. Prefer them before adding new product features.
 
 Recommended order:
 
-1. implement macOS Keychain storage for `vault-token.key` or a wrapping key with a documented file fallback
-2. evaluate Linux Secret Service/libsecret detection, keeping headless/server fallback behavior explicit
-3. keep the internal coverage floor healthy as new internal packages are added
-4. continue reducing broad orchestration in `cmd/vault` only where tests already protect behavior
-5. add supply-chain hardening such as SBOMs, signed checksum files, or platform-specific package signing when the release process is ready
+1. evaluate Linux Secret Service/libsecret detection, keeping headless/server fallback behavior explicit
+2. keep the internal coverage floor healthy as new internal packages are added
+3. continue reducing broad orchestration in `cmd/vault` only where tests already protect behavior
+4. add supply-chain hardening such as SBOMs, signed checksum files, or platform-specific package signing when the release process is ready
 
 Suggested branches:
 
 ```bash
 git switch main
 git pull
-git switch -c token-keychain-macos
+git switch -c token-keychain-linux
 ```
 
 ### 3. Coverage Follow-Up
@@ -328,7 +330,7 @@ Current CI runs formatting, `go vet`, `go test ./...`, full coverage reporting, 
 
 Next actions:
 
-- keep `./internal/...` coverage at or above the current `80.0%` floor, with `86.7%` as the latest local baseline
+- keep `./internal/...` coverage at or above the current `80.0%` floor, with `86.6%` as the latest local baseline
 - raise `cmd/vault` coverage with focused unit tests or further extraction of command-independent logic where it improves clarity
 
 Suggested branch:
@@ -565,7 +567,7 @@ Platform direction:
 Suggested implementation phases:
 
 1. `token-keychain-detection`: config validation, platform detection, `doctor` reporting, documentation, no storage behavior change. Completed in `v0.4.7`.
-2. `token-keychain-macos`: macOS Keychain backend, fallback behavior, migration tests where practical.
+2. `token-keychain-macos`: macOS Keychain backend, fallback behavior, migration tests where practical. Completed in `v0.4.9`.
 3. `token-keychain-linux`: Secret Service/libsecret backend only if it is reliable in desktop sessions and harmless in headless sessions.
 
 Suggested branch:
@@ -573,7 +575,7 @@ Suggested branch:
 ```bash
 git switch main
 git pull
-git switch -c token-keychain-macos
+git switch -c token-keychain-linux
 ```
 
 ## Product Ideas After Hardening

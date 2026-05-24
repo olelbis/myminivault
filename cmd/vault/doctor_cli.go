@@ -83,13 +83,19 @@ func checkTokenKeyStorageHealth() doctorCheck {
 	case vaultconfig.TokenKeyStorageFile:
 		return doctorCheck{name: "token key storage", status: "OK", detail: "file mode configured; using vault-token.key"}
 	case vaultconfig.TokenKeyStorageKeychain:
+		if result.Status == keychain.StatusAvailable && result.Backend == "macOS Keychain" {
+			return doctorCheck{name: "token key storage", status: "OK", detail: "keychain configured; macOS Keychain will store token key material"}
+		}
 		if result.Status == keychain.StatusAvailable {
-			return doctorCheck{name: "token key storage", status: "WARN", detail: fmt.Sprintf("keychain configured; %s available, storage migration not implemented yet", result.Backend)}
+			return doctorCheck{name: "token key storage", status: "FAIL", detail: fmt.Sprintf("keychain configured but %s storage is not implemented yet", result.Backend)}
 		}
 		return doctorCheck{name: "token key storage", status: "FAIL", detail: fmt.Sprintf("keychain configured but unavailable: %s", result.Detail)}
 	default:
+		if result.Status == keychain.StatusAvailable && result.Backend == "macOS Keychain" {
+			return doctorCheck{name: "token key storage", status: "OK", detail: "auto; macOS Keychain available and preferred"}
+		}
 		if result.Status == keychain.StatusAvailable {
-			return doctorCheck{name: "token key storage", status: "OK", detail: fmt.Sprintf("auto; %s available, current release still uses file fallback", result.Backend)}
+			return doctorCheck{name: "token key storage", status: "OK", detail: fmt.Sprintf("auto; using file fallback (%s storage not implemented yet)", result.Backend)}
 		}
 		return doctorCheck{name: "token key storage", status: "OK", detail: fmt.Sprintf("auto; using file fallback (%s)", result.Detail)}
 	}
