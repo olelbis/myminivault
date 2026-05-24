@@ -58,6 +58,39 @@ func TestParseRejectsUnsupportedHeader(t *testing.T) {
 	}
 }
 
+func TestWrapRejectsUnknownKind(t *testing.T) {
+	if _, err := Wrap(99, []byte("salt"), []byte("encrypted")); err == nil {
+		t.Fatal("expected unknown kind error")
+	}
+}
+
+func TestParseRejectsShortHeaderedContainer(t *testing.T) {
+	_, err := Parse([]byte{'M', 'Y', 'M', 'V', Version, KindMainVault}, 16)
+	if err == nil || !strings.Contains(err.Error(), "container data too short") {
+		t.Fatalf("error = %v, want short container error", err)
+	}
+}
+
+func TestParseRejectsUnknownHeaderKind(t *testing.T) {
+	wrapped, err := Wrap(KindMainVault, []byte("1234567890123456"), []byte("encrypted"))
+	if err != nil {
+		t.Fatalf("Wrap: %v", err)
+	}
+	wrapped[5] = 99
+
+	_, err = Parse(wrapped, 16)
+	if err == nil || !strings.Contains(err.Error(), "unknown container kind") {
+		t.Fatalf("error = %v, want unknown kind", err)
+	}
+}
+
+func TestParseRejectsShortLegacyContainer(t *testing.T) {
+	_, err := Parse([]byte("short"), 16)
+	if err == nil || !strings.Contains(err.Error(), "legacy container data too short") {
+		t.Fatalf("error = %v, want short legacy error", err)
+	}
+}
+
 func TestReadFileAndDescription(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vault.db")
 	wrapped, err := Wrap(KindRecoveryVault, []byte("1234567890123456"), []byte("encrypted"))
@@ -74,5 +107,28 @@ func TestReadFileAndDescription(t *testing.T) {
 	}
 	if got := Description(parsed); got != "MYMV v1 recovery-vault" {
 		t.Fatalf("description = %q", got)
+	}
+}
+
+func TestReadFileReportsMissingFile(t *testing.T) {
+	if _, err := ReadFile(filepath.Join(t.TempDir(), "missing"), 16); err == nil {
+		t.Fatal("expected missing file error")
+	}
+}
+
+func TestKindNameAndDescriptionCoverKnownKinds(t *testing.T) {
+	tests := map[byte]string{
+		KindMainVault:        "main-vault",
+		KindRecoveryVault:    "recovery-vault",
+		KindSharedTokenVault: "shared-token-vault",
+		99:                   "unknown",
+	}
+	for kind, want := range tests {
+		if got := KindName(kind); got != want {
+			t.Fatalf("KindName(%d) = %q, want %q", kind, got, want)
+		}
+	}
+	if got := Description(Parsed{Legacy: true}); got != "legacy salt+ciphertext" {
+		t.Fatalf("legacy description = %q", got)
 	}
 }

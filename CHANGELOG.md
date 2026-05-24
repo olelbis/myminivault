@@ -2,6 +2,18 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.4.8] - 2026-05-24
+
+### Added
+
+- Added focused follow-up coverage for all internal packages that were below the `80.0%` package-level target: clipboard, container, lock, paths, recovery, and storage.
+- Added tests for clipboard backend command wrappers, container kind/header errors, lock open failures, runtime path errors, recovery invalid JSON/finalize errors, and storage invalid JSON/container-kind/atomic backup error paths.
+
+### Changed
+
+- Raised the local coverage baselines to `37.0%` full repository and `86.7%` internal packages.
+- Updated the CLI-visible version to `0.4.8`.
+
 ## [v0.4.7] - 2026-05-22
 
 ### Added

@@ -42,6 +42,22 @@ func TestWithFileReturnsCallbackError(t *testing.T) {
 	}
 }
 
+func TestWithFileReportsOpenError(t *testing.T) {
+	lockPath := filepath.Join(t.TempDir(), "missing", "vault.lock")
+	called := false
+
+	err := WithFile(lockPath, func() error {
+		called = true
+		return nil
+	})
+	if err == nil {
+		t.Fatal("expected open error")
+	}
+	if called {
+		t.Fatal("callback should not run when lock file cannot be opened")
+	}
+}
+
 func TestWithFileSerializesConcurrentCallbacks(t *testing.T) {
 	lockPath := filepath.Join(t.TempDir(), "vault.lock")
 	firstStarted := make(chan struct{})
