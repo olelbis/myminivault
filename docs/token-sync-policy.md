@@ -12,7 +12,7 @@ Per-key update timestamps and delete markers are stored as sync metadata. There 
 
 Token sync files are resolved inside the active runtime home. By default this is `~/.myminivault/`; set `MYMINIVAULT_HOME=/path/to/dir` to use an isolated runtime home.
 
-Use `vault inspect-runtime` to confirm which runtime home contains `shared-token-vault.json`, `vault-token.key`, and `vault-tokens.json` before troubleshooting token sync behavior.
+Use `vault inspect-runtime` to confirm which runtime home contains `shared-token-vault.json`, `vault-token.key` when file-backed token key storage is used, and `vault-tokens.json` before troubleshooting token sync behavior.
 
 Token synchronization uses two encrypted vault files:
 
@@ -21,10 +21,10 @@ Token synchronization uses two encrypted vault files:
 
 Token metadata also uses:
 
-- `vault-token.key`: local token master key
+- `vault-token.key`: local token master key when file-backed token key storage is used
 - `vault-tokens.json`: token registry metadata
 
-`vault-token.key` is critical token-system material. If it is exposed, regenerate it and treat existing compact tokens and shared-token-vault state as compromised. See [Security Model](security.md#token-flow) for the broader token threat model.
+`vault-token.key` is critical token-system material when present. If it is exposed, regenerate it and treat existing compact tokens and shared-token-vault state as compromised. On macOS, `token_key_storage=auto` can store token master-key material in Keychain instead. See [Security Model](security.md#token-flow) for the broader token threat model.
 
 ## Current Flow
 

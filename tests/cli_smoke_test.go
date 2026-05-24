@@ -28,7 +28,7 @@ const (
 	sharedTokenVault = "shared-token-vault.json"
 	tokenRegistry    = "vault-tokens.json"
 	saltSize         = 16
-	vaultVersion     = "0.4.7"
+	vaultVersion     = "0.4.9"
 	vaultHomeEnv     = "MYMINIVAULT_HOME"
 )
 
@@ -57,7 +57,7 @@ func runVault(t *testing.T, bin, dir, stdin string, args ...string) cliResult {
 
 	cmd := exec.Command(bin, args...)
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), vaultHomeEnv+"="+dir)
+	cmd.Env = append(os.Environ(), vaultHomeEnv+"="+dir, "PATH="+t.TempDir())
 	cmd.Stdin = strings.NewReader(stdin)
 	out, err := cmd.CombinedOutput()
 
@@ -330,7 +330,7 @@ func TestCLISmokeInvalidTokenKeyStorageRejected(t *testing.T) {
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "config")), "token_key_storage")
 }
 
-func TestCLISmokeKeychainStorageIsDetectionOnly(t *testing.T) {
+func TestCLISmokeKeychainStorageRequiresImplementedBackend(t *testing.T) {
 	bin := buildVaultBinary(t)
 	dir := t.TempDir()
 
@@ -343,7 +343,7 @@ func TestCLISmokeKeychainStorageIsDetectionOnly(t *testing.T) {
 	requireContains(t, doctorOutput, "keychain configured")
 
 	createOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=API_*", "--duration=1h"))
-	requireContains(t, createOutput, "detection-only")
+	requireContains(t, createOutput, `token_key_storage="keychain" configured`)
 }
 
 func TestCLISmokeDoctorChecksRuntimeHealth(t *testing.T) {

@@ -2,6 +2,18 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.4.9] - 2026-05-24
+
+### Added
+
+- Added macOS Keychain storage support for token master-key material when `token_key_storage` is `auto` or `keychain`.
+- Added migration from an existing macOS `vault-token.key` file into macOS Keychain on first token use.
+
+### Changed
+
+- Updated `vault doctor`, user documentation, and security documentation to describe macOS Keychain behavior and the file fallback.
+- Updated the CLI-visible version to `0.4.9`.
+
 ## [v0.4.8] - 2026-05-24
 
 ### Added
