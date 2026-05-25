@@ -4,11 +4,11 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Current Snapshot
 
-- Project path: `/Users/MGIANINI/vscode/myminivault`
+- Project path: clone or open the repository root, for example `/tmp/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
 - Current baseline release: `v0.4.9`
-- Backup folder created before split: `/Users/MGIANINI/vscode/myminivault-backup-20260515-223123`
+- Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
 - Only `main` is currently kept locally and on GitHub; completed task branches were merged and deleted.
