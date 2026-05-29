@@ -69,7 +69,10 @@ func Detect(detector Detector) Result {
 		if detector.Getenv("DBUS_SESSION_BUS_ADDRESS") == "" {
 			return Result{Status: StatusUnavailable, Backend: "Secret Service", Detail: "DBus session not found"}
 		}
-		return Result{Status: StatusAvailable, Backend: "Secret Service", Detail: "DBus session found"}
+		if _, err := detector.LookPath("secret-tool"); err != nil {
+			return Result{Status: StatusUnavailable, Backend: "Secret Service", Detail: "secret-tool not found"}
+		}
+		return Result{Status: StatusAvailable, Backend: "Secret Service", Detail: "DBus session and secret-tool found"}
 	default:
 		return Result{Status: StatusUnavailable, Backend: "OS keychain", Detail: detector.GOOS + " backend not implemented"}
 	}
