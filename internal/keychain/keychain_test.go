@@ -44,6 +44,12 @@ func TestDetectLinuxAvailableWithDBusSession(t *testing.T) {
 			}
 			return ""
 		},
+		LookPath: func(name string) (string, error) {
+			if name == "secret-tool" {
+				return "/usr/bin/secret-tool", nil
+			}
+			return "", errors.New("not found")
+		},
 	})
 
 	if result.Status != StatusAvailable || result.Backend != "Secret Service" {
@@ -60,6 +66,25 @@ func TestDetectLinuxUnavailableWithoutDBusSession(t *testing.T) {
 	})
 
 	if result.Status != StatusUnavailable || result.Detail != "DBus session not found" {
+		t.Fatalf("result = %+v", result)
+	}
+}
+
+func TestDetectLinuxUnavailableWithoutSecretTool(t *testing.T) {
+	result := Detect(Detector{
+		GOOS: "linux",
+		Getenv: func(name string) string {
+			if name == "DBUS_SESSION_BUS_ADDRESS" {
+				return "unix:path=/run/user/1000/bus"
+			}
+			return ""
+		},
+		LookPath: func(string) (string, error) {
+			return "", errors.New("not found")
+		},
+	})
+
+	if result.Status != StatusUnavailable || result.Detail != "secret-tool not found" {
 		t.Fatalf("result = %+v", result)
 	}
 }

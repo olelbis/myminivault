@@ -2,6 +2,14 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.4.10] - 2026-05-29
+
+### Changed
+
+- Strengthened Linux Secret Service detection to require both a DBus session and the `secret-tool` command before reporting the backend as available.
+- Kept Linux token key storage on the file fallback until Secret Service storage is implemented and tested across desktop/headless environments.
+- Updated documentation, backlog, and CLI-visible version to `0.4.10`.
+
 ## [v0.4.9] - 2026-05-24
 
 ### Added

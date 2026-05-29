@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: clone or open the repository root, for example `/tmp/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.4.9`
+- Current baseline release: `v0.4.10`
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -15,7 +15,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `9.7 / 10`.
+Current assessment score: `9.72 / 10`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, macOS Keychain support for token master-key material, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -161,6 +161,7 @@ Docs-only candidates:
 - Raised internal package coverage to `86.7%`, with follow-up tests for every tested internal package that was below `80.0%`.
 - Added macOS Keychain storage for token master-key material in `auto`/`keychain` modes, with path-scoped Keychain accounts and file fallback elsewhere.
 - Updated coverage baselines to `37.2%` full repository and `86.6%` internal packages after adding macOS Keychain storage.
+- Strengthened Linux Secret Service readiness detection to require both DBus and `secret-tool`, while keeping Linux token key storage on the file fallback.
 
 ## Current Verification
 
@@ -301,15 +302,15 @@ git pull
 git switch -c token-sync-next
 ```
 
-### 2. Quality Roadmap Beyond 9.7
+### 2. Quality Roadmap Beyond 9.72
 
 Priority: medium-high.
 
-These items are the most direct path beyond the current `9.7 / 10` assessment. Prefer them before adding new product features.
+These items are the most direct path beyond the current `9.72 / 10` assessment. Prefer them before adding new product features.
 
 Recommended order:
 
-1. evaluate Linux Secret Service/libsecret detection, keeping headless/server fallback behavior explicit
+1. decide whether to implement real Linux Secret Service storage or keep Linux file-backed by design
 2. keep the internal coverage floor healthy as new internal packages are added
 3. continue reducing broad orchestration in `cmd/vault` only where tests already protect behavior
 4. add supply-chain hardening such as SBOMs, signed checksum files, or platform-specific package signing when the release process is ready
@@ -319,7 +320,7 @@ Suggested branches:
 ```bash
 git switch main
 git pull
-git switch -c token-keychain-linux
+git switch -c linux-keychain-storage-decision
 ```
 
 ### 3. Coverage Follow-Up
@@ -558,7 +559,7 @@ Recommended policy:
 Platform direction:
 
 - use macOS Keychain for `vault-token.key` or a wrapping key on macOS
-- on Linux, first detect Secret Service/libsecret availability through the user session and fail gracefully when no DBus/keyring session exists
+- on Linux, detect Secret Service/libsecret availability through both DBus and `secret-tool`, then fail gracefully when the backend is unavailable or storage is not implemented
 - keep Linux headless/server usage explicitly supported through the file fallback
 - keep Windows Credential Manager or DPAPI as a future option if Windows support becomes a project goal
 - keep file-based fallback for portability, automation, and minimal environments
@@ -568,14 +569,14 @@ Suggested implementation phases:
 
 1. `token-keychain-detection`: config validation, platform detection, `doctor` reporting, documentation, no storage behavior change. Completed in `v0.4.7`.
 2. `token-keychain-macos`: macOS Keychain backend, fallback behavior, migration tests where practical. Completed in `v0.4.9`.
-3. `token-keychain-linux`: Secret Service/libsecret backend only if it is reliable in desktop sessions and harmless in headless sessions.
+3. `token-keychain-linux`: Secret Service/libsecret readiness detection with DBus plus `secret-tool`; Linux storage remains file-backed until a reliable storage implementation is chosen. Completed in `v0.4.10`.
 
 Suggested branch:
 
 ```bash
 git switch main
 git pull
-git switch -c token-keychain-linux
+git switch -c linux-keychain-storage-decision
 ```
 
 ## Product Ideas After Hardening
