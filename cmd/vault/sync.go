@@ -11,13 +11,18 @@ import (
 )
 
 func syncSharedVaultToMainVault(mainVault *ExtendedVault) error {
+	_, err := importSharedVaultToMainVault(mainVault)
+	return err
+}
+
+func importSharedVaultToMainVault(mainVault *ExtendedVault) (vaultsync.ImportResult, error) {
 	if _, err := os.Stat(sharedTokenVault); err != nil {
-		return nil
+		return vaultsync.ImportResult{}, nil
 	}
 
 	sharedVault, err := loadVaultFromTokenFileEncrypted(sharedTokenVault)
 	if err != nil {
-		return fmt.Errorf("failed to load shared vault: %w", err)
+		return vaultsync.ImportResult{}, fmt.Errorf("failed to load shared vault: %w", err)
 	}
 
 	result := vaultsync.ImportSharedVault(mainVault, sharedVault, time.Now())
@@ -31,7 +36,11 @@ func syncSharedVaultToMainVault(mainVault *ExtendedVault) error {
 		fmt.Printf("⚠️  Skipped %d older token conflict(s); main vault values were newer\n", result.SkippedConflicts)
 	}
 
-	return nil
+	return result, nil
+}
+
+func hasImportedTokenChanges(result vaultsync.ImportResult) bool {
+	return result.Imported > 0 || result.Deleted > 0
 }
 
 func syncMainVaultToSharedVault(vault *ExtendedVault) error {

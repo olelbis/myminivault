@@ -355,7 +355,7 @@ Example error payload:
 {"error":"token has expired"}
 ```
 
-When `--json` is used, token command errors are printed as JSON so subprocess callers can parse stdout instead of scraping human text. The compact token is still a bearer secret: pass it through a secret store or environment variable, avoid committing it, and avoid logging command lines that contain it.
+When `--json` is used, token command errors are printed as JSON and the process exits non-zero, so subprocess callers can parse stdout and still rely on exit status. Successful authorized token commands consume one token use; failed validation, permission, or key-pattern checks do not. The compact token is still a bearer secret: pass it through a secret store or environment variable, avoid committing it, and avoid logging command lines that contain it.
 
 Python:
 

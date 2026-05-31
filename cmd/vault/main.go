@@ -58,7 +58,11 @@ func main() {
 		return
 	case "use-token":
 		if err := withVaultLock(executeWithToken); err != nil {
+			if tokenJSONRequested(os.Args) {
+				os.Exit(1)
+			}
 			fmt.Printf("❌ Token access failed: %v\n", err)
+			os.Exit(1)
 		}
 		return
 	case "recover":
@@ -103,9 +107,11 @@ func runPasswordCommand(command, password string) error {
 		return fmt.Errorf("error loading vault: %w", err)
 	}
 
-	if err := syncSharedVaultToMainVault(extendedVault); err != nil {
+	tokenImportResult, err := importSharedVaultToMainVault(extendedVault)
+	if err != nil {
 		log.Printf("Warning: failed to sync from shared vault: %v", err)
 	}
+	tokenImportChanged := hasImportedTokenChanges(tokenImportResult)
 
 	if err := cleanupExpiredTokens(extendedVault); err != nil {
 		log.Printf("Token cleanup warning: %v", err)
@@ -117,6 +123,12 @@ func runPasswordCommand(command, password string) error {
 	if shouldLogAccessForCommand(command) {
 		logAccess(command)
 	}
+	saveImportedTokenChanges := func() error {
+		if !tokenImportChanged {
+			return nil
+		}
+		return saveExtendedVault(extendedVault, password, salt)
+	}
 
 	switch command {
 	case "set":
@@ -126,7 +138,7 @@ func runPasswordCommand(command, password string) error {
 		}
 	case "get":
 		handleGetCommand(extendedVault.Data)
-		return nil
+		return saveImportedTokenChanges()
 	case "delete":
 		deletedKey := ""
 		if len(os.Args) == 3 {
@@ -140,16 +152,16 @@ func runPasswordCommand(command, password string) error {
 		}
 	case "export":
 		handleExportCommand(extendedVault.Data)
-		return nil
+		return saveImportedTokenChanges()
 	case "copy":
 		handleCopyCommand(extendedVault.Data)
-		return nil
+		return saveImportedTokenChanges()
 	case "list":
 		handleListCommand(extendedVault.Data)
-		return nil
+		return saveImportedTokenChanges()
 	case "search":
 		handleSearchCommand(extendedVault.Data)
-		return nil
+		return saveImportedTokenChanges()
 	case "clear":
 		deletedKeys := make([]string, 0, len(extendedVault.Data))
 		for key := range extendedVault.Data {
@@ -168,16 +180,16 @@ func runPasswordCommand(command, password string) error {
 		} else {
 			fmt.Println("✅ Manual backup created successfully")
 		}
-		return nil
+		return saveImportedTokenChanges()
 	case "stats":
 		showStats(extendedVault)
-		return nil
+		return saveImportedTokenChanges()
 
 	case "setup-recovery":
 		handleSetupRecovery(extendedVault)
 	case "test-recovery":
 		handleTestRecovery(extendedVault)
-		return nil
+		return saveImportedTokenChanges()
 	case "change-password":
 		handleChangePassword(extendedVault, salt)
 		return nil
@@ -186,12 +198,12 @@ func runPasswordCommand(command, password string) error {
 		handleCreateToken(extendedVault)
 	case "list-tokens":
 		handleListTokens(extendedVault)
-		return nil
+		return saveImportedTokenChanges()
 	case "revoke-token":
 		handleRevokeToken(extendedVault)
 	case "token-info":
 		handleTokenInfo(extendedVault)
-		return nil
+		return saveImportedTokenChanges()
 	case "cleanup-tokens":
 		if err := cleanupExpiredTokens(extendedVault); err != nil {
 			fmt.Printf("❌ Cleanup failed: %v\n", err)
@@ -207,7 +219,7 @@ func runPasswordCommand(command, password string) error {
 
 	case "security-audit":
 		handleSecurityAudit(extendedVault)
-		return nil
+		return saveImportedTokenChanges()
 
 	default:
 		fmt.Printf("❌ Unknown command: %s\n", command)
@@ -238,7 +250,7 @@ func showUsage() {
 }
 
 func showHelp() {
-	fmt.Println(`🔐 myminivault CLI v0.4.11
+	fmt.Println(`🔐 myminivault CLI v0.4.12
 Author: olelbis
 
 BASIC COMMANDS:

@@ -29,7 +29,7 @@ const (
 	sharedTokenVault = "shared-token-vault.json"
 	tokenRegistry    = "vault-tokens.json"
 	saltSize         = 16
-	vaultVersion     = "0.4.11"
+	vaultVersion     = "0.4.12"
 	vaultHomeEnv     = "MYMINIVAULT_HOME"
 )
 
@@ -73,6 +73,24 @@ func requireOK(t *testing.T, result cliResult) string {
 	}
 
 	return result.output
+}
+
+func requireFailure(t *testing.T, result cliResult) string {
+	t.Helper()
+
+	if result.err == nil {
+		t.Fatalf("command succeeded, expected failure:\n%s", result.output)
+	}
+
+	return result.output
+}
+
+func requireFailedContains(t *testing.T, result cliResult, want string) string {
+	t.Helper()
+
+	output := requireFailure(t, result)
+	requireContains(t, output, want)
+	return output
 }
 
 func requireContains(t *testing.T, output, want string) {
@@ -269,10 +287,24 @@ func TestCLISmokeTokenJSONErrors(t *testing.T) {
 	createOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=API_*", "--duration=1h", "--permissions=read", "--max-uses=10"))
 	token := extractCompactToken(t, createOutput)
 
-	payload := parseJSONMap(t, requireOK(t, runVault(t, bin, dir, "", "use-token", token, "get", "DB_KEY", "--json")))
+	payload := parseJSONMap(t, requireFailure(t, runVault(t, bin, dir, "", "use-token", token, "get", "DB_KEY", "--json")))
 	if !strings.Contains(payload["error"].(string), "not allowed") {
 		t.Fatalf("error json = %#v", payload)
 	}
+}
+
+func TestCLISmokeTokenUnauthorizedUseDoesNotConsumeToken(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "API_KEY", "hello"))
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "DB_KEY", "world"))
+	createOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=API_*", "--duration=1h", "--permissions=read", "--max-uses=1"))
+	token := extractCompactToken(t, createOutput)
+
+	requireFailedContains(t, runVault(t, bin, dir, "", "use-token", token, "get", "DB_KEY", "--json"), "not allowed")
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", token, "get", "API_KEY")), "hello")
+	requireFailedContains(t, runVault(t, bin, dir, "", "use-token", token, "get", "API_KEY"), "token usage limit exceeded")
 }
 
 func TestCLISmokeTokenWriteImportedByMasterCommand(t *testing.T) {
@@ -287,6 +319,10 @@ func TestCLISmokeTokenWriteImportedByMasterCommand(t *testing.T) {
 	token := extractCompactToken(t, createOutput)
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", token, "set", "API_KEY", "auto-imported")), "set via token")
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY")), "auto-imported")
+	if err := os.Remove(filepath.Join(dir, sharedTokenVault)); err != nil {
+		t.Fatalf("remove shared token vault: %v", err)
+	}
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY")), "auto-imported")
 }
 
 func TestCLISmokeTokenExpiredAndUsedUpRejected(t *testing.T) {
@@ -297,12 +333,12 @@ func TestCLISmokeTokenExpiredAndUsedUpRejected(t *testing.T) {
 
 	expiredOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=API_*", "--duration=1ns", "--permissions=read", "--max-uses=10"))
 	expiredToken := extractCompactToken(t, expiredOutput)
-	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", expiredToken, "get", "API_KEY")), "token has expired")
+	requireFailedContains(t, runVault(t, bin, dir, "", "use-token", expiredToken, "get", "API_KEY"), "token has expired")
 
 	limitedOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=API_*", "--duration=1h", "--permissions=read", "--max-uses=1"))
 	limitedToken := extractCompactToken(t, limitedOutput)
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", limitedToken, "get", "API_KEY")), "hello")
-	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", limitedToken, "get", "API_KEY")), "token usage limit exceeded")
+	requireFailedContains(t, runVault(t, bin, dir, "", "use-token", limitedToken, "get", "API_KEY"), "token usage limit exceeded")
 }
 
 func TestCLISmokeCreateTokenRejectsInvalidLimits(t *testing.T) {
@@ -351,7 +387,7 @@ func TestCLISmokeTokenInfoListAndRevoke(t *testing.T) {
 	requireContains(t, infoOutput, "Permissions: read")
 
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "revoke-token", tokenID)), "revoked and removed")
-	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", token, "get", "API_KEY")), "token not found or has been revoked")
+	requireFailedContains(t, runVault(t, bin, dir, "", "use-token", token, "get", "API_KEY"), "token not found or has been revoked")
 }
 
 func TestCLISmokeMalformedConfigRejected(t *testing.T) {

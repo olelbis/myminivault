@@ -47,7 +47,10 @@ func LoadMasterKey(tokenKeyFile string) ([]byte, error) {
 
 // SaveMasterKey writes the local token master key with owner-only permissions.
 func SaveMasterKey(tokenKeyFile string, key []byte) error {
-	return os.WriteFile(tokenKeyFile, key, 0600)
+	if err := os.WriteFile(tokenKeyFile, key, 0600); err != nil {
+		return err
+	}
+	return os.Chmod(tokenKeyFile, 0600)
 }
 
 // LoadRegistry reads token registry metadata or returns an empty registry when
@@ -81,7 +84,10 @@ func SaveRegistry(tokenRegistry string, registry *model.TokenRegistry) error {
 		return err
 	}
 
-	return os.WriteFile(tokenRegistry, data, 0600)
+	if err := os.WriteFile(tokenRegistry, data, 0600); err != nil {
+		return err
+	}
+	return os.Chmod(tokenRegistry, 0600)
 }
 
 // SaveEncryptedVault encrypts and atomically stores the shared token vault.
@@ -291,14 +297,6 @@ func ParseAndValidateProductionToken(tokenStr, sharedTokenVault string, opts Opt
 
 	if !hmac.Equal([]byte(providedSignature), []byte(expectedSignature)) {
 		return model.AccessToken{}, nil, errors.New("invalid token signature - token may be forged")
-	}
-
-	// Token usage is persisted immediately so max-use limits survive process restarts.
-	storedToken.UsageCount++
-	vault.TokenManager.Tokens[tokenID] = storedToken
-
-	if err := SaveEncryptedVault(vault, sharedTokenVault, opts); err != nil {
-		return model.AccessToken{}, nil, err
 	}
 
 	return storedToken, vault, nil

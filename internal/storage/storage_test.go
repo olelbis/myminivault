@@ -214,6 +214,81 @@ func TestSaveFileAtomicReportsBackupRenameError(t *testing.T) {
 	if err := SaveFileAtomic(vaultFile, []byte("salt"), []byte("data")); err == nil {
 		t.Fatal("expected backup rename error")
 	}
+	current, err := os.ReadFile(vaultFile)
+	if err != nil {
+		t.Fatalf("primary should remain after backup rename error: %v", err)
+	}
+	if string(current) != "old" {
+		t.Fatalf("primary after failed save = %q, want old", current)
+	}
+	if _, err := os.Stat(vaultFile + ".tmp"); !os.IsNotExist(err) {
+		t.Fatalf("temp file should not remain, stat err = %v", err)
+	}
+}
+
+func TestSaveFileAtomicRestoresPrimaryWhenBackupChmodFails(t *testing.T) {
+	dir := t.TempDir()
+	vaultFile := filepath.Join(dir, "vault.db")
+	if err := os.WriteFile(vaultFile, []byte("old"), 0600); err != nil {
+		t.Fatalf("write vault file: %v", err)
+	}
+
+	originalOps := fileOps
+	errBoom := errors.New("chmod failed")
+	fileOps.chmod = func(path string, mode os.FileMode) error {
+		if path == vaultFile+".bak" {
+			return errBoom
+		}
+		return os.Chmod(path, mode)
+	}
+	t.Cleanup(func() { fileOps = originalOps })
+
+	if err := SaveFileAtomic(vaultFile, []byte("salt"), []byte("data")); !errors.Is(err, errBoom) {
+		t.Fatalf("SaveFileAtomic error = %v, want %v", err, errBoom)
+	}
+	current, err := os.ReadFile(vaultFile)
+	if err != nil {
+		t.Fatalf("primary should be restored: %v", err)
+	}
+	if string(current) != "old" {
+		t.Fatalf("primary after failed chmod = %q, want old", current)
+	}
+	if _, err := os.Stat(vaultFile + ".tmp"); !os.IsNotExist(err) {
+		t.Fatalf("temp file should not remain, stat err = %v", err)
+	}
+}
+
+func TestSaveFileAtomicRestoresPrimaryWhenFinalRenameFails(t *testing.T) {
+	dir := t.TempDir()
+	vaultFile := filepath.Join(dir, "vault.db")
+	tempFile := vaultFile + ".tmp"
+	if err := os.WriteFile(vaultFile, []byte("old"), 0600); err != nil {
+		t.Fatalf("write vault file: %v", err)
+	}
+
+	originalOps := fileOps
+	errBoom := errors.New("rename failed")
+	fileOps.rename = func(oldPath, newPath string) error {
+		if oldPath == tempFile && newPath == vaultFile {
+			return errBoom
+		}
+		return os.Rename(oldPath, newPath)
+	}
+	t.Cleanup(func() { fileOps = originalOps })
+
+	if err := SaveFileAtomic(vaultFile, []byte("salt"), []byte("data")); !errors.Is(err, errBoom) {
+		t.Fatalf("SaveFileAtomic error = %v, want %v", err, errBoom)
+	}
+	current, err := os.ReadFile(vaultFile)
+	if err != nil {
+		t.Fatalf("primary should be restored: %v", err)
+	}
+	if string(current) != "old" {
+		t.Fatalf("primary after failed rename = %q, want old", current)
+	}
+	if _, err := os.Stat(tempFile); !os.IsNotExist(err) {
+		t.Fatalf("temp file should not remain, stat err = %v", err)
+	}
 }
 
 func TestLoadFileRejectsUnexpectedContainerKind(t *testing.T) {
@@ -326,6 +401,19 @@ func TestSaveWritesRecoverySnapshotWhenConfigured(t *testing.T) {
 	}
 	if loadedRecovery.Data["API_KEY"] != "secret" {
 		t.Fatalf("recovery secret = %q, want secret", loadedRecovery.Data["API_KEY"])
+	}
+}
+
+func TestSaveReturnsEncryptionError(t *testing.T) {
+	opts := storageTestOptions(t.TempDir())
+	opts.Scrypt.KeySize = 31
+	vault := &model.ExtendedVault{
+		Data:     map[string]string{"API_KEY": "secret"},
+		Metadata: model.VaultMetadata{Version: opts.Version, CreatedAt: time.Now()},
+	}
+
+	if err := Save(vault, "password", []byte("1234567890123456"), opts); err == nil {
+		t.Fatal("expected encryption error")
 	}
 }
 

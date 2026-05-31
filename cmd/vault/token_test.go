@@ -3,10 +3,14 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	vaultconfig "github.com/olelbis/myminivault/internal/config"
 )
 
 func TestMatchKeyPattern(t *testing.T) {
@@ -71,11 +75,20 @@ func TestTokenJSONFlagParsing(t *testing.T) {
 	if strings.Join(filtered, "\x00") != strings.Join(want, "\x00") {
 		t.Fatalf("tokenCommandArgs = %#v, want %#v", filtered, want)
 	}
+
+	literalValue := []string{"vault", "use-token", "token", "set", "API_KEY", "--json"}
+	if tokenJSONRequested(literalValue) {
+		t.Fatal("set value --json should not be treated as the JSON flag")
+	}
+	if got := tokenCommandArgs(literalValue); strings.Join(got, "\x00") != strings.Join(literalValue, "\x00") {
+		t.Fatalf("literal --json args changed: %#v", got)
+	}
 }
 
 func TestExecuteTokenGetJSON(t *testing.T) {
 	vault := &ExtendedVault{Data: map[string]string{"API_KEY": "hello"}}
-	token := AccessToken{KeyPattern: "API_*", Permissions: []string{"read"}}
+	token := AccessToken{TokenID: "token-id", KeyPattern: "API_*", Permissions: []string{"read"}, MaxUses: 3, ExpiresAt: time.Now().Add(time.Hour)}
+	prepareTokenCommandPersistence(t, vault, token)
 
 	payload := captureTokenJSON(t, func() error {
 		return executeTokenGet(vault, token, "API_KEY", true)
@@ -88,7 +101,8 @@ func TestExecuteTokenGetJSON(t *testing.T) {
 
 func TestExecuteTokenListJSONIsSorted(t *testing.T) {
 	vault := &ExtendedVault{Data: map[string]string{"API_Z": "z", "DB_KEY": "db", "API_A": "a"}}
-	token := AccessToken{KeyPattern: "API_*", Permissions: []string{"read"}}
+	token := AccessToken{TokenID: "token-id", KeyPattern: "API_*", Permissions: []string{"read"}, MaxUses: 3, ExpiresAt: time.Now().Add(time.Hour)}
+	prepareTokenCommandPersistence(t, vault, token)
 
 	payload := captureTokenJSON(t, func() error {
 		return executeTokenList(vault, token, true)
@@ -109,9 +123,12 @@ func TestExecuteTokenListJSONIsSorted(t *testing.T) {
 func TestExecuteTokenSearchJSONError(t *testing.T) {
 	token := AccessToken{KeyPattern: "API_*", Permissions: []string{"write"}}
 
-	payload := captureTokenJSON(t, func() error {
+	payload, err := captureTokenJSONResult(t, func() error {
 		return executeTokenSearch(&ExtendedVault{Data: map[string]string{}}, token, "API", true)
 	})
+	if err == nil {
+		t.Fatal("expected JSON error command to return an error")
+	}
 
 	if !strings.Contains(payload["error"].(string), "read permission") {
 		t.Fatalf("unexpected error payload: %#v", payload)
@@ -176,7 +193,45 @@ func decodeSignedTokenPayload(token string) (string, error) {
 	return string(decoded), err
 }
 
+func prepareTokenCommandPersistence(t *testing.T, vault *ExtendedVault, token AccessToken) {
+	t.Helper()
+
+	dir := t.TempDir()
+	previousSharedTokenVault := sharedTokenVault
+	previousTokenKeyFile := tokenKeyFile
+	previousConfig := config
+	sharedTokenVault = filepath.Join(dir, sharedTokenVaultName)
+	tokenKeyFile = filepath.Join(dir, tokenKeyFileName)
+	config.TokenKeyStorage = vaultconfig.TokenKeyStorageFile
+	if err := os.WriteFile(tokenKeyFile, generateRandom(32), 0600); err != nil {
+		t.Fatalf("write token key fixture: %v", err)
+	}
+	t.Cleanup(func() {
+		sharedTokenVault = previousSharedTokenVault
+		tokenKeyFile = previousTokenKeyFile
+		config = previousConfig
+	})
+
+	if vault.TokenManager == nil {
+		vault.TokenManager = &TokenManager{
+			SecretKey: generateRandom(32),
+			Tokens:    make(map[string]AccessToken),
+		}
+	}
+	vault.TokenManager.Tokens[token.TokenID] = token
+}
+
 func captureTokenJSON(t *testing.T, fn func() error) map[string]any {
+	t.Helper()
+
+	payload, err := captureTokenJSONResult(t, fn)
+	if err != nil {
+		t.Fatalf("command returned error: %v", err)
+	}
+	return payload
+}
+
+func captureTokenJSONResult(t *testing.T, fn func() error) (map[string]any, error) {
 	t.Helper()
 
 	originalStdout := os.Stdout
@@ -193,16 +248,17 @@ func captureTokenJSON(t *testing.T, fn func() error) map[string]any {
 	if closeErr := writer.Close(); closeErr != nil {
 		t.Fatalf("close writer: %v", closeErr)
 	}
-	if err != nil {
-		t.Fatalf("command returned error: %v", err)
-	}
 
+	data, readErr := io.ReadAll(reader)
+	if readErr != nil {
+		t.Fatalf("read JSON output: %v", readErr)
+	}
 	var payload map[string]any
-	if err := json.NewDecoder(reader).Decode(&payload); err != nil {
-		t.Fatalf("decode JSON: %v", err)
+	if err := json.Unmarshal(data, &payload); err != nil {
+		t.Fatalf("decode JSON: %v\n%s", err, data)
 	}
 	if closeErr := reader.Close(); closeErr != nil {
 		t.Fatalf("close reader: %v", closeErr)
 	}
-	return payload
+	return payload, err
 }

@@ -43,6 +43,19 @@ func TestWriteFileUsesRestrictivePermissions(t *testing.T) {
 	if info.Mode().Perm() != 0600 {
 		t.Fatalf("mode = %v, want 0600", info.Mode().Perm())
 	}
+	if err := os.Chmod(path, 0644); err != nil {
+		t.Fatalf("chmod export file: %v", err)
+	}
+	if err := WriteFile(path, vault); err != nil {
+		t.Fatalf("WriteFile existing: %v", err)
+	}
+	info, err = os.Stat(path)
+	if err != nil {
+		t.Fatalf("Stat existing: %v", err)
+	}
+	if info.Mode().Perm() != 0600 {
+		t.Fatalf("existing mode = %v, want 0600", info.Mode().Perm())
+	}
 }
 
 func TestWriteFileReportsWriteErrors(t *testing.T) {
