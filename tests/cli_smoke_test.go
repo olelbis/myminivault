@@ -15,6 +15,7 @@ import (
 
 	vaultcommands "github.com/olelbis/myminivault/internal/commands"
 	vaultconfig "github.com/olelbis/myminivault/internal/config"
+	"github.com/olelbis/myminivault/internal/container"
 	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
 	"github.com/olelbis/myminivault/internal/model"
 	vaultrecovery "github.com/olelbis/myminivault/internal/recovery"
@@ -29,7 +30,7 @@ const (
 	sharedTokenVault = "shared-token-vault.json"
 	tokenRegistry    = "vault-tokens.json"
 	saltSize         = 16
-	vaultVersion     = "0.4.12"
+	vaultVersion     = "0.5.0"
 	vaultHomeEnv     = "MYMINIVAULT_HOME"
 )
 
@@ -444,7 +445,7 @@ func TestCLISmokeDoctorChecksRuntimeHealth(t *testing.T) {
 	doctorOutput := requireOK(t, runVault(t, bin, dir, "", "doctor"))
 	requireContains(t, doctorOutput, "main vault")
 	requireContains(t, doctorOutput, "mode 0600")
-	requireContains(t, doctorOutput, "MYMV v1 main-vault")
+	requireContains(t, doctorOutput, "MYMV v2 main-vault AES-256-GCM/scrypt")
 	requireContains(t, doctorOutput, "timestamped backups")
 	requireContains(t, doctorOutput, "recovery freshness")
 	requireContains(t, doctorOutput, "token sync freshness")
@@ -486,7 +487,7 @@ func TestCLISmokeInspectRuntimeShowsActiveAndLegacyFiles(t *testing.T) {
 	requireContains(t, inspect, "Secrets: not decrypted or printed")
 	requireContains(t, inspect, "Active runtime files:")
 	requireContains(t, inspect, filepath.Join(runtimeDir, vaultFile))
-	requireContains(t, inspect, "format: MYMV v1 main-vault")
+	requireContains(t, inspect, "format: MYMV v2 main-vault AES-256-GCM/scrypt")
 	requireContains(t, inspect, "Legacy current-directory files:")
 	requireContains(t, inspect, filepath.Join(workDir, vaultFile))
 	requireContains(t, inspect, "format: legacy salt+ciphertext")
@@ -695,8 +696,8 @@ func seedRecoverableVault(t *testing.T, dir, password string) string {
 		Version:     vaultVersion,
 		RecoveryKey: recoveryKey,
 		Scrypt:      vaultcrypto.ScryptConfig{N: vaultconfig.Default.ScryptN, R: vaultconfig.Default.ScryptR, P: vaultconfig.Default.ScryptP, KeySize: vaultconfig.Default.KeySize},
-		SaveRecoveryFile: func(salt, recoveryCiphertext []byte) error {
-			return vaultrecovery.SaveFile(filepath.Join(dir, vaultFile), salt, recoveryCiphertext)
+		SaveRecoveryFile: func(salt, recoveryCiphertext []byte, metadata ...container.Metadata) error {
+			return vaultrecovery.SaveFile(filepath.Join(dir, vaultFile), salt, recoveryCiphertext, metadata...)
 		},
 	}
 

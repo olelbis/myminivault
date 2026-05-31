@@ -2,14 +2,18 @@ package container
 
 import (
 	"bytes"
+	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 )
 
 const (
-	// Version is the cleartext container format version for encrypted runtime files.
-	Version byte = 1
+	// Version is the cleartext container format version written by current saves.
+	Version byte = 2
+	// Version1 is the original MYMV header format without structured metadata.
+	Version1 byte = 1
 
 	KindMainVault        byte = 1
 	KindRecoveryVault    byte = 2
@@ -18,31 +22,89 @@ const (
 
 var magic = []byte{'M', 'Y', 'M', 'V'}
 
-// HeaderSize is the number of cleartext bytes before salt+ciphertext data.
+// HeaderSize is the fixed prefix before optional metadata and salt+ciphertext data.
 const HeaderSize = 8
+
+const (
+	AlgorithmAES256GCM      = "AES-256-GCM"
+	KDFScrypt               = "scrypt"
+	PayloadChecksumJSON     = "sha256-prefix-json"
+	CiphertextNoncePrefixed = "nonce-prefixed"
+)
+
+// Metadata describes non-sensitive container details used for inspection and
+// future migration planning. It must never include keys, values, tokens, or
+// recovery material.
+type Metadata struct {
+	Algorithm        string `json:"algorithm"`
+	KDF              string `json:"kdf"`
+	ScryptN          int    `json:"scrypt_n,omitempty"`
+	ScryptR          int    `json:"scrypt_r,omitempty"`
+	ScryptP          int    `json:"scrypt_p,omitempty"`
+	KeySize          int    `json:"key_size,omitempty"`
+	SaltSize         int    `json:"salt_size"`
+	NonceSize        int    `json:"nonce_size"`
+	Payload          string `json:"payload"`
+	CiphertextLayout string `json:"ciphertext_layout"`
+}
 
 // Parsed contains the encrypted payload split from its cleartext container header.
 type Parsed struct {
-	Salt       []byte
-	Ciphertext []byte
-	Version    byte
-	Kind       byte
-	Legacy     bool
+	Salt           []byte
+	Ciphertext     []byte
+	AssociatedData []byte
+	Version        byte
+	Kind           byte
+	Legacy         bool
+	Metadata       Metadata
 }
 
 // Wrap prefixes salt+ciphertext with a small cleartext header that identifies
 // myminivault encrypted runtime files without revealing encrypted metadata.
-func Wrap(kind byte, salt, ciphertext []byte) ([]byte, error) {
+func Wrap(kind byte, salt, ciphertext []byte, metadata ...Metadata) ([]byte, error) {
 	if KindName(kind) == "unknown" {
 		return nil, fmt.Errorf("unknown container kind %d", kind)
 	}
 
-	out := make([]byte, 0, HeaderSize+len(salt)+len(ciphertext))
-	out = append(out, magic...)
-	out = append(out, Version, kind, 0, 0)
-	out = append(out, salt...)
+	aad, err := AssociatedData(kind, salt, metadata...)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]byte, 0, len(aad)+len(ciphertext))
+	out = append(out, aad...)
 	out = append(out, ciphertext...)
 	return out, nil
+}
+
+// AssociatedData returns the v2 cleartext context authenticated by AES-GCM.
+// It includes the MYMV header, metadata, and salt, but never encrypted secrets.
+func AssociatedData(kind byte, salt []byte, metadata ...Metadata) ([]byte, error) {
+	if KindName(kind) == "unknown" {
+		return nil, fmt.Errorf("unknown container kind %d", kind)
+	}
+
+	meta := DefaultMetadata(len(salt))
+	if len(metadata) > 0 {
+		meta = metadata[0]
+	}
+	meta = normalizeMetadata(meta, len(salt))
+
+	metaJSON, err := json.Marshal(meta)
+	if err != nil {
+		return nil, fmt.Errorf("marshal container metadata: %w", err)
+	}
+	if len(metaJSON) > 0xffff {
+		return nil, errors.New("container metadata too large")
+	}
+
+	aad := make([]byte, 0, HeaderSize+len(metaJSON)+len(salt))
+	aad = append(aad, magic...)
+	aad = append(aad, Version, kind, 0, 0)
+	binary.BigEndian.PutUint16(aad[6:8], uint16(len(metaJSON)))
+	aad = append(aad, metaJSON...)
+	aad = append(aad, salt...)
+	return aad, nil
 }
 
 // Parse reads either a new headered container or the legacy salt+ciphertext
@@ -54,19 +116,41 @@ func Parse(data []byte, saltSize int) (Parsed, error) {
 		}
 		version := data[4]
 		kind := data[5]
-		if version != Version {
+		if version != Version && version != Version1 {
 			return Parsed{}, fmt.Errorf("unsupported container version %d", version)
 		}
 		if KindName(kind) == "unknown" {
 			return Parsed{}, fmt.Errorf("unknown container kind %d", kind)
 		}
 
-		payload := data[HeaderSize:]
+		payloadOffset := HeaderSize
+		meta := DefaultMetadata(saltSize)
+		if version == Version {
+			metaLen := int(binary.BigEndian.Uint16(data[6:8]))
+			if len(data) < HeaderSize+metaLen+saltSize {
+				return Parsed{}, errors.New("container data too short")
+			}
+			metaData := data[HeaderSize : HeaderSize+metaLen]
+			if len(metaData) > 0 {
+				if err := json.Unmarshal(metaData, &meta); err != nil {
+					return Parsed{}, fmt.Errorf("invalid container metadata: %w", err)
+				}
+			}
+			payloadOffset += metaLen
+		}
+
+		payload := data[payloadOffset:]
+		var aad []byte
+		if version == Version {
+			aad = append([]byte(nil), data[:payloadOffset+saltSize]...)
+		}
 		return Parsed{
-			Salt:       append([]byte(nil), payload[:saltSize]...),
-			Ciphertext: append([]byte(nil), payload[saltSize:]...),
-			Version:    version,
-			Kind:       kind,
+			Salt:           append([]byte(nil), payload[:saltSize]...),
+			Ciphertext:     append([]byte(nil), payload[saltSize:]...),
+			AssociatedData: aad,
+			Version:        version,
+			Kind:           kind,
+			Metadata:       normalizeMetadata(meta, saltSize),
 		}, nil
 	}
 
@@ -89,6 +173,41 @@ func ReadFile(path string, saltSize int) (Parsed, error) {
 	return Parse(data, saltSize)
 }
 
+// DefaultMetadata returns the current non-sensitive crypto metadata defaults.
+func DefaultMetadata(saltSize int) Metadata {
+	return Metadata{
+		Algorithm:        AlgorithmAES256GCM,
+		KDF:              KDFScrypt,
+		SaltSize:         saltSize,
+		NonceSize:        12,
+		Payload:          PayloadChecksumJSON,
+		CiphertextLayout: CiphertextNoncePrefixed,
+	}
+}
+
+func normalizeMetadata(meta Metadata, saltSize int) Metadata {
+	defaults := DefaultMetadata(saltSize)
+	if meta.Algorithm == "" {
+		meta.Algorithm = defaults.Algorithm
+	}
+	if meta.KDF == "" {
+		meta.KDF = defaults.KDF
+	}
+	if meta.SaltSize == 0 {
+		meta.SaltSize = saltSize
+	}
+	if meta.NonceSize == 0 {
+		meta.NonceSize = defaults.NonceSize
+	}
+	if meta.Payload == "" {
+		meta.Payload = defaults.Payload
+	}
+	if meta.CiphertextLayout == "" {
+		meta.CiphertextLayout = defaults.CiphertextLayout
+	}
+	return meta
+}
+
 // KindName returns the stable display name for a known container kind.
 func KindName(kind byte) string {
 	switch kind {
@@ -107,6 +226,21 @@ func KindName(kind byte) string {
 func Description(parsed Parsed) string {
 	if parsed.Legacy {
 		return "legacy salt+ciphertext"
+	}
+	if parsed.Metadata.Algorithm != "" || parsed.Metadata.KDF != "" {
+		if parsed.Metadata.ScryptN > 0 || parsed.Metadata.ScryptR > 0 || parsed.Metadata.ScryptP > 0 {
+			return fmt.Sprintf(
+				"MYMV v%d %s %s/%s scrypt=%d/%d/%d",
+				parsed.Version,
+				KindName(parsed.Kind),
+				parsed.Metadata.Algorithm,
+				parsed.Metadata.KDF,
+				parsed.Metadata.ScryptN,
+				parsed.Metadata.ScryptR,
+				parsed.Metadata.ScryptP,
+			)
+		}
+		return fmt.Sprintf("MYMV v%d %s %s/%s", parsed.Version, KindName(parsed.Kind), parsed.Metadata.Algorithm, parsed.Metadata.KDF)
 	}
 	return fmt.Sprintf("MYMV v%d %s", parsed.Version, KindName(parsed.Kind))
 }

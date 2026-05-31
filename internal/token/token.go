@@ -111,12 +111,18 @@ func SaveEncryptedVault(vault *model.ExtendedVault, tokenVaultPath string, opts 
 		return err
 	}
 
-	ciphertext, err := vaultcrypto.Encrypt(dataWithChecksum, key)
+	meta := containerMetadata(opts)
+	aad, err := container.AssociatedData(container.KindSharedTokenVault, salt, meta)
 	if err != nil {
 		return err
 	}
 
-	return SaveVaultFileAtomic(tokenVaultPath, salt, ciphertext)
+	ciphertext, err := vaultcrypto.EncryptWithAAD(dataWithChecksum, key, aad)
+	if err != nil {
+		return err
+	}
+
+	return SaveVaultFileAtomic(tokenVaultPath, salt, ciphertext, meta)
 }
 
 // LoadEncryptedVault decrypts and parses the shared token vault.
@@ -144,7 +150,7 @@ func LoadEncryptedVault(tokenFilePath string, opts Options) (*model.ExtendedVaul
 		return nil, err
 	}
 
-	decrypted, err := vaultcrypto.Decrypt(parsed.Ciphertext, key)
+	decrypted, err := vaultcrypto.DecryptWithAAD(parsed.Ciphertext, key, parsed.AssociatedData)
 	if err != nil {
 		return nil, fmt.Errorf("decryption failed: %w", err)
 	}
@@ -164,14 +170,14 @@ func LoadEncryptedVault(tokenFilePath string, opts Options) (*model.ExtendedVaul
 
 // SaveVaultFileAtomic writes token vault data through a temporary file and
 // renames it into place.
-func SaveVaultFileAtomic(tokenVaultPath string, salt, data []byte) error {
+func SaveVaultFileAtomic(tokenVaultPath string, salt, data []byte, metadata ...container.Metadata) error {
 	tempFile := tokenVaultPath + ".tmp"
 	f, err := os.OpenFile(tempFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %w", err)
 	}
 
-	wrapped, err := container.Wrap(container.KindSharedTokenVault, salt, data)
+	wrapped, err := container.Wrap(container.KindSharedTokenVault, salt, data, metadata...)
 	if err != nil {
 		f.Close()
 		os.Remove(tempFile)
@@ -198,6 +204,15 @@ func SaveVaultFileAtomic(tokenVaultPath string, salt, data []byte) error {
 	}
 
 	return os.Chmod(tokenVaultPath, 0600)
+}
+
+func containerMetadata(opts Options) container.Metadata {
+	meta := container.DefaultMetadata(opts.SaltSize)
+	meta.ScryptN = opts.Scrypt.N
+	meta.ScryptR = opts.Scrypt.R
+	meta.ScryptP = opts.Scrypt.P
+	meta.KeySize = opts.Scrypt.KeySize
+	return meta
 }
 
 // GetOrCreateMasterKey loads the token master key or creates one when absent.

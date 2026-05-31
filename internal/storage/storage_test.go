@@ -32,6 +32,17 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 	if err := Save(vault, "password", []byte("1234567890123456"), opts); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
+	raw, err := os.ReadFile(opts.VaultFile)
+	if err != nil {
+		t.Fatalf("read saved vault: %v", err)
+	}
+	parsed, err := container.Parse(raw, opts.SaltSize)
+	if err != nil {
+		t.Fatalf("parse saved vault: %v", err)
+	}
+	if parsed.Metadata.ScryptN != opts.Scrypt.N || parsed.Metadata.KeySize != opts.Scrypt.KeySize {
+		t.Fatalf("metadata = %+v, want scrypt params from options", parsed.Metadata)
+	}
 
 	loaded, _, err := Load("password", opts)
 	if err != nil {
@@ -52,6 +63,30 @@ func TestLoadRejectsChecksumMismatch(t *testing.T) {
 	}
 	if !errors.Is(err, errors.New("checksum failed")) && err.Error() != "checksum failed" {
 		t.Fatalf("error = %v, want checksum failed", err)
+	}
+}
+
+func TestLoadRejectsTamperedContainerMetadata(t *testing.T) {
+	opts := storageTestOptions(t.TempDir())
+	vault := &model.ExtendedVault{
+		Data:     map[string]string{"API_KEY": "secret"},
+		Metadata: model.VaultMetadata{Version: opts.Version, CreatedAt: time.Now()},
+	}
+	if err := Save(vault, "password", []byte("1234567890123456"), opts); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	raw, err := os.ReadFile(opts.VaultFile)
+	if err != nil {
+		t.Fatalf("read vault: %v", err)
+	}
+	raw = bytes.Replace(raw, []byte("AES-256-GCM"), []byte("AES-128-GCM"), 1)
+	if err := os.WriteFile(opts.VaultFile, raw, 0600); err != nil {
+		t.Fatalf("write tampered vault: %v", err)
+	}
+
+	if _, _, err := Load("password", opts); err == nil {
+		t.Fatal("expected tampered container metadata to fail authentication")
 	}
 }
 
@@ -176,6 +211,9 @@ func TestSaveFileAtomicCreatesBackupAndReplacesPrimary(t *testing.T) {
 	}
 	if parsed.Version != container.Version || parsed.Kind != container.KindMainVault {
 		t.Fatalf("container version/kind = %d/%d", parsed.Version, parsed.Kind)
+	}
+	if parsed.Metadata.Algorithm != container.AlgorithmAES256GCM || parsed.Metadata.KDF != container.KDFScrypt {
+		t.Fatalf("container metadata = %+v", parsed.Metadata)
 	}
 	if string(parsed.Salt)+string(parsed.Ciphertext) != "new-saltnew-data" {
 		t.Fatalf("current payload = %q%q", parsed.Salt, parsed.Ciphertext)
@@ -378,10 +416,16 @@ func TestSaveWritesRecoverySnapshotWhenConfigured(t *testing.T) {
 	salt := []byte("1234567890123456")
 	var recoverySalt []byte
 	var recoveryCiphertext []byte
+	var recoveryAAD []byte
 	opts.RecoveryKey = recoveryKey
-	opts.SaveRecoveryFile = func(gotSalt, gotCiphertext []byte) error {
+	opts.SaveRecoveryFile = func(gotSalt, gotCiphertext []byte, metadata ...container.Metadata) error {
 		recoverySalt = append([]byte(nil), gotSalt...)
 		recoveryCiphertext = append([]byte(nil), gotCiphertext...)
+		var err error
+		recoveryAAD, err = container.AssociatedData(container.KindRecoveryVault, gotSalt, metadata...)
+		if err != nil {
+			return err
+		}
 		return nil
 	}
 
@@ -395,7 +439,7 @@ func TestSaveWritesRecoverySnapshotWhenConfigured(t *testing.T) {
 	if len(recoveryCiphertext) == 0 {
 		t.Fatal("expected recovery ciphertext to be saved")
 	}
-	loadedRecovery, err := recovery.DecryptVault(recoverySalt, recoveryCiphertext, recoveryKey, recovery.Options{Scrypt: opts.Scrypt})
+	loadedRecovery, err := recovery.DecryptVault(recoverySalt, recoveryCiphertext, recoveryKey, recovery.Options{Scrypt: opts.Scrypt}, recoveryAAD)
 	if err != nil {
 		t.Fatalf("DecryptVault recovery snapshot: %v", err)
 	}
@@ -421,7 +465,7 @@ func TestSaveReturnsRecoverySnapshotError(t *testing.T) {
 	opts := storageTestOptions(t.TempDir())
 	errBoom := errors.New("recovery write failed")
 	opts.RecoveryKey = "RECOVERY-KEY"
-	opts.SaveRecoveryFile = func(_, _ []byte) error {
+	opts.SaveRecoveryFile = func(_, _ []byte, _ ...container.Metadata) error {
 		return errBoom
 	}
 	recoveryData := &model.RecoveryData{CreatedAt: time.Now()}
@@ -465,11 +509,20 @@ func writeEncryptedPlaintext(t *testing.T, opts Options, password, salt, plainte
 	if err != nil {
 		t.Fatalf("DeriveKey: %v", err)
 	}
-	ciphertext, err := vaultcrypto.Encrypt(plaintext, key)
+	meta := container.DefaultMetadata(opts.SaltSize)
+	meta.ScryptN = opts.Scrypt.N
+	meta.ScryptR = opts.Scrypt.R
+	meta.ScryptP = opts.Scrypt.P
+	meta.KeySize = opts.Scrypt.KeySize
+	aad, err := container.AssociatedData(container.KindMainVault, salt, meta)
+	if err != nil {
+		t.Fatalf("AssociatedData: %v", err)
+	}
+	ciphertext, err := vaultcrypto.EncryptWithAAD(plaintext, key, aad)
 	if err != nil {
 		t.Fatalf("Encrypt: %v", err)
 	}
-	if err := SaveFileAtomic(opts.VaultFile, salt, ciphertext); err != nil {
+	if err := SaveFileAtomic(opts.VaultFile, salt, ciphertext, meta); err != nil {
 		t.Fatalf("SaveFileAtomic fixture: %v", err)
 	}
 }

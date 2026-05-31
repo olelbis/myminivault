@@ -108,7 +108,7 @@ Runtime files are local files under `~/.myminivault/` by default. Encrypted vaul
 
 File permissions are an important local mitigation, not a complete security boundary.
 
-Newly saved encrypted runtime files include a small cleartext `MYMV` container header with a container format version and file kind. This supports safer inspection and future migrations without decrypting secrets. The header reveals that a file is a myminivault encrypted container and whether it is a main, recovery, or shared-token vault file; it does not reveal key names, values, recovery metadata, token contents, or encrypted vault metadata.
+Newly saved encrypted runtime files include a small cleartext `MYMV` container header with a container format version, file kind, and non-sensitive crypto metadata. Current `MYMV v2` saves record details such as `AES-256-GCM`, `scrypt`, scrypt parameters, salt size, nonce size, and payload layout. The `MYMV v2` header, metadata, and salt are authenticated as AES-GCM additional authenticated data, so tampering with that cleartext context makes decryption fail. This supports safer inspection and future migrations without decrypting secrets. The header reveals that a file is a myminivault encrypted container and whether it is a main, recovery, or shared-token vault file; it does not reveal key names, values, recovery metadata, token contents, or encrypted vault metadata.
 
 ### Terminal Boundary
 
@@ -162,7 +162,7 @@ Security notes for `MYMINIVAULT_HOME`:
 
 Runtime files should stay out of Git and should normally be readable only by the local user. Legacy runtime files in the current working directory are migrated into the runtime directory when possible, unless the target file already exists.
 
-Legacy encrypted files without a `MYMV` header remain readable as salt-plus-ciphertext files. Once a legacy main, recovery, or shared token vault is saved again, the rewritten file uses the current headered container format.
+Legacy encrypted files without a `MYMV` header remain readable as salt-plus-ciphertext files. `MYMV v1` files also remain readable. Once an older main, recovery, or shared token vault is saved again, the rewritten file uses the current `MYMV v2` container format.
 
 `token_key_storage` can be set to `auto`, `file`, or `keychain`. On macOS, `auto` prefers macOS Keychain for token master-key material when the `security` tool is available, and can migrate an existing `vault-token.key` into Keychain on first token use. `file` keeps the portable restrictive-file behavior. `keychain` requires an implemented OS backend and fails clearly when unavailable instead of silently writing `vault-token.key`. On Linux, token key storage is file-based by design for now; readiness detection requires both a DBus session and `secret-tool`, but Secret Service storage is not part of the supported behavior yet.
 

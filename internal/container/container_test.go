@@ -27,8 +27,39 @@ func TestWrapParseRoundTrip(t *testing.T) {
 	if parsed.Version != Version || parsed.Kind != KindMainVault {
 		t.Fatalf("version/kind = %d/%d", parsed.Version, parsed.Kind)
 	}
+	if parsed.Metadata.Algorithm != AlgorithmAES256GCM || parsed.Metadata.KDF != KDFScrypt {
+		t.Fatalf("metadata = %+v, want AES-GCM/scrypt", parsed.Metadata)
+	}
+	wantAAD, err := AssociatedData(KindMainVault, salt)
+	if err != nil {
+		t.Fatalf("AssociatedData: %v", err)
+	}
+	if !bytes.Equal(parsed.AssociatedData, wantAAD) {
+		t.Fatalf("AAD mismatch: got %q want %q", parsed.AssociatedData, wantAAD)
+	}
 	if !bytes.Equal(parsed.Salt, salt) || !bytes.Equal(parsed.Ciphertext, ciphertext) {
 		t.Fatalf("payload mismatch: salt=%q ciphertext=%q", parsed.Salt, parsed.Ciphertext)
+	}
+}
+
+func TestParseVersion1Header(t *testing.T) {
+	salt := []byte("1234567890123456")
+	ciphertext := []byte("encrypted")
+	wrapped := append([]byte{'M', 'Y', 'M', 'V', Version1, KindMainVault, 0, 0}, salt...)
+	wrapped = append(wrapped, ciphertext...)
+
+	parsed, err := Parse(wrapped, len(salt))
+	if err != nil {
+		t.Fatalf("Parse v1: %v", err)
+	}
+	if parsed.Version != Version1 || parsed.Kind != KindMainVault {
+		t.Fatalf("version/kind = %d/%d, want %d/%d", parsed.Version, parsed.Kind, Version1, KindMainVault)
+	}
+	if !bytes.Equal(parsed.Salt, salt) || !bytes.Equal(parsed.Ciphertext, ciphertext) {
+		t.Fatalf("payload mismatch: salt=%q ciphertext=%q", parsed.Salt, parsed.Ciphertext)
+	}
+	if len(parsed.AssociatedData) != 0 {
+		t.Fatalf("v1 AAD = %q, want empty", parsed.AssociatedData)
 	}
 }
 
@@ -105,7 +136,7 @@ func TestReadFileAndDescription(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)
 	}
-	if got := Description(parsed); got != "MYMV v1 recovery-vault" {
+	if got := Description(parsed); got != "MYMV v2 recovery-vault AES-256-GCM/scrypt" {
 		t.Fatalf("description = %q", got)
 	}
 }
@@ -130,5 +161,19 @@ func TestKindNameAndDescriptionCoverKnownKinds(t *testing.T) {
 	}
 	if got := Description(Parsed{Legacy: true}); got != "legacy salt+ciphertext" {
 		t.Fatalf("legacy description = %q", got)
+	}
+	parsed := Parsed{
+		Version: Version,
+		Kind:    KindMainVault,
+		Metadata: Metadata{
+			Algorithm: AlgorithmAES256GCM,
+			KDF:       KDFScrypt,
+			ScryptN:   32768,
+			ScryptR:   8,
+			ScryptP:   1,
+		},
+	}
+	if got := Description(parsed); got != "MYMV v2 main-vault AES-256-GCM/scrypt scrypt=32768/8/1" {
+		t.Fatalf("description with params = %q", got)
 	}
 }

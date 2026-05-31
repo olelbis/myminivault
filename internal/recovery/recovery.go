@@ -59,7 +59,7 @@ func HashKey(recovery *model.RecoveryData, key string) {
 
 // DecryptVault decrypts a recovery snapshot and validates that the provided
 // recovery key belongs to the embedded vault metadata.
-func DecryptVault(salt, encryptedData []byte, recoveryKey string, opts Options) (*model.ExtendedVault, error) {
+func DecryptVault(salt, encryptedData []byte, recoveryKey string, opts Options, aad ...[]byte) (*model.ExtendedVault, error) {
 	// The recovery key decrypts a recovery-encrypted vault snapshot, then the
 	// embedded recovery verifier proves the key belongs to this vault.
 	key, err := vaultcrypto.DeriveKey([]byte(recoveryKey), salt, opts.Scrypt)
@@ -67,7 +67,11 @@ func DecryptVault(salt, encryptedData []byte, recoveryKey string, opts Options) 
 		return nil, fmt.Errorf("key derivation failed: %w", err)
 	}
 
-	decrypted, err := vaultcrypto.Decrypt(encryptedData, key)
+	var associatedData []byte
+	if len(aad) > 0 {
+		associatedData = aad[0]
+	}
+	decrypted, err := vaultcrypto.DecryptWithAAD(encryptedData, key, associatedData)
 	if err != nil {
 		return nil, errors.New("invalid recovery key or corrupted vault")
 	}
@@ -90,7 +94,7 @@ func DecryptVault(salt, encryptedData []byte, recoveryKey string, opts Options) 
 }
 
 // SaveFile writes the recovery-encrypted vault snapshot next to the main vault.
-func SaveFile(vaultFile string, salt, recoveryCiphertext []byte) error {
+func SaveFile(vaultFile string, salt, recoveryCiphertext []byte, metadata ...container.Metadata) error {
 	// Recovery snapshots are written through a temp file so interrupted saves do
 	// not leave a partially-written recovery file behind.
 	recoveryFile := vaultFile + ".recovery"
@@ -100,7 +104,7 @@ func SaveFile(vaultFile string, salt, recoveryCiphertext []byte) error {
 		return fmt.Errorf("failed to create recovery file: %w", err)
 	}
 
-	wrapped, err := container.Wrap(container.KindRecoveryVault, salt, recoveryCiphertext)
+	wrapped, err := container.Wrap(container.KindRecoveryVault, salt, recoveryCiphertext, metadata...)
 	if err != nil {
 		f.Close()
 		os.Remove(tempFile)

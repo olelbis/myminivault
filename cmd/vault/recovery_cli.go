@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/olelbis/myminivault/internal/container"
 	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
 	vaultrecovery "github.com/olelbis/myminivault/internal/recovery"
 )
@@ -78,9 +79,9 @@ func handleTestRecovery(vault *ExtendedVault) {
 func recoverMasterPassword() error {
 	fmt.Println("🔄 Master Password Recovery")
 
-	salt, encryptedData, err := tryLoad(vaultFile + ".recovery")
+	parsed, err := tryLoadParsed(vaultFile + ".recovery")
 	if err != nil {
-		salt, encryptedData, err = tryLoad(vaultFile)
+		parsed, err = tryLoadParsed(vaultFile)
 		if err != nil {
 			return fmt.Errorf("cannot load vault file: %w", err)
 		}
@@ -93,7 +94,7 @@ func recoverMasterPassword() error {
 
 	setCurrentRecoveryKey(recoveryKey)
 
-	vault, err := vaultrecovery.DecryptVault(salt, encryptedData, recoveryKey, recoveryOptions())
+	vault, err := vaultrecovery.DecryptVault(parsed.Salt, parsed.Ciphertext, recoveryKey, recoveryOptions(), parsed.AssociatedData)
 	if err != nil {
 		return err
 	}
@@ -118,7 +119,7 @@ func recoverMasterPassword() error {
 	vault.Recovery.LastUsed = time.Now()
 	vault.Recovery.UseCount++
 
-	if err := saveExtendedVault(vault, newPassword, salt); err != nil {
+	if err := saveExtendedVault(vault, newPassword, parsed.Salt); err != nil {
 		return fmt.Errorf("failed to save vault with new password: %w", err)
 	}
 
@@ -177,8 +178,8 @@ func getCurrentRecoveryKey() string {
 	return currentRecoveryKey
 }
 
-func saveRecoveryFile(salt, recoveryCiphertext []byte) error {
-	return vaultrecovery.SaveFile(vaultFile, salt, recoveryCiphertext)
+func saveRecoveryFile(salt, recoveryCiphertext []byte, metadata ...container.Metadata) error {
+	return vaultrecovery.SaveFile(vaultFile, salt, recoveryCiphertext, metadata...)
 }
 
 func recoveryOptions() vaultrecovery.Options {

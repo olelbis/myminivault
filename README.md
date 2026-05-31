@@ -186,7 +186,7 @@ MYMINIVAULT_HOME=/tmp/myminivault-demo vault inspect-runtime
 
 The command prints active runtime files, legacy current-directory files, modified times, sizes, file modes, and encrypted container format details where available. It never decrypts vault data or prints stored values.
 
-Encrypted runtime files saved by current releases start with a small cleartext `MYMV` container header. The header identifies the file as a myminivault encrypted container and records the container format version and file kind, such as main vault, recovery vault, or shared token vault. It does not expose stored keys, values, recovery metadata, token contents, or encrypted vault metadata. Older salt-plus-ciphertext files remain readable and are reported as legacy format until they are rewritten by a save operation.
+Encrypted runtime files saved by current releases start with a small cleartext `MYMV` container header. Current saves write container format `v2`, which identifies the file kind and records non-sensitive crypto metadata such as algorithm, KDF, scrypt parameters, salt size, nonce size, and payload layout. The `MYMV v2` header, metadata, and salt are authenticated with AES-GCM AAD, so tampering with that cleartext context makes decryption fail. It does not expose stored keys, values, recovery metadata, token contents, or encrypted vault metadata. Older `MYMV v1` and salt-plus-ciphertext files remain readable and are reported as older formats until they are rewritten by a save operation.
 
 | File | Purpose |
 | --- | --- |
