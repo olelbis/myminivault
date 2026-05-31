@@ -2,6 +2,12 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## Unreleased
+
+### Changed
+
+- Documented the Linux token key storage policy: file-backed by design for now, with Secret Service detection kept informational.
+
 ## [v0.4.10] - 2026-05-29
 
 ### Changed

@@ -429,11 +429,11 @@ If `vault-config.json` is malformed or unsafe, the CLI stops with a config error
 
 `token_key_storage` controls where token master-key material is stored:
 
-- `auto` prefers macOS Keychain when available and uses the `vault-token.key` file fallback elsewhere
+- `auto` prefers macOS Keychain when available and uses the `vault-token.key` file fallback elsewhere, including Linux
 - `file` explicitly keeps the current `vault-token.key` runtime file behavior
 - `keychain` requires an implemented OS keychain backend and fails clearly when unavailable
 
-On first token use, `auto` can migrate an existing macOS `vault-token.key` into macOS Keychain and then remove the old file. On Linux, `vault doctor` checks for both a DBus session and `secret-tool` before reporting Secret Service as available, but Linux token key storage still uses the file fallback. Other OS stores remain future work.
+On first token use, `auto` can migrate an existing macOS `vault-token.key` into macOS Keychain and then remove the old file. On Linux, token key storage is file-based by design for now. `vault doctor` checks for both a DBus session and `secret-tool` before reporting Secret Service as available, but Linux still uses the file fallback. Other OS stores remain future work.
 
 Audit logging is enabled by default but intentionally avoids key names and token identifiers. To disable audit logging:
 
