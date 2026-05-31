@@ -23,7 +23,7 @@ const (
 	sharedTokenVaultName = "shared-token-vault.json"
 	lockFileName         = ".myminivault.lock"
 	saltSize             = 16
-	vaultVersion         = "0.6.0"
+	vaultVersion         = "0.7.0"
 )
 
 var (
@@ -86,6 +86,77 @@ func initRuntimePaths() error {
 		return err
 	}
 	return nil
+}
+
+func hardenRuntimeFilePermissions() error {
+	critical := map[string]bool{
+		vaultFile:               true,
+		vaultFile + ".bak":      true,
+		vaultFile + ".recovery": true,
+		tokenKeyFile:            true,
+		sharedTokenVault:        true,
+	}
+	files := []string{
+		vaultFile,
+		vaultFile + ".bak",
+		vaultFile + ".recovery",
+		configFile,
+		logFile,
+		tokenRegistry,
+		tokenKeyFile,
+		sharedTokenVault,
+		vaultLockFile,
+	}
+	if backups, err := filepath.Glob(vaultFile + ".*.bak"); err == nil {
+		files = append(files, backups...)
+	}
+
+	for _, path := range files {
+		if err := hardenRuntimeFilePermission(path, critical[path]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func hardenRuntimeFilePermission(path string, critical bool) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		if critical {
+			return fmt.Errorf("check runtime file permissions for %s: %w", path, err)
+		}
+		warnRuntimePermission(path, fmt.Sprintf("could not check permissions: %v", err))
+		return nil
+	}
+	if info.IsDir() {
+		if critical {
+			return fmt.Errorf("sensitive runtime path is a directory: %s", path)
+		}
+		warnRuntimePermission(path, "is a directory")
+		return nil
+	}
+	if info.Mode().Perm()&0077 == 0 {
+		return nil
+	}
+	if err := os.Chmod(path, 0600); err != nil {
+		if critical {
+			return fmt.Errorf("secure runtime file %s: %w", path, err)
+		}
+		warnRuntimePermission(path, fmt.Sprintf("could not set mode 0600: %v", err))
+		return nil
+	}
+	warnRuntimePermission(path, fmt.Sprintf("permissions tightened from %04o to 0600", info.Mode().Perm()))
+	return nil
+}
+
+func warnRuntimePermission(path, message string) {
+	if suppressRuntimeWarnings {
+		return
+	}
+	fmt.Printf("⚠️  Runtime file permission warning: %s: %s\n", filepath.Base(path), message)
 }
 
 func migrateLegacyRuntimeFiles(home string) error {

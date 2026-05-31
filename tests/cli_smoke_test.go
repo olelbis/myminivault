@@ -30,7 +30,7 @@ const (
 	sharedTokenVault = "shared-token-vault.json"
 	tokenRegistry    = "vault-tokens.json"
 	saltSize         = 16
-	vaultVersion     = "0.6.0"
+	vaultVersion     = "0.7.0"
 	vaultHomeEnv     = "MYMINIVAULT_HOME"
 )
 

@@ -2,6 +2,19 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.7.0] - 2026-06-01
+
+### Added
+
+- Added startup hardening for existing runtime file permissions: normal commands now tighten sensitive runtime files to `0600` when possible.
+- Added tests for startup permission tightening and critical runtime path failures.
+
+### Changed
+
+- Kept `doctor` and `inspect-runtime` non-mutating so they report current permissions without auto-fixing them.
+- Updated runtime documentation for startup permission hardening.
+- Updated the CLI-visible version to `0.7.0`.
+
 ## [v0.6.0] - 2026-06-01
 
 ### Changed

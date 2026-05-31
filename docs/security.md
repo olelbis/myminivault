@@ -106,7 +106,7 @@ The CLI disables core dumps on supported Unix-like systems as a best-effort miti
 
 Runtime files are local files under `~/.myminivault/` by default. Encrypted vault files are designed to tolerate file copying better than plaintext files, but copied files still enable offline password guessing and may contain historical secrets.
 
-File permissions are an important local mitigation, not a complete security boundary.
+File permissions are an important local mitigation, not a complete security boundary. Normal startup tightens existing runtime files to `0600` when possible and fails early if a critical sensitive path cannot be secured. `vault doctor` and `vault inspect-runtime` are intentionally non-mutating and report the current state without auto-fixing it.
 
 Newly saved encrypted runtime files include a small cleartext `MYMV` container header with a container format version, file kind, and non-sensitive crypto metadata. Current `MYMV v2` saves record details such as `AES-256-GCM`, `scrypt`, scrypt parameters, salt size, nonce size, and payload layout. The `MYMV v2` header, metadata, and salt are authenticated as AES-GCM additional authenticated data, so tampering with that cleartext context makes decryption fail. This supports safer inspection and future migrations without decrypting secrets. The header reveals that a file is a myminivault encrypted container and whether it is a main, recovery, or shared-token vault file; it does not reveal key names, values, recovery metadata, token contents, or encrypted vault metadata.
 

@@ -115,6 +115,82 @@ func TestWarnLegacyRuntimeConflictShowsComparison(t *testing.T) {
 	}
 }
 
+func TestHardenRuntimeFilePermissionsTightensExistingFiles(t *testing.T) {
+	dir := t.TempDir()
+	original := runtimeHome
+	originalVaultFile := vaultFile
+	originalConfigFile := configFile
+	originalLogFile := logFile
+	originalTokenRegistry := tokenRegistry
+	originalTokenKeyFile := tokenKeyFile
+	originalSharedTokenVault := sharedTokenVault
+	originalLockFile := vaultLockFile
+	t.Cleanup(func() {
+		runtimeHome = original
+		vaultFile = originalVaultFile
+		configFile = originalConfigFile
+		logFile = originalLogFile
+		tokenRegistry = originalTokenRegistry
+		tokenKeyFile = originalTokenKeyFile
+		sharedTokenVault = originalSharedTokenVault
+		vaultLockFile = originalLockFile
+	})
+
+	runtimeHome = dir
+	vaultFile = filepath.Join(dir, vaultFileName)
+	configFile = filepath.Join(dir, configFileName)
+	logFile = filepath.Join(dir, logFileName)
+	tokenRegistry = filepath.Join(dir, tokenRegistryName)
+	tokenKeyFile = filepath.Join(dir, tokenKeyFileName)
+	sharedTokenVault = filepath.Join(dir, sharedTokenVaultName)
+	vaultLockFile = filepath.Join(dir, lockFileName)
+
+	for _, path := range []string{vaultFile, configFile, logFile, tokenRegistry, tokenKeyFile, sharedTokenVault, vaultLockFile} {
+		if err := os.WriteFile(path, []byte("runtime"), 0644); err != nil {
+			t.Fatalf("write runtime file %s: %v", path, err)
+		}
+	}
+	backup := filepath.Join(dir, "vault.db.2026-06-01_12-00-00.bak")
+	if err := os.WriteFile(backup, []byte("backup"), 0644); err != nil {
+		t.Fatalf("write backup: %v", err)
+	}
+
+	output := captureStdout(t, func() {
+		if err := hardenRuntimeFilePermissions(); err != nil {
+			t.Fatalf("hardenRuntimeFilePermissions: %v", err)
+		}
+	})
+	if !strings.Contains(output, "permissions tightened") {
+		t.Fatalf("expected permission warning, got:\n%s", output)
+	}
+
+	for _, path := range []string{vaultFile, configFile, logFile, tokenRegistry, tokenKeyFile, sharedTokenVault, vaultLockFile, backup} {
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatalf("stat runtime file %s: %v", path, err)
+		}
+		if info.Mode().Perm() != 0600 {
+			t.Fatalf("%s mode = %04o, want 0600", path, info.Mode().Perm())
+		}
+	}
+}
+
+func TestHardenRuntimeFilePermissionsFailsForCriticalDirectory(t *testing.T) {
+	dir := t.TempDir()
+	originalVaultFile := vaultFile
+	t.Cleanup(func() { vaultFile = originalVaultFile })
+
+	vaultFile = filepath.Join(dir, vaultFileName)
+	if err := os.Mkdir(vaultFile, 0755); err != nil {
+		t.Fatalf("mkdir vault path: %v", err)
+	}
+
+	err := hardenRuntimeFilePermission(vaultFile, true)
+	if err == nil || !strings.Contains(err.Error(), "sensitive runtime path is a directory") {
+		t.Fatalf("error = %v, want critical directory error", err)
+	}
+}
+
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 
