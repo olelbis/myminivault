@@ -220,7 +220,7 @@ Current mitigations:
 1. `create-token` creates a compact bearer token with scope, expiry, permissions, and max-use limits.
 2. Token metadata and shared vault data are stored in encrypted token runtime files.
 3. `use-token` validates the token and applies allowed read/write operations.
-4. Usage count is persisted after validation.
+4. Usage count is persisted only after an authorized token command succeeds.
 5. Master-password commands import staged token writes according to the token sync policy.
 
 Primary risks:

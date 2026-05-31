@@ -2,6 +2,22 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.4.12] - 2026-05-31
+
+### Fixed
+
+- Persisted token-vault imports even when the triggering master-password command is read-only.
+- Reworked main vault atomic saves so the existing primary vault remains in place if temporary writes or backup rotation fail.
+- Changed token usage accounting so failed or unauthorized token commands do not consume `max-uses`.
+- Made `use-token --json` failures return a non-zero process status while keeping stdout machine-readable.
+- Preserved literal `--json` values for token `set` commands unless `--json` is used as the final output flag.
+- Forced restrictive `0600` permissions after rewriting token key, token registry, export, and recovery files.
+
+### Changed
+
+- Updated the coverage baselines to `38.9%` full repository and `86.6%` internal packages.
+- Updated the CLI-visible version to `0.4.12`.
+
 ## [v0.4.11] - 2026-05-31
 
 ### Added

@@ -129,7 +129,7 @@ func SaveFile(vaultFile string, salt, recoveryCiphertext []byte) error {
 		return fmt.Errorf("failed to finalize recovery file: %w", err)
 	}
 
-	return nil
+	return os.Chmod(recoveryFile, 0600)
 }
 
 func stripChecksum(decrypted []byte) ([]byte, error) {

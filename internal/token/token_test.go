@@ -40,6 +40,19 @@ func TestLoadSaveMasterKey(t *testing.T) {
 	if info.Mode().Perm() != 0600 {
 		t.Fatalf("mode = %v, want 0600", info.Mode().Perm())
 	}
+	if err := os.Chmod(keyFile, 0644); err != nil {
+		t.Fatalf("chmod key file: %v", err)
+	}
+	if err := SaveMasterKey(keyFile, key); err != nil {
+		t.Fatalf("SaveMasterKey existing: %v", err)
+	}
+	info, err = os.Stat(keyFile)
+	if err != nil {
+		t.Fatalf("stat existing key file: %v", err)
+	}
+	if info.Mode().Perm() != 0600 {
+		t.Fatalf("existing mode = %v, want 0600", info.Mode().Perm())
+	}
 }
 
 func TestLoadMasterKeyRejectsInvalidLength(t *testing.T) {
@@ -112,6 +125,19 @@ func TestLoadSaveRegistry(t *testing.T) {
 	}
 	if loaded.Tokens["token-id"] != "alias" {
 		t.Fatalf("token alias = %q, want alias", loaded.Tokens["token-id"])
+	}
+	if err := os.Chmod(registryFile, 0644); err != nil {
+		t.Fatalf("chmod registry: %v", err)
+	}
+	if err := SaveRegistry(registryFile, registry); err != nil {
+		t.Fatalf("SaveRegistry existing: %v", err)
+	}
+	info, err := os.Stat(registryFile)
+	if err != nil {
+		t.Fatalf("stat registry: %v", err)
+	}
+	if info.Mode().Perm() != 0600 {
+		t.Fatalf("registry mode = %v, want 0600", info.Mode().Perm())
 	}
 }
 
@@ -297,7 +323,7 @@ func TestSaveVaultFileAtomicReportsCreateError(t *testing.T) {
 	}
 }
 
-func TestParseAndValidateProductionTokenRejectsForgeryAndPersistsUsage(t *testing.T) {
+func TestParseAndValidateProductionTokenRejectsForgeryWithoutPersistingUsage(t *testing.T) {
 	dir := t.TempDir()
 	sharedVault := filepath.Join(dir, "shared-token-vault.json")
 	secretKey := bytesOf(0x22, 32)
@@ -332,16 +358,16 @@ func TestParseAndValidateProductionTokenRejectsForgeryAndPersistsUsage(t *testin
 	if err != nil {
 		t.Fatalf("ParseAndValidateProductionToken: %v", err)
 	}
-	if parsed.UsageCount != 1 {
-		t.Fatalf("returned token usage count = %d, want 1", parsed.UsageCount)
+	if parsed.UsageCount != 0 {
+		t.Fatalf("returned token usage count = %d, want 0", parsed.UsageCount)
 	}
 
 	reloaded, err := LoadEncryptedVault(sharedVault, opts)
 	if err != nil {
 		t.Fatalf("reload shared vault: %v", err)
 	}
-	if got := reloaded.TokenManager.Tokens[accessToken.TokenID].UsageCount; got != 1 {
-		t.Fatalf("persisted usage count = %d, want 1", got)
+	if got := reloaded.TokenManager.Tokens[accessToken.TokenID].UsageCount; got != 0 {
+		t.Fatalf("persisted usage count = %d, want 0", got)
 	}
 
 	forged := forgeTokenSignature(t, signedToken, "not-the-real-signature")
@@ -350,7 +376,7 @@ func TestParseAndValidateProductionTokenRejectsForgeryAndPersistsUsage(t *testin
 	}
 }
 
-func TestParseAndValidateProductionTokenAllowsFinalUse(t *testing.T) {
+func TestParseAndValidateProductionTokenAllowsUnconsumedFinalUse(t *testing.T) {
 	dir := t.TempDir()
 	sharedVault := filepath.Join(dir, "shared-token-vault.json")
 	secretKey := bytesOf(0x22, 32)
@@ -385,11 +411,11 @@ func TestParseAndValidateProductionTokenAllowsFinalUse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseAndValidateProductionToken first use: %v", err)
 	}
-	if parsed.UsageCount != 1 {
-		t.Fatalf("usage count after final allowed use = %d, want 1", parsed.UsageCount)
+	if parsed.UsageCount != 0 {
+		t.Fatalf("usage count after validation = %d, want 0", parsed.UsageCount)
 	}
-	if _, _, err := ParseAndValidateProductionToken(signedToken, sharedVault, opts); err == nil {
-		t.Fatal("expected second use to exceed limit")
+	if _, _, err := ParseAndValidateProductionToken(signedToken, sharedVault, opts); err != nil {
+		t.Fatalf("second validation without consumption should still be allowed: %v", err)
 	}
 }
 

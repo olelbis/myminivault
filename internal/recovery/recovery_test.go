@@ -162,6 +162,17 @@ func TestSaveFileReplacesExistingRecoveryFile(t *testing.T) {
 	} else if info.Mode().Perm() != 0600 {
 		t.Fatalf("recovery mode = %04o, want 0600", info.Mode().Perm())
 	}
+	if err := os.Chmod(recoveryFile, 0644); err != nil {
+		t.Fatalf("chmod recovery file: %v", err)
+	}
+	if err := SaveFile(vaultFile, salt, ciphertext); err != nil {
+		t.Fatalf("SaveFile existing: %v", err)
+	}
+	if info, err := os.Stat(recoveryFile); err != nil {
+		t.Fatalf("stat existing recovery file: %v", err)
+	} else if info.Mode().Perm() != 0600 {
+		t.Fatalf("existing recovery mode = %04o, want 0600", info.Mode().Perm())
+	}
 }
 
 func TestSaveFileReportsCreateError(t *testing.T) {

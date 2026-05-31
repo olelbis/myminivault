@@ -188,22 +188,30 @@ func executeWithToken() error {
 }
 
 func tokenJSONRequested(args []string) bool {
-	for _, arg := range args[2:] {
-		if arg == "--json" {
-			return true
-		}
+	if len(args) == 0 || args[len(args)-1] != "--json" {
+		return false
 	}
-	return false
+	if len(args) < 4 {
+		return true
+	}
+	switch args[3] {
+	case "set":
+		return len(args) >= 7
+	case "get", "search":
+		return len(args) >= 6
+	case "list":
+		return len(args) >= 5
+	default:
+		return true
+	}
 }
 
 func tokenCommandArgs(args []string) []string {
-	filtered := make([]string, 0, len(args))
-	for _, arg := range args {
-		if arg == "--json" {
-			continue
-		}
-		filtered = append(filtered, arg)
+	if !tokenJSONRequested(args) {
+		return args
 	}
+	filtered := make([]string, len(args)-1)
+	copy(filtered, args[:len(args)-1])
 	return filtered
 }
 
@@ -215,7 +223,10 @@ func tokenCommandError(jsonOutput bool, message string) error {
 }
 
 func writeJSONError(message string) error {
-	return writeJSON(map[string]string{"error": message})
+	if err := writeJSON(map[string]string{"error": message}); err != nil {
+		return err
+	}
+	return errors.New(message)
 }
 
 func writeJSON(value any) error {
@@ -248,6 +259,22 @@ func saveTokenRegistry(registry *TokenRegistry) error {
 	return vaulttoken.SaveRegistry(tokenRegistry, registry)
 }
 
+func saveSuccessfulTokenUse(vault *ExtendedVault, tokenID string, jsonOutput bool) error {
+	if vault.TokenManager == nil {
+		return tokenCommandError(jsonOutput, "no token manager found in vault")
+	}
+	token, exists := vault.TokenManager.Tokens[tokenID]
+	if !exists {
+		return tokenCommandError(jsonOutput, "token not found or has been revoked")
+	}
+	token.UsageCount++
+	vault.TokenManager.Tokens[tokenID] = token
+	if err := saveTokenVaultEncrypted(vault, sharedTokenVault); err != nil {
+		return tokenCommandError(jsonOutput, fmt.Sprintf("failed to save token usage: %v", err))
+	}
+	return nil
+}
+
 func executeTokenGet(vault *ExtendedVault, token AccessToken, key string, jsonOutput bool) error {
 	if !contains(token.Permissions, "read") {
 		return tokenCommandError(jsonOutput, "token does not have read permission")
@@ -262,6 +289,9 @@ func executeTokenGet(vault *ExtendedVault, token AccessToken, key string, jsonOu
 	}
 
 	if value, exists := vault.Data[key]; exists {
+		if err := saveSuccessfulTokenUse(vault, token.TokenID, jsonOutput); err != nil {
+			return err
+		}
 		if jsonOutput {
 			return writeJSON(map[string]string{"key": key, "value": value})
 		}
@@ -295,8 +325,8 @@ func executeTokenSet(vault *ExtendedVault, token AccessToken, key, value string,
 	vault.Data[key] = value
 	markKeyUpdated(vault, key)
 
-	if err := saveTokenVaultEncrypted(vault, sharedTokenVault); err != nil {
-		return tokenCommandError(jsonOutput, fmt.Sprintf("failed to save changes: %v", err))
+	if err := saveSuccessfulTokenUse(vault, token.TokenID, jsonOutput); err != nil {
+		return err
 	}
 
 	if jsonOutput {
@@ -325,6 +355,10 @@ func executeTokenList(vault *ExtendedVault, token AccessToken, jsonOutput bool) 
 		}
 	}
 	sort.Strings(keys)
+
+	if err := saveSuccessfulTokenUse(vault, token.TokenID, jsonOutput); err != nil {
+		return err
+	}
 
 	if jsonOutput {
 		return writeJSON(struct {
@@ -377,6 +411,10 @@ func executeTokenSearch(vault *ExtendedVault, token AccessToken, pattern string,
 	sort.Slice(results, func(i, j int) bool {
 		return results[i].Key < results[j].Key
 	})
+
+	if err := saveSuccessfulTokenUse(vault, token.TokenID, jsonOutput); err != nil {
+		return err
+	}
 
 	if jsonOutput {
 		return writeJSON(struct {

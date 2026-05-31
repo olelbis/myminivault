@@ -23,6 +23,20 @@ type Options struct {
 	SaveRecoveryFile func(salt, recoveryCiphertext []byte) error
 }
 
+var fileOps = struct {
+	stat     func(string) (os.FileInfo, error)
+	openFile func(string, int, os.FileMode) (*os.File, error)
+	rename   func(string, string) error
+	chmod    func(string, os.FileMode) error
+	remove   func(string) error
+}{
+	stat:     os.Stat,
+	openFile: os.OpenFile,
+	rename:   os.Rename,
+	chmod:    os.Chmod,
+	remove:   os.Remove,
+}
+
 // Load opens the primary vault, falls back to a backup only when the primary is
 // missing, and creates an empty vault when no persisted vault exists.
 func Load(password string, opts Options) (*model.ExtendedVault, []byte, error) {
@@ -152,17 +166,8 @@ func Save(vault *model.ExtendedVault, password string, salt []byte, opts Options
 // SaveFileAtomic writes to a temporary file and renames it into place. Existing
 // vault data is moved to .bak before the final rename.
 func SaveFileAtomic(vaultFile string, salt, data []byte) error {
-	if _, err := os.Stat(vaultFile); err == nil {
-		if err := os.Rename(vaultFile, vaultFile+".bak"); err != nil {
-			return err
-		}
-		if err := os.Chmod(vaultFile+".bak", 0600); err != nil {
-			return err
-		}
-	}
-
 	tempFile := vaultFile + ".tmp"
-	f, err := os.OpenFile(tempFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
+	f, err := fileOps.openFile(tempFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
@@ -170,30 +175,52 @@ func SaveFileAtomic(vaultFile string, salt, data []byte) error {
 	wrapped, err := container.Wrap(container.KindMainVault, salt, data)
 	if err != nil {
 		f.Close()
-		os.Remove(tempFile)
+		fileOps.remove(tempFile)
 		return err
 	}
 
 	if _, err := f.Write(wrapped); err != nil {
 		f.Close()
-		os.Remove(tempFile)
+		fileOps.remove(tempFile)
 		return err
 	}
 
 	if err := f.Sync(); err != nil {
 		f.Close()
-		os.Remove(tempFile)
+		fileOps.remove(tempFile)
 		return err
 	}
 
 	if err := f.Close(); err != nil {
-		os.Remove(tempFile)
+		fileOps.remove(tempFile)
 		return err
 	}
-	if err := os.Rename(tempFile, vaultFile); err != nil {
+
+	hadPrimary := false
+	if _, err := fileOps.stat(vaultFile); err == nil {
+		hadPrimary = true
+		if err := fileOps.rename(vaultFile, vaultFile+".bak"); err != nil {
+			fileOps.remove(tempFile)
+			return err
+		}
+		if err := fileOps.chmod(vaultFile+".bak", 0600); err != nil {
+			_ = fileOps.rename(vaultFile+".bak", vaultFile)
+			fileOps.remove(tempFile)
+			return err
+		}
+	} else if !os.IsNotExist(err) {
+		fileOps.remove(tempFile)
 		return err
 	}
-	return os.Chmod(vaultFile, 0600)
+
+	if err := fileOps.rename(tempFile, vaultFile); err != nil {
+		if hadPrimary {
+			_ = fileOps.rename(vaultFile+".bak", vaultFile)
+		}
+		fileOps.remove(tempFile)
+		return err
+	}
+	return fileOps.chmod(vaultFile, 0600)
 }
 
 // TryLoad reads either a headered MYMV container or the legacy salt prefix and
