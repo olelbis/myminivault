@@ -114,7 +114,7 @@ Newly saved encrypted runtime files include a small cleartext `MYMV` container h
 
 Anything printed to the terminal can be captured by terminal scrollback, shell wrappers, logs, screen recording, remote desktop software, or clipboard copy.
 
-`get` and plain `export` intentionally print plaintext. Prefer `copy` for one secret and `export --output <file>` for export artifacts when terminal exposure matters.
+`get --show`, `search --show`, and `export --stdout` intentionally print plaintext. The explicit flags are required so terminal exposure is an intentional choice. Prefer `copy` for one secret and `export --output <file>` for export artifacts when terminal exposure matters.
 
 ### Clipboard Boundary
 
@@ -242,7 +242,7 @@ Current mitigations:
 
 ### Export And Clipboard Flow
 
-`export` creates shell-friendly plaintext. `export --output <file>` writes that plaintext to a restrictive file. `copy` writes one secret to the system clipboard and clears it after a TTL when supported.
+`export --output <file>` creates shell-friendly plaintext in a restrictive file. `export --stdout` prints the same plaintext to stdout only by explicit request. `copy` writes one secret to the system clipboard and clears it after a TTL when supported.
 
 Primary risks:
 
@@ -253,7 +253,7 @@ Primary risks:
 
 Current mitigations:
 
-- interactive plaintext export warning
+- explicit `--show` and `--stdout` flags for plaintext terminal output
 - `export --output` writes with restrictive permissions
 - `copy` avoids terminal output
 - clipboard warning and TTL-based best-effort clearing
@@ -279,8 +279,8 @@ Current mitigations:
 
 - Use a strong, unique master password.
 - Keep runtime files out of Git and cloud-shared folders unless you understand the risk.
-- Prefer `copy` over `get` when terminal exposure matters.
-- Prefer `export --output <file>` over plain terminal export when an export artifact is needed.
+- Prefer `copy` over `get --show` when terminal exposure matters.
+- Prefer `export --output <file>` over `export --stdout` when an export artifact is needed.
 - Treat export files as plaintext secrets.
 - Disable audit logging with `"audit_log": false` if command metadata is too sensitive for your environment.
 - Run `vault doctor` periodically in active vault directories.

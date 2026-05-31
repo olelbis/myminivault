@@ -1,4 +1,4 @@
-.TH VAULT 1 "June 1, 2026" "myminivault 0.5.0" "User Commands"
+.TH VAULT 1 "June 1, 2026" "myminivault 0.6.0" "User Commands"
 .SH NAME
 vault \- local encrypted command-line key/value vault
 .SH SYNOPSIS
@@ -19,8 +19,8 @@ and should not be treated as a production password manager.
 .B set <key> <value>
 Store or update a secret value.
 .TP
-.B get <key>
-Print a stored value to the terminal.
+.B get <key> --show
+Print a stored value to the terminal by explicit request.
 .TP
 .B copy <key> [--ttl=30s]
 Copy a stored value to the clipboard and clear it after the TTL when supported.
@@ -31,11 +31,14 @@ Delete a key.
 .B list
 List key names without printing values.
 .TP
-.B search <pattern>
-Search key names.
+.B search <pattern> --show
+Search key names and print matching plaintext values by explicit request.
 .TP
-.B export [--output <file>]
-Print shell-safe export lines or write them to a restrictive plaintext file.
+.B export --output <file>
+Write shell-safe export lines to a restrictive plaintext file.
+.TP
+.B export --stdout
+Print shell-safe export lines to stdout by explicit request.
 .TP
 .B import <file>
 Import shell-style key/value entries.
@@ -138,9 +141,9 @@ Redacted audit log.
 Optional configuration override.
 .SH SECURITY NOTES
 Values printed by
-.B get
-or plain
-.B export
+.B get --show
+or
+.B export --stdout
 may remain in terminal scrollback or logs. Prefer
 .B copy
 or

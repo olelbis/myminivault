@@ -91,7 +91,7 @@ func TestExecuteTokenGetJSON(t *testing.T) {
 	prepareTokenCommandPersistence(t, vault, token)
 
 	payload := captureTokenJSON(t, func() error {
-		return executeTokenGet(vault, token, "API_KEY", true)
+		return executeTokenGet(vault, token, "API_KEY", true, false)
 	})
 
 	if payload["key"] != "API_KEY" || payload["value"] != "hello" {
@@ -124,7 +124,7 @@ func TestExecuteTokenSearchJSONError(t *testing.T) {
 	token := AccessToken{KeyPattern: "API_*", Permissions: []string{"write"}}
 
 	payload, err := captureTokenJSONResult(t, func() error {
-		return executeTokenSearch(&ExtendedVault{Data: map[string]string{}}, token, "API", true)
+		return executeTokenSearch(&ExtendedVault{Data: map[string]string{}}, token, "API", true, false)
 	})
 	if err == nil {
 		t.Fatal("expected JSON error command to return an error")

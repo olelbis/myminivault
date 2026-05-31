@@ -140,13 +140,15 @@ func executeWithToken() error {
 		}
 		fmt.Println("Usage: vault use-token <token> <command> [args...]")
 		fmt.Println("Examples:")
-		fmt.Println("  vault use-token <token> get API_KEY")
+		fmt.Println("  vault use-token <token> get API_KEY --show")
+		fmt.Println("  vault use-token <token> get API_KEY --json")
 		fmt.Println("  vault use-token <token> set API_KEY value")
 		fmt.Println("  vault use-token <token> list")
 		return nil
 	}
 
 	jsonOutput := tokenJSONRequested(os.Args)
+	showOutput := tokenShowRequested(os.Args)
 	tokenStr := args[2]
 	command := args[3]
 
@@ -163,9 +165,9 @@ func executeWithToken() error {
 	switch command {
 	case "get":
 		if len(args) < 5 {
-			return tokenCommandError(jsonOutput, "usage: vault use-token <token> get <key>")
+			return tokenCommandError(jsonOutput, "usage: vault use-token <token> get <key> (--show|--json)")
 		}
-		return executeTokenGet(vault, token, args[4], jsonOutput)
+		return executeTokenGet(vault, token, args[4], jsonOutput, showOutput)
 
 	case "set":
 		if len(args) < 6 {
@@ -178,9 +180,9 @@ func executeWithToken() error {
 
 	case "search":
 		if len(args) < 5 {
-			return tokenCommandError(jsonOutput, "usage: vault use-token <token> search <pattern>")
+			return tokenCommandError(jsonOutput, "usage: vault use-token <token> search <pattern> (--show|--json)")
 		}
-		return executeTokenSearch(vault, token, args[4], jsonOutput)
+		return executeTokenSearch(vault, token, args[4], jsonOutput, showOutput)
 
 	default:
 		return tokenCommandError(jsonOutput, fmt.Sprintf("command '%s' not allowed with tokens (only: get, set, list, search)", command))
@@ -206,8 +208,23 @@ func tokenJSONRequested(args []string) bool {
 	}
 }
 
+func tokenShowRequested(args []string) bool {
+	if len(args) == 0 || args[len(args)-1] != "--show" {
+		return false
+	}
+	if len(args) < 5 {
+		return false
+	}
+	switch args[3] {
+	case "get", "search":
+		return len(args) >= 6
+	default:
+		return false
+	}
+}
+
 func tokenCommandArgs(args []string) []string {
-	if !tokenJSONRequested(args) {
+	if !tokenJSONRequested(args) && !tokenShowRequested(args) {
 		return args
 	}
 	filtered := make([]string, len(args)-1)
@@ -275,7 +292,10 @@ func saveSuccessfulTokenUse(vault *ExtendedVault, tokenID string, jsonOutput boo
 	return nil
 }
 
-func executeTokenGet(vault *ExtendedVault, token AccessToken, key string, jsonOutput bool) error {
+func executeTokenGet(vault *ExtendedVault, token AccessToken, key string, jsonOutput, showOutput bool) error {
+	if !jsonOutput && !showOutput {
+		return tokenCommandError(jsonOutput, "plaintext token get requires --show, or use --json for machine-readable output")
+	}
 	if !contains(token.Permissions, "read") {
 		return tokenCommandError(jsonOutput, "token does not have read permission")
 	}
@@ -386,7 +406,10 @@ func executeTokenList(vault *ExtendedVault, token AccessToken, jsonOutput bool) 
 	return nil
 }
 
-func executeTokenSearch(vault *ExtendedVault, token AccessToken, pattern string, jsonOutput bool) error {
+func executeTokenSearch(vault *ExtendedVault, token AccessToken, pattern string, jsonOutput, showOutput bool) error {
+	if !jsonOutput && !showOutput {
+		return tokenCommandError(jsonOutput, "plaintext token search requires --show, or use --json for machine-readable output")
+	}
 	if !contains(token.Permissions, "read") {
 		return tokenCommandError(jsonOutput, "token does not have read permission")
 	}

@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: clone or open the repository root, for example `/tmp/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.5.0`
+- Current baseline release: `v0.6.0`
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -15,7 +15,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `9.80 / 10`.
+Current assessment score: `9.82 / 10`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, macOS Keychain support for token master-key material, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -58,7 +58,7 @@ Near-term hardening roadmap:
 
 1. Version the vault container format with explicit non-sensitive metadata for algorithm, KDF, scrypt parameters, salt size, nonce size, and payload layout. Completed in `v0.5.0` through `MYMV v2`.
 2. Bind AES-GCM encryption to container context with AAD so file kind, version, metadata, and salt are authenticated. Completed in `v0.5.0` for `MYMV v2`.
-3. Tighten plaintext-output policy around `get`, clipboard, JSON output, and export workflows.
+3. Tighten plaintext-output policy around `get`, clipboard, JSON output, and export workflows. Completed in `v0.6.0`; plaintext terminal/stdout output now requires explicit `--show`, `--stdout`, or `--json`.
 4. Harden recovery inspection and `vault doctor` checks for recovery file freshness, permissions, and compatibility.
 5. Improve token auditability and third-party API-style usage, including clearer revocation and expiry behavior.
 6. Continue slimming `cmd/vault` orchestration only where behavior is already covered by tests.

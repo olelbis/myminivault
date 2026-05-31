@@ -30,7 +30,7 @@ const (
 	sharedTokenVault = "shared-token-vault.json"
 	tokenRegistry    = "vault-tokens.json"
 	saltSize         = 16
-	vaultVersion     = "0.5.0"
+	vaultVersion     = "0.6.0"
 	vaultHomeEnv     = "MYMINIVAULT_HOME"
 )
 
@@ -125,8 +125,10 @@ func TestCLISmokeBasicVaultCommands(t *testing.T) {
 	dir := t.TempDir()
 
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "set", "API_KEY", "hello")), "Key 'API_KEY' set")
-	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY")), "hello")
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY")), "requires --show")
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY", "--show")), "hello")
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "list")), "API_KEY")
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "search", "API")), "requires --show")
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "backup")), "Manual backup created successfully")
 
 	backups, err := filepath.Glob(filepath.Join(dir, "vault.db.*.bak"))
@@ -138,7 +140,7 @@ func TestCLISmokeBasicVaultCommands(t *testing.T) {
 	}
 
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "delete", "API_KEY")), "Key 'API_KEY' deleted")
-	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY")), "not found")
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY", "--show")), "not found")
 }
 
 func TestCLISmokeRuntimeHomeKeepsVaultOutOfWorkingDirectory(t *testing.T) {
@@ -164,9 +166,9 @@ func TestCLISmokePasswordCommandsDoNotInitializeTokenFiles(t *testing.T) {
 	dir := t.TempDir()
 
 	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "API_KEY", "hello"))
-	requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY"))
+	requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY", "--show"))
 	requireOK(t, runVault(t, bin, dir, "pass\n", "list"))
-	requireOK(t, runVault(t, bin, dir, "pass\n", "export"))
+	requireOK(t, runVault(t, bin, dir, "pass\n", "export", "--stdout"))
 	requireOK(t, runVault(t, bin, dir, "pass\n", "stats"))
 	requireOK(t, runVault(t, bin, dir, "pass\n", "delete", "API_KEY"))
 
@@ -181,7 +183,7 @@ func TestCLISmokeWrongPasswordRejected(t *testing.T) {
 
 	requireOK(t, runVault(t, bin, dir, "correct\n", "set", "API_KEY", "hello"))
 
-	result := runVault(t, bin, dir, "wrong\n", "get", "API_KEY")
+	result := runVault(t, bin, dir, "wrong\n", "get", "API_KEY", "--show")
 	if result.err != nil {
 		t.Fatalf("vault prints load errors but exits zero; got err %v\n%s", result.err, result.output)
 	}
@@ -195,12 +197,12 @@ func TestCLISmokeChangePassword(t *testing.T) {
 	requireOK(t, runVault(t, bin, dir, "oldpass\n", "set", "API_KEY", "hello"))
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "oldpass\nnewpass\nnewpass\n", "change-password")), "Password changed successfully")
 
-	oldPasswordResult := runVault(t, bin, dir, "oldpass\n", "get", "API_KEY")
+	oldPasswordResult := runVault(t, bin, dir, "oldpass\n", "get", "API_KEY", "--show")
 	if oldPasswordResult.err != nil {
 		t.Fatalf("vault prints load errors but exits zero; got err %v\n%s", oldPasswordResult.err, oldPasswordResult.output)
 	}
 	requireContains(t, oldPasswordResult.output, "error loading vault")
-	requireContains(t, requireOK(t, runVault(t, bin, dir, "newpass\n", "get", "API_KEY")), "hello")
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "newpass\n", "get", "API_KEY", "--show")), "hello")
 }
 
 func TestCLISmokeExportShellQuotesValues(t *testing.T) {
@@ -210,7 +212,8 @@ func TestCLISmokeExportShellQuotesValues(t *testing.T) {
 
 	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "SPECIAL", value))
 
-	exportOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "export"))
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "export")), "requires --stdout")
+	exportOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "export", "--stdout"))
 	requireContains(t, exportOutput, "export SPECIAL='quote\" dollar$ backtick` slash\\ line\nnext apostrophe'\\''s'")
 
 	exportFile := filepath.Join(dir, "vault.env")
@@ -243,10 +246,11 @@ func TestCLISmokeTokenReadAndWrite(t *testing.T) {
 	requireFileExists(t, filepath.Join(dir, tokenRegistry))
 
 	token := extractCompactToken(t, createOutput)
-	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", token, "get", "API_KEY")), "hello")
+	requireFailedContains(t, runVault(t, bin, dir, "", "use-token", token, "get", "API_KEY"), "requires --show")
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", token, "get", "API_KEY", "--show")), "hello")
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", token, "set", "API_KEY", "updated")), "set via token")
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "sync-tokens")), "synchronized")
-	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY")), "updated")
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY", "--show")), "updated")
 }
 
 func TestCLISmokeTokenJSONOutput(t *testing.T) {
@@ -304,8 +308,8 @@ func TestCLISmokeTokenUnauthorizedUseDoesNotConsumeToken(t *testing.T) {
 	token := extractCompactToken(t, createOutput)
 
 	requireFailedContains(t, runVault(t, bin, dir, "", "use-token", token, "get", "DB_KEY", "--json"), "not allowed")
-	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", token, "get", "API_KEY")), "hello")
-	requireFailedContains(t, runVault(t, bin, dir, "", "use-token", token, "get", "API_KEY"), "token usage limit exceeded")
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", token, "get", "API_KEY", "--show")), "hello")
+	requireFailedContains(t, runVault(t, bin, dir, "", "use-token", token, "get", "API_KEY", "--show"), "token usage limit exceeded")
 }
 
 func TestCLISmokeTokenWriteImportedByMasterCommand(t *testing.T) {
@@ -319,11 +323,11 @@ func TestCLISmokeTokenWriteImportedByMasterCommand(t *testing.T) {
 
 	token := extractCompactToken(t, createOutput)
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", token, "set", "API_KEY", "auto-imported")), "set via token")
-	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY")), "auto-imported")
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY", "--show")), "auto-imported")
 	if err := os.Remove(filepath.Join(dir, sharedTokenVault)); err != nil {
 		t.Fatalf("remove shared token vault: %v", err)
 	}
-	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY")), "auto-imported")
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY", "--show")), "auto-imported")
 }
 
 func TestCLISmokeTokenExpiredAndUsedUpRejected(t *testing.T) {
@@ -334,12 +338,12 @@ func TestCLISmokeTokenExpiredAndUsedUpRejected(t *testing.T) {
 
 	expiredOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=API_*", "--duration=1ns", "--permissions=read", "--max-uses=10"))
 	expiredToken := extractCompactToken(t, expiredOutput)
-	requireFailedContains(t, runVault(t, bin, dir, "", "use-token", expiredToken, "get", "API_KEY"), "token has expired")
+	requireFailedContains(t, runVault(t, bin, dir, "", "use-token", expiredToken, "get", "API_KEY", "--show"), "token has expired")
 
 	limitedOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=API_*", "--duration=1h", "--permissions=read", "--max-uses=1"))
 	limitedToken := extractCompactToken(t, limitedOutput)
-	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", limitedToken, "get", "API_KEY")), "hello")
-	requireFailedContains(t, runVault(t, bin, dir, "", "use-token", limitedToken, "get", "API_KEY"), "token usage limit exceeded")
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", limitedToken, "get", "API_KEY", "--show")), "hello")
+	requireFailedContains(t, runVault(t, bin, dir, "", "use-token", limitedToken, "get", "API_KEY", "--show"), "token usage limit exceeded")
 }
 
 func TestCLISmokeCreateTokenRejectsInvalidLimits(t *testing.T) {
@@ -388,7 +392,7 @@ func TestCLISmokeTokenInfoListAndRevoke(t *testing.T) {
 	requireContains(t, infoOutput, "Permissions: read")
 
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "revoke-token", tokenID)), "revoked and removed")
-	requireFailedContains(t, runVault(t, bin, dir, "", "use-token", token, "get", "API_KEY"), "token not found or has been revoked")
+	requireFailedContains(t, runVault(t, bin, dir, "", "use-token", token, "get", "API_KEY", "--show"), "token not found or has been revoked")
 }
 
 func TestCLISmokeMalformedConfigRejected(t *testing.T) {
@@ -528,7 +532,7 @@ func TestCLISmokeImportExportRoundTrip(t *testing.T) {
 	requireOK(t, runVault(t, bin, sourceDir, "pass\n", "set", "DB_KEY", "world"))
 	requireOK(t, runVault(t, bin, sourceDir, "pass\n", "set", "SPECIAL", specialValue))
 
-	exportOutput := requireOK(t, runVault(t, bin, sourceDir, "pass\n", "export"))
+	exportOutput := requireOK(t, runVault(t, bin, sourceDir, "pass\n", "export", "--stdout"))
 	exportOutput = onlyExportLines(exportOutput)
 	importFile := filepath.Join(targetDir, "vault.env")
 	if err := os.WriteFile(importFile, []byte(exportOutput), 0600); err != nil {
@@ -536,9 +540,9 @@ func TestCLISmokeImportExportRoundTrip(t *testing.T) {
 	}
 
 	requireContains(t, requireOK(t, runVault(t, bin, targetDir, "pass\n", "import", importFile)), "Imported 3 entries")
-	requireContains(t, requireOK(t, runVault(t, bin, targetDir, "pass\n", "get", "API_KEY")), "hello")
-	requireContains(t, requireOK(t, runVault(t, bin, targetDir, "pass\n", "get", "DB_KEY")), "world")
-	requireContains(t, requireOK(t, runVault(t, bin, targetDir, "pass\n", "get", "SPECIAL")), "quote\" dollar$ backtick` slash\\ line\nnext apostrophe's")
+	requireContains(t, requireOK(t, runVault(t, bin, targetDir, "pass\n", "get", "API_KEY", "--show")), "hello")
+	requireContains(t, requireOK(t, runVault(t, bin, targetDir, "pass\n", "get", "DB_KEY", "--show")), "world")
+	requireContains(t, requireOK(t, runVault(t, bin, targetDir, "pass\n", "get", "SPECIAL", "--show")), "quote\" dollar$ backtick` slash\\ line\nnext apostrophe's")
 }
 
 func TestCLISmokeConcurrentSetUsesFileLock(t *testing.T) {
@@ -568,8 +572,8 @@ func TestCLISmokeConcurrentSetUsesFileLock(t *testing.T) {
 		requireContains(t, requireOK(t, result), "Key 'PARALLEL_")
 	}
 
-	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "PARALLEL_A")), "one")
-	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "PARALLEL_B")), "two")
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "PARALLEL_A", "--show")), "one")
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "PARALLEL_B", "--show")), "two")
 }
 
 func TestCLISmokeRecoverMasterPassword(t *testing.T) {
@@ -579,12 +583,12 @@ func TestCLISmokeRecoverMasterPassword(t *testing.T) {
 
 	requireContains(t, requireOK(t, runVault(t, bin, dir, recoveryKey+"\nnewpass\nnewpass\n", "recover")), "Master password changed successfully")
 
-	oldPasswordResult := runVault(t, bin, dir, "oldpass\n", "get", "API_KEY")
+	oldPasswordResult := runVault(t, bin, dir, "oldpass\n", "get", "API_KEY", "--show")
 	if oldPasswordResult.err != nil {
 		t.Fatalf("vault prints load errors but exits zero; got err %v\n%s", oldPasswordResult.err, oldPasswordResult.output)
 	}
 	requireContains(t, oldPasswordResult.output, "error loading vault")
-	requireContains(t, requireOK(t, runVault(t, bin, dir, "newpass\n", "get", "API_KEY")), "hello")
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "newpass\n", "get", "API_KEY", "--show")), "hello")
 }
 
 func TestCLISmokeSetupAndTestRecovery(t *testing.T) {
