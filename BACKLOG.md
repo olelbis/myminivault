@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: clone or open the repository root, for example `/tmp/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.4.12`
+- Current baseline release: `v0.5.0`
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -15,7 +15,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `9.76 / 10`.
+Current assessment score: `9.80 / 10`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, macOS Keychain support for token master-key material, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -53,6 +53,15 @@ Strategic guidance:
 - keep product ideas below hardening work unless they reduce operational risk
 - document behavior before changing user-facing semantics
 - avoid claiming production security without external review
+
+Near-term hardening roadmap:
+
+1. Version the vault container format with explicit non-sensitive metadata for algorithm, KDF, scrypt parameters, salt size, nonce size, and payload layout. Completed in `v0.5.0` through `MYMV v2`.
+2. Bind AES-GCM encryption to container context with AAD so file kind, version, metadata, and salt are authenticated. Completed in `v0.5.0` for `MYMV v2`.
+3. Tighten plaintext-output policy around `get`, clipboard, JSON output, and export workflows.
+4. Harden recovery inspection and `vault doctor` checks for recovery file freshness, permissions, and compatibility.
+5. Improve token auditability and third-party API-style usage, including clearer revocation and expiry behavior.
+6. Continue slimming `cmd/vault` orchestration only where behavior is already covered by tests.
 
 Docs-only maintenance can be done on `main` without creating a new release when it does not change Go code, workflows, generated package contents, CLI-visible behavior, release assets, or version numbers. Prefer a normal commit and push for those changes, then include them in the next functional release notes if they materially clarify user behavior.
 
@@ -370,21 +379,25 @@ git switch -c install-packaging
 
 ### 5. File Container Header
 
-Status: completed in `v0.4.6`.
+Status: `MYMV v1` completed in `v0.4.6`; `MYMV v2` metadata and AAD hardening completed in `v0.5.0`.
 
-Newly saved main vault, recovery snapshot, and shared token vault files use a cleartext `MYMV` container header before the existing salt+ciphertext payload. The header records the container version and file kind without exposing encrypted vault contents.
+Newly saved main vault, recovery snapshot, and shared token vault files use a cleartext `MYMV` container header before the existing salt+ciphertext payload. The current `MYMV v2` header records the container version, file kind, algorithm, KDF, scrypt parameters, salt size, nonce size, and payload layout without exposing encrypted vault contents.
 
 Current behavior:
 
-- current saves write `MYMV` container version `1`
+- current saves write `MYMV` container version `2`
 - main vault, recovery vault, and shared token vault have distinct file kinds
+- container metadata is non-sensitive and intended for inspection and future migration planning
+- `MYMV v2` header, metadata, and salt are authenticated with AES-GCM AAD
+- `MYMV v1` files remain readable
 - legacy salt-plus-ciphertext files remain readable
 - `vault doctor` and `vault inspect-runtime` report headered versus legacy format without decrypting
 - encrypted user data, key names, values, recovery metadata, token contents, and vault metadata remain encrypted
 
 Future direction:
 
-- use the container version during future migration planning
+- use the container version and metadata during future migration planning
+- keep AAD compatibility tests in place as the container evolves
 - add more explicit migration prompts only if a future incompatible container version appears
 - keep old-format read tests when evolving the format again
 

@@ -2,6 +2,15 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.5.0] - 2026-06-01
+
+### Changed
+
+- Updated newly saved encrypted runtime files to `MYMV v2` containers with non-sensitive crypto metadata for algorithm, KDF, scrypt parameters, salt size, nonce size, and payload layout.
+- Authenticated the `MYMV v2` header, metadata, and salt with AES-GCM AAD for main vault, recovery snapshot, and shared token vault files.
+- Kept existing `MYMV v1` and legacy salt-plus-ciphertext files readable.
+- Updated the CLI-visible version to `0.5.0`.
+
 ## [v0.4.12] - 2026-05-31
 
 ### Fixed

@@ -566,7 +566,7 @@ Important behavior:
 | `vault-config.json` | Optional config override |
 | `.myminivault.lock` | Inter-process lock file |
 
-Current encrypted runtime files include a small cleartext `MYMV` container header with the container format version and file kind. This helps `vault doctor` and `vault inspect-runtime` identify file format information without decrypting secrets. Older salt-plus-ciphertext files remain readable and are upgraded to the current container format when rewritten.
+Current encrypted runtime files include a small cleartext `MYMV v2` container header with the container format version, file kind, and non-sensitive crypto metadata. This helps `vault doctor` and `vault inspect-runtime` identify file format information without decrypting secrets. The v2 cleartext context is authenticated with AES-GCM AAD, so header or metadata tampering makes decryption fail. Older `MYMV v1` and salt-plus-ciphertext files remain readable and are upgraded to the current container format when rewritten.
 
 These files are ignored by Git because they may contain encrypted secrets, keys, logs, or local runtime state.
 

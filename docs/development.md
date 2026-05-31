@@ -87,13 +87,14 @@ docs/
 
 The project still keeps command-line parsing, prompts, output, and top-level orchestration in `cmd/vault`. Future extractions should happen only when tests cover the behavior well enough.
 
-Encrypted runtime file framing lives in `internal/container`. Current saves write a cleartext `MYMV` container header containing the container version and file kind before the existing salt+ciphertext payload. Legacy salt+ciphertext files remain readable, and `vault doctor` plus `vault inspect-runtime` use the header for non-decrypting format inspection.
+Encrypted runtime file framing lives in `internal/container`. Current saves write a cleartext `MYMV v2` container header containing the container version, file kind, and non-sensitive crypto metadata before the existing salt+ciphertext payload. That v2 cleartext context is authenticated with AES-GCM AAD, so header or metadata tampering fails during decryption. Legacy salt+ciphertext files and earlier `MYMV v1` files remain readable, and `vault doctor` plus `vault inspect-runtime` use the header for non-decrypting format inspection.
 
 ## Cryptography
 
 The vault currently uses:
 
 - AES-GCM for authenticated encryption
+- AES-GCM AAD for current container header, metadata, and salt authentication
 - scrypt for key derivation
 - SHA-256 checksums over serialized vault data
 - HMAC-SHA256 for token signatures

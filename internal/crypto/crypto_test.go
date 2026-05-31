@@ -76,6 +76,23 @@ func TestDecryptRejectsTamperedCiphertext(t *testing.T) {
 	}
 }
 
+func TestDecryptRejectsTamperedAAD(t *testing.T) {
+	salt := Random(16)
+	key, err := DeriveKey([]byte("password"), salt, testScryptConfig)
+	if err != nil {
+		t.Fatalf("DeriveKey: %v", err)
+	}
+
+	ciphertext, err := EncryptWithAAD([]byte("secret payload"), key, []byte("context-a"))
+	if err != nil {
+		t.Fatalf("EncryptWithAAD: %v", err)
+	}
+
+	if _, err := DecryptWithAAD(ciphertext, key, []byte("context-b")); err == nil {
+		t.Fatal("expected decrypt with changed AAD to fail")
+	}
+}
+
 func TestDecryptRejectsShortCiphertext(t *testing.T) {
 	key, err := DeriveKey([]byte("password"), Random(16), testScryptConfig)
 	if err != nil {

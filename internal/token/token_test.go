@@ -174,6 +174,13 @@ func TestEncryptedVaultRoundTripAndChecksumFailure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read shared vault: %v", err)
 	}
+	parsed, err := container.Parse(raw, opts.SaltSize)
+	if err != nil {
+		t.Fatalf("parse shared vault: %v", err)
+	}
+	if parsed.Metadata.ScryptN != opts.Scrypt.N || parsed.Metadata.KeySize != opts.Scrypt.KeySize {
+		t.Fatalf("metadata = %+v, want scrypt params from options", parsed.Metadata)
+	}
 	raw[len(raw)-1] ^= 0xff
 	if err := os.WriteFile(sharedVault, raw, 0600); err != nil {
 		t.Fatalf("tamper shared vault: %v", err)
@@ -207,6 +214,28 @@ func TestEncryptedVaultRoundTripWithKeyFileProvider(t *testing.T) {
 		t.Fatalf("LoadMasterKey: %v", err)
 	} else if len(key) != 32 {
 		t.Fatalf("token key length = %d, want 32", len(key))
+	}
+}
+
+func TestLoadEncryptedVaultRejectsTamperedContainerMetadata(t *testing.T) {
+	dir := t.TempDir()
+	sharedVault := filepath.Join(dir, "shared-token-vault.json")
+	opts := tokenTestOptions(bytesOf(0x11, 32))
+
+	if err := SaveEncryptedVault(tokenTestVault(), sharedVault, opts); err != nil {
+		t.Fatalf("SaveEncryptedVault: %v", err)
+	}
+	raw, err := os.ReadFile(sharedVault)
+	if err != nil {
+		t.Fatalf("read shared vault: %v", err)
+	}
+	raw = bytes.Replace(raw, []byte("AES-256-GCM"), []byte("AES-128-GCM"), 1)
+	if err := os.WriteFile(sharedVault, raw, 0600); err != nil {
+		t.Fatalf("write tampered shared vault: %v", err)
+	}
+
+	if _, err := LoadEncryptedVault(sharedVault, opts); err == nil {
+		t.Fatal("expected tampered container metadata to fail authentication")
 	}
 }
 
@@ -617,7 +646,12 @@ func encryptTokenPlaintext(t *testing.T, plaintext, salt []byte, opts Options) [
 	if err != nil {
 		t.Fatalf("DeriveKey: %v", err)
 	}
-	ciphertext, err := vaultcrypto.Encrypt(plaintext, key)
+	meta := container.DefaultMetadata(opts.SaltSize)
+	aad, err := container.AssociatedData(container.KindSharedTokenVault, salt, meta)
+	if err != nil {
+		t.Fatalf("AssociatedData: %v", err)
+	}
+	ciphertext, err := vaultcrypto.EncryptWithAAD(plaintext, key, aad)
 	if err != nil {
 		t.Fatalf("Encrypt: %v", err)
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/olelbis/myminivault/internal/container"
 	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
 	vaultstorage "github.com/olelbis/myminivault/internal/storage"
 )
@@ -15,6 +16,10 @@ func saveExtendedVault(vault *ExtendedVault, password string, salt []byte) error
 
 func tryLoad(file string) ([]byte, []byte, error) {
 	return vaultstorage.TryLoad(file, saltSize)
+}
+
+func tryLoadParsed(file string) (container.Parsed, error) {
+	return vaultstorage.TryLoadParsed(file, saltSize)
 }
 
 func storageOptions() vaultstorage.Options {

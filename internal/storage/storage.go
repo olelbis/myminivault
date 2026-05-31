@@ -20,7 +20,7 @@ type Options struct {
 	Version          string
 	Scrypt           vaultcrypto.ScryptConfig
 	RecoveryKey      string
-	SaveRecoveryFile func(salt, recoveryCiphertext []byte) error
+	SaveRecoveryFile func(salt, recoveryCiphertext []byte, metadata ...container.Metadata) error
 }
 
 var fileOps = struct {
@@ -83,7 +83,7 @@ func LoadFile(file, password string, opts Options) (*model.ExtendedVault, []byte
 		return nil, nil, err
 	}
 
-	decrypted, err := vaultcrypto.Decrypt(parsed.Ciphertext, key)
+	decrypted, err := vaultcrypto.DecryptWithAAD(parsed.Ciphertext, key, parsed.AssociatedData)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -141,7 +141,13 @@ func Save(vault *model.ExtendedVault, password string, salt []byte, opts Options
 		return err
 	}
 
-	ciphertext, err := vaultcrypto.Encrypt(dataWithChecksum, masterKey)
+	meta := containerMetadata(opts)
+	aad, err := container.AssociatedData(container.KindMainVault, salt, meta)
+	if err != nil {
+		return err
+	}
+
+	ciphertext, err := vaultcrypto.EncryptWithAAD(dataWithChecksum, masterKey, aad)
 	if err != nil {
 		return err
 	}
@@ -151,28 +157,32 @@ func Save(vault *model.ExtendedVault, password string, salt []byte, opts Options
 		if err != nil {
 			return err
 		}
-		recoveryCiphertext, err := vaultcrypto.Encrypt(dataWithChecksum, recoveryKeyDerived)
+		recoveryAAD, err := container.AssociatedData(container.KindRecoveryVault, salt, meta)
 		if err != nil {
 			return err
 		}
-		if err := opts.SaveRecoveryFile(salt, recoveryCiphertext); err != nil {
+		recoveryCiphertext, err := vaultcrypto.EncryptWithAAD(dataWithChecksum, recoveryKeyDerived, recoveryAAD)
+		if err != nil {
+			return err
+		}
+		if err := opts.SaveRecoveryFile(salt, recoveryCiphertext, meta); err != nil {
 			return err
 		}
 	}
 
-	return SaveFileAtomic(opts.VaultFile, salt, ciphertext)
+	return SaveFileAtomic(opts.VaultFile, salt, ciphertext, meta)
 }
 
 // SaveFileAtomic writes to a temporary file and renames it into place. Existing
 // vault data is moved to .bak before the final rename.
-func SaveFileAtomic(vaultFile string, salt, data []byte) error {
+func SaveFileAtomic(vaultFile string, salt, data []byte, metadata ...container.Metadata) error {
 	tempFile := vaultFile + ".tmp"
 	f, err := fileOps.openFile(tempFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
 
-	wrapped, err := container.Wrap(container.KindMainVault, salt, data)
+	wrapped, err := container.Wrap(container.KindMainVault, salt, data, metadata...)
 	if err != nil {
 		f.Close()
 		fileOps.remove(tempFile)
@@ -223,6 +233,15 @@ func SaveFileAtomic(vaultFile string, salt, data []byte) error {
 	return fileOps.chmod(vaultFile, 0600)
 }
 
+func containerMetadata(opts Options) container.Metadata {
+	meta := container.DefaultMetadata(opts.SaltSize)
+	meta.ScryptN = opts.Scrypt.N
+	meta.ScryptR = opts.Scrypt.R
+	meta.ScryptP = opts.Scrypt.P
+	meta.KeySize = opts.Scrypt.KeySize
+	return meta
+}
+
 // TryLoad reads either a headered MYMV container or the legacy salt prefix and
 // encrypted payload from a vault file.
 func TryLoad(file string, saltSize int) ([]byte, []byte, error) {
@@ -232,6 +251,11 @@ func TryLoad(file string, saltSize int) ([]byte, []byte, error) {
 	}
 
 	return parsed.Salt, parsed.Ciphertext, nil
+}
+
+// TryLoadParsed returns the full parsed container, including AAD for v2 files.
+func TryLoadParsed(file string, saltSize int) (container.Parsed, error) {
+	return tryLoadContainer(file, saltSize)
 }
 
 func tryLoadContainer(file string, saltSize int) (container.Parsed, error) {

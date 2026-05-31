@@ -26,6 +26,13 @@ func DeriveKey(password, salt []byte, cfg ScryptConfig) ([]byte, error) {
 // Encrypt prefixes the random GCM nonce to the ciphertext so Decrypt can
 // recover it without separate metadata.
 func Encrypt(data, key []byte) ([]byte, error) {
+	return EncryptWithAAD(data, key, nil)
+}
+
+// EncryptWithAAD authenticates additional cleartext context along with the
+// encrypted payload. The AAD is not encrypted, but any change to it makes
+// decryption fail.
+func EncryptWithAAD(data, key, aad []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
@@ -37,7 +44,7 @@ func Encrypt(data, key []byte) ([]byte, error) {
 	}
 
 	nonce := Random(gcm.NonceSize())
-	ciphertext := gcm.Seal(nil, nonce, data, nil)
+	ciphertext := gcm.Seal(nil, nonce, data, aad)
 
 	result := make([]byte, len(nonce)+len(ciphertext))
 	copy(result, nonce)
@@ -49,6 +56,12 @@ func Encrypt(data, key []byte) ([]byte, error) {
 // Decrypt expects ciphertexts produced by Encrypt: nonce first, then the
 // AES-GCM authenticated ciphertext.
 func Decrypt(ciphertext, key []byte) ([]byte, error) {
+	return DecryptWithAAD(ciphertext, key, nil)
+}
+
+// DecryptWithAAD verifies both the ciphertext and the provided cleartext
+// context before returning plaintext.
+func DecryptWithAAD(ciphertext, key, aad []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
@@ -65,7 +78,7 @@ func Decrypt(ciphertext, key []byte) ([]byte, error) {
 	}
 
 	nonce, data := ciphertext[:nonceSize], ciphertext[nonceSize:]
-	return gcm.Open(nil, nonce, data, nil)
+	return gcm.Open(nil, nonce, data, aad)
 }
 
 // Random returns cryptographically secure bytes for salts, nonces, and token keys.
