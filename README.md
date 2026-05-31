@@ -44,7 +44,7 @@ GitHub Releases also publish installable packages:
 
 Release assets include SHA-256 checksum files and GitHub artifact attestations when built by the release workflow.
 
-Token keychain support is being introduced incrementally. On macOS, `token_key_storage=auto` prefers macOS Keychain for token master-key material when available. On Linux, `vault doctor` detects Secret Service readiness only when both a DBus session and `secret-tool` are present, but token key storage still uses the portable `vault-token.key` fallback until Linux storage is implemented.
+Token keychain support is intentionally platform-specific. On macOS, `token_key_storage=auto` prefers macOS Keychain for token master-key material when available. On Linux, token key storage is file-based by design for now; `vault doctor` can report Secret Service readiness when both a DBus session and `secret-tool` are present, but the supported Linux storage path remains the portable `vault-token.key` fallback.
 
 Build the CLI from the repository root:
 

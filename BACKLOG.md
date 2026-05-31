@@ -310,7 +310,7 @@ These items are the most direct path beyond the current `9.72 / 10` assessment. 
 
 Recommended order:
 
-1. decide whether to implement real Linux Secret Service storage or keep Linux file-backed by design
+1. keep Linux token key storage file-backed by design for now; revisit real Secret Service storage only if a reliable desktop/headless strategy emerges
 2. keep the internal coverage floor healthy as new internal packages are added
 3. continue reducing broad orchestration in `cmd/vault` only where tests already protect behavior
 4. add supply-chain hardening such as SBOMs, signed checksum files, or platform-specific package signing when the release process is ready
@@ -549,7 +549,7 @@ Priority: medium.
 Recommended policy:
 
 - add config first, before changing token key storage:
-  - `token_key_storage = "auto"`: prefer OS keychain when available, otherwise use the current file fallback
+  - `token_key_storage = "auto"`: prefer macOS Keychain when available, otherwise use the current file fallback
   - `token_key_storage = "file"`: always use the current `vault-token.key` file behavior
   - `token_key_storage = "keychain"`: require OS keychain and fail clearly if unavailable
 - expose keychain status in `vault doctor`, such as `available`, `unavailable`, `using file fallback`, or `configured but unavailable`
@@ -559,7 +559,7 @@ Recommended policy:
 Platform direction:
 
 - use macOS Keychain for `vault-token.key` or a wrapping key on macOS
-- on Linux, detect Secret Service/libsecret availability through both DBus and `secret-tool`, then fail gracefully when the backend is unavailable or storage is not implemented
+- on Linux, keep token key storage file-backed by design for now; Secret Service/libsecret detection remains informational through DBus plus `secret-tool`
 - keep Linux headless/server usage explicitly supported through the file fallback
 - keep Windows Credential Manager or DPAPI as a future option if Windows support becomes a project goal
 - keep file-based fallback for portability, automation, and minimal environments
@@ -569,7 +569,7 @@ Suggested implementation phases:
 
 1. `token-keychain-detection`: config validation, platform detection, `doctor` reporting, documentation, no storage behavior change. Completed in `v0.4.7`.
 2. `token-keychain-macos`: macOS Keychain backend, fallback behavior, migration tests where practical. Completed in `v0.4.9`.
-3. `token-keychain-linux`: Secret Service/libsecret readiness detection with DBus plus `secret-tool`; Linux storage remains file-backed until a reliable storage implementation is chosen. Completed in `v0.4.10`.
+3. `token-keychain-linux`: Secret Service/libsecret readiness detection with DBus plus `secret-tool`; Linux storage remains file-backed by design for now. Completed in `v0.4.10`.
 
 Suggested branch:
 
