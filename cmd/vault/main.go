@@ -250,17 +250,18 @@ func showUsage() {
 }
 
 func showHelp() {
-	fmt.Println(`🔐 myminivault CLI v0.5.0
+	fmt.Println(`🔐 myminivault CLI v0.6.0
 Author: olelbis
 
 BASIC COMMANDS:
   set <key> <value>     Set a key-value pair
-  get <key>             Get value for a key
+  get <key> --show      Print plaintext value for a key
   copy <key> [--ttl=30s] Copy value to clipboard and clear it when supported
   delete <key>          Delete a key
   list                  List all keys
-  search <pattern>      Search keys by pattern
-  export [--output file] Export as shell variables
+  search <pattern> --show Search keys and print matching plaintext values
+  export --output file  Export shell variables to a restrictive plaintext file
+  export --stdout       Print shell variables to stdout explicitly
   clear                 Clear all data
   import <file>         Import from file
   backup                Create backup
@@ -279,10 +280,12 @@ SYNCHRONIZED TOKEN SYSTEM:
   list-tokens           Show all tokens with status
   revoke-token <id>     Revoke token 
   use-token <token> <cmd>  Execute commands with token
-    get <key>           Get key value
+    get <key> --show    Print key value
+    get <key> --json    Print key value as JSON for subprocess callers
     set <key> <value>   Set key value (synced to all tokens)
     list                List accessible keys
-    search <pattern>    Search accessible keys
+    search <pattern> --show Search accessible keys and print matching plaintext values
+    search <pattern> --json Machine-readable search output
   token-info <id>       Show detailed token information
   cleanup-tokens        Remove expired/used tokens
 

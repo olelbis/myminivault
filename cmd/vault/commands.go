@@ -5,7 +5,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"golang.org/x/term"
 	"io"
 	"os"
 	"path/filepath"
@@ -13,6 +12,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"golang.org/x/term"
 
 	vaultaudit "github.com/olelbis/myminivault/internal/audit"
 	vaultclipboard "github.com/olelbis/myminivault/internal/clipboard"
@@ -40,8 +41,9 @@ func handleSetCommand(vault map[string]string) {
 }
 
 func handleGetCommand(vault map[string]string) {
-	if len(os.Args) != 3 {
-		fmt.Println("Usage: vault get <key>")
+	if len(os.Args) != 4 || os.Args[3] != "--show" {
+		fmt.Println("Usage: vault get <key> --show")
+		fmt.Println("Plaintext terminal output requires --show. Prefer 'vault copy <key>' for interactive use.")
 		return
 	}
 	value, exists := vault[os.Args[2]]
@@ -67,12 +69,17 @@ func handleDeleteCommand(vault map[string]string) {
 
 func handleExportCommand(vault map[string]string) {
 	outputPath := ""
+	stdout := false
 	if len(os.Args) == 4 && os.Args[2] == "--output" {
 		outputPath = os.Args[3]
 	} else if len(os.Args) == 3 && strings.HasPrefix(os.Args[2], "--output=") {
 		outputPath = strings.TrimPrefix(os.Args[2], "--output=")
-	} else if len(os.Args) != 2 {
-		fmt.Println("Usage: vault export [--output <file>]")
+	} else if len(os.Args) == 3 && os.Args[2] == "--stdout" {
+		stdout = true
+	} else {
+		fmt.Println("Usage: vault export --output <file>")
+		fmt.Println("       vault export --stdout")
+		fmt.Println("Plaintext stdout export requires --stdout. Prefer --output for restrictive file permissions.")
 		return
 	}
 
@@ -85,9 +92,11 @@ func handleExportCommand(vault map[string]string) {
 		return
 	}
 
-	if term.IsTerminal(int(os.Stdout.Fd())) {
-		fmt.Fprintln(os.Stderr, "⚠️  Export prints plaintext secrets. Prefer 'vault export --output <file>' for safer file export.")
+	if !stdout {
+		fmt.Println("Usage: vault export --output <file>")
+		return
 	}
+	fmt.Fprintln(os.Stderr, "⚠️  Exporting plaintext secrets to stdout by explicit --stdout request.")
 	fmt.Print(vaultexport.Render(vault))
 }
 
@@ -164,8 +173,9 @@ func handleCopyCommand(vault map[string]string) {
 }
 
 func handleSearchCommand(vault map[string]string) {
-	if len(os.Args) != 3 {
-		fmt.Println("Usage: vault search <pattern>")
+	if len(os.Args) != 4 || os.Args[3] != "--show" {
+		fmt.Println("Usage: vault search <pattern> --show")
+		fmt.Println("Search prints matching plaintext values and requires --show.")
 		return
 	}
 	pattern := strings.ToLower(os.Args[2])

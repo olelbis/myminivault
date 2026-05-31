@@ -13,7 +13,7 @@
     <text x="34" y="154" fill="#94a3b8">🎫 Token ID: B7VK4S2MFQ8</text>
     <text x="34" y="186" fill="#94a3b8">📋 Key Pattern: API_*</text>
     <text x="34" y="218" fill="#94a3b8">🔑 Permissions: read, write</text>
-    <text x="34" y="274" fill="#6ee7b7">$ ./bin/vault use-token &lt;token&gt; get API_KEY</text>
+    <text x="34" y="274" fill="#6ee7b7">$ ./bin/vault use-token &lt;token&gt; get API_KEY --show</text>
     <text x="34" y="306" fill="#e2e8f0">secret-value</text>
     <text x="34" y="362" fill="#6ee7b7">$ ./bin/vault use-token &lt;token&gt; set API_KEY rotated-value</text>
     <text x="34" y="394" fill="#e2e8f0">✅ Key 'API_KEY' set via token</text>

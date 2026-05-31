@@ -22,7 +22,7 @@ Keep these rules in mind:
 | Goal | Command |
 | --- | --- |
 | Add or update a secret | `vault set KEY value` |
-| Print one secret | `vault get KEY` |
+| Print one secret intentionally | `vault get KEY --show` |
 | Copy one secret without terminal output | `vault copy KEY --ttl=30s` |
 | Export secrets to a restrictive file | `vault export --output secrets.env` |
 | Import shell-style secrets | `vault import secrets.env` |
@@ -81,10 +81,10 @@ Keys must:
 ### Get A Secret
 
 ```bash
-./bin/vault get API_KEY
+./bin/vault get API_KEY --show
 ```
 
-`get` prints plaintext to the terminal. Use `copy` when terminal scrollback is a concern.
+`get --show` prints plaintext to the terminal by explicit request. Use `copy` when terminal scrollback is a concern.
 
 ### Delete A Secret
 
@@ -105,10 +105,10 @@ Lists key names only. Values are not printed.
 ### Search Keys
 
 ```bash
-./bin/vault search API
+./bin/vault search API --show
 ```
 
-Searches keys by case-insensitive substring and prints matching key/value pairs.
+Searches keys by case-insensitive substring and prints matching key/value pairs only with `--show`.
 
 Search prints values for matching keys. Avoid it on recorded or shared terminals.
 
@@ -133,15 +133,15 @@ Shows vault metadata, recovery status, token summary, access count, and timestam
 ### Export
 
 ```bash
-./bin/vault export
+./bin/vault export --output secrets.env
 ```
 
-Prints entries as shell-safe `export KEY='value'` lines. Export uses POSIX single-quote escaping, so values containing quotes, `$`, backticks, backslashes, and newlines are printed without triggering shell expansion.
+`export --output` writes entries as shell-safe `export KEY='value'` lines. Export uses POSIX single-quote escaping, so values containing quotes, `$`, backticks, backslashes, and newlines are printed without triggering shell expansion.
 
-Printing exports to a terminal exposes plaintext secrets in terminal scrollback. Prefer writing directly to a file when you need an export artifact:
+Plaintext stdout export is still available for controlled automation, but it must be requested explicitly:
 
 ```bash
-./bin/vault export --output secrets.env
+./bin/vault export --stdout
 ```
 
 The output file is written with `0600` permissions.
@@ -314,7 +314,7 @@ Token duration and max uses must be greater than zero. Maximum token duration is
 Read a key:
 
 ```bash
-./bin/vault use-token <token> get API_KEY
+./bin/vault use-token <token> get API_KEY --show
 ```
 
 Write a key:
@@ -332,7 +332,7 @@ List accessible keys:
 Search accessible keys:
 
 ```bash
-./bin/vault use-token <token> search API
+./bin/vault use-token <token> search API --show
 ```
 
 Machine-readable token output for third-party programs:

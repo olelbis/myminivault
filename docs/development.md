@@ -168,7 +168,7 @@ tmpdir=$(mktemp -d /tmp/myminivault-smoke-XXXXXX)
 go build -o "$tmpdir/vault" ./cmd/vault
 cd "$tmpdir"
 printf 'oldpass\n' | ./vault set TEST_KEY hello
-printf 'oldpass\n' | ./vault get TEST_KEY
+printf 'oldpass\n' | ./vault get TEST_KEY --show
 ```
 
 The automated CLI smoke tests live in `./tests`, create temporary directories, and use fake data. Do not run manual smoke commands in a directory that contains real vault files unless that is intentional.

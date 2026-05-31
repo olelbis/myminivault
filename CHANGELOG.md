@@ -2,6 +2,16 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.6.0] - 2026-06-01
+
+### Changed
+
+- Required explicit `--show` for plaintext `get` and `search` terminal output.
+- Required explicit `--stdout` for plaintext export to stdout; `export --output <file>` remains the safer file-based export path.
+- Required explicit `--show` or `--json` for token `get` and token `search` plaintext access.
+- Updated documentation and screenshots to show the safer plaintext-output policy.
+- Updated the CLI-visible version to `0.6.0`.
+
 ## [v0.5.0] - 2026-06-01
 
 ### Changed

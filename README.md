@@ -75,7 +75,7 @@ Create or update a secret:
 Read it back:
 
 ```bash
-./bin/vault get API_KEY
+./bin/vault get API_KEY --show
 ```
 
 List keys without printing values:
@@ -95,13 +95,13 @@ Create a backup:
 | Command | Purpose |
 | --- | --- |
 | `set <key> <value>` | Store or update a value |
-| `get <key>` | Print a stored value |
+| `get <key> --show` | Print a stored value intentionally |
 | `copy <key>` | Copy a value to the clipboard without printing it |
 | `delete <key>` | Delete a key |
 | `list` | List key names |
-| `search <pattern>` | Search keys |
+| `search <pattern> --show` | Search keys and print matching values intentionally |
 | `backup` | Create a timestamped backup |
-| `export` | Print shell-safe export lines or write them to a file |
+| `export --output <file>` | Write shell-safe export lines to a restrictive plaintext file |
 | `import <file>` | Import values from a file |
 | `setup-recovery` | Create a recovery key |
 | `recover` | Reset the master password with the recovery key |
@@ -159,7 +159,7 @@ Use it for temporary or isolated vaults:
 
 ```bash
 MYMINIVAULT_HOME=/tmp/myminivault-demo vault set API_KEY hello
-MYMINIVAULT_HOME=/tmp/myminivault-demo vault get API_KEY
+MYMINIVAULT_HOME=/tmp/myminivault-demo vault get API_KEY --show
 ```
 
 Use a persistent custom location:
