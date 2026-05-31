@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Private security advisory
+    url: https://github.com/olelbis/myminivault/security/advisories/new
+    about: Report sensitive vulnerabilities privately. Do not open public issues for exploitable security problems.

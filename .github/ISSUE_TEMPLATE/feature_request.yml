@@ -1,0 +1,46 @@
+name: Feature request
+description: Suggest a new workflow, command or improvement.
+title: "Feature: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feature ideas are welcome, especially when they reduce plaintext exposure, improve automation or clarify local security behavior.
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use case
+      description: What are you trying to do?
+      placeholder: I want to use myminivault to...
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_behavior
+    attributes:
+      label: Proposed behavior
+      description: Describe the command, option or user experience you imagine.
+      placeholder: "`vault ...` should ..."
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Mention any existing command or workaround you tried.
+  - type: textarea
+    id: risks
+    attributes:
+      label: Security or compatibility considerations
+      description: Note plaintext exposure, token behavior, file format, scripting, or backwards-compatibility concerns.
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Nice to have
+        - Useful for daily use
+        - Blocking a workflow
+    validations:
+      required: true

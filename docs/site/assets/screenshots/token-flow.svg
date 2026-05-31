@@ -1,0 +1,21 @@
+<svg width="900" height="420" viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">myminivault token workflow terminal screenshot</title>
+  <desc id="desc">A terminal-style screenshot showing token creation and token-based access.</desc>
+  <rect width="900" height="420" rx="14" fill="#07131f"/>
+  <rect x="0" y="0" width="900" height="46" rx="14" fill="#102131"/>
+  <circle cx="24" cy="23" r="7" fill="#ff5f57"/>
+  <circle cx="48" cy="23" r="7" fill="#ffbd2e"/>
+  <circle cx="72" cy="23" r="7" fill="#28c840"/>
+  <text x="450" y="29" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="15" fill="#9fb3c8">temporary token access</text>
+  <g font-family="Menlo, Consolas, monospace" font-size="19">
+    <text x="34" y="86" fill="#6ee7b7">$ ./bin/vault create-token --keys="API_*" --duration=2h --permissions=read,write</text>
+    <text x="34" y="122" fill="#e2e8f0">✅ Secure synchronized token created!</text>
+    <text x="34" y="154" fill="#94a3b8">🎫 Token ID: B7VK4S2MFQ8</text>
+    <text x="34" y="186" fill="#94a3b8">📋 Key Pattern: API_*</text>
+    <text x="34" y="218" fill="#94a3b8">🔑 Permissions: read, write</text>
+    <text x="34" y="274" fill="#6ee7b7">$ ./bin/vault use-token &lt;token&gt; get API_KEY</text>
+    <text x="34" y="306" fill="#e2e8f0">secret-value</text>
+    <text x="34" y="362" fill="#6ee7b7">$ ./bin/vault use-token &lt;token&gt; set API_KEY rotated-value</text>
+    <text x="34" y="394" fill="#e2e8f0">✅ Key 'API_KEY' set via token</text>
+  </g>
+</svg>
