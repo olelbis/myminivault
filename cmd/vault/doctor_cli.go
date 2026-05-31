@@ -6,8 +6,10 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	vaultconfig "github.com/olelbis/myminivault/internal/config"
+	"github.com/olelbis/myminivault/internal/container"
 	"github.com/olelbis/myminivault/internal/keychain"
 )
 
@@ -28,6 +30,7 @@ func handleDoctorCommand() {
 		checkTokenKeyStorageHealth(),
 		checkBackupHealth(),
 		checkRecoveryFreshness(),
+		checkRecoveryCompatibility(),
 		checkSharedVaultFreshness(),
 	}
 	checks = append(checks, checkRuntimeFileHealth()...)
@@ -201,20 +204,71 @@ func checkRecoveryFreshness() doctorCheck {
 	}
 	if mainErr != nil {
 		if os.IsNotExist(mainErr) {
-			return doctorCheck{name: "recovery freshness", status: "WARN", detail: "recovery exists but main vault is missing"}
+			return doctorCheck{name: "recovery freshness", status: "WARN", detail: "recovery exists but main vault is missing; run vault inspect-runtime to confirm active files"}
 		}
 		return doctorCheck{name: "recovery freshness", status: "FAIL", detail: mainErr.Error()}
 	}
 	if recoveryErr != nil {
 		if os.IsNotExist(recoveryErr) {
-			return doctorCheck{name: "recovery freshness", status: "WARN", detail: "no recovery snapshot"}
+			return doctorCheck{name: "recovery freshness", status: "WARN", detail: "no recovery snapshot; run vault setup-recovery if recovery is expected"}
 		}
 		return doctorCheck{name: "recovery freshness", status: "FAIL", detail: recoveryErr.Error()}
 	}
 	if recoveryInfo.ModTime().Before(mainInfo.ModTime()) {
-		return doctorCheck{name: "recovery freshness", status: "WARN", detail: "snapshot older than main vault"}
+		age := mainInfo.ModTime().Sub(recoveryInfo.ModTime()).Round(time.Second)
+		return doctorCheck{name: "recovery freshness", status: "WARN", detail: fmt.Sprintf("snapshot older than main vault by %s; recovery may miss recent changes", age)}
 	}
-	return doctorCheck{name: "recovery freshness", status: "OK", detail: "snapshot is current or newer"}
+	return doctorCheck{name: "recovery freshness", status: "OK", detail: fmt.Sprintf("snapshot current; main %s, recovery %s", formatDoctorTime(mainInfo.ModTime()), formatDoctorTime(recoveryInfo.ModTime()))}
+}
+
+func checkRecoveryCompatibility() doctorCheck {
+	recoveryFile := vaultFile + ".recovery"
+	parsed, err := container.ReadFile(recoveryFile, saltSize)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return doctorCheck{name: "recovery compatibility", status: "OK", detail: "not configured"}
+		}
+		return doctorCheck{name: "recovery compatibility", status: "FAIL", detail: err.Error()}
+	}
+
+	if parsed.Legacy {
+		return doctorCheck{name: "recovery compatibility", status: "WARN", detail: "legacy salt+ciphertext recovery snapshot; format metadata unavailable"}
+	}
+	if parsed.Kind != container.KindRecoveryVault {
+		return doctorCheck{name: "recovery compatibility", status: "FAIL", detail: fmt.Sprintf("unexpected file kind %s; expected recovery-vault", container.KindName(parsed.Kind))}
+	}
+	if parsed.Version < container.Version {
+		return doctorCheck{name: "recovery compatibility", status: "WARN", detail: fmt.Sprintf("older MYMV v%d recovery snapshot; current writer uses v%d", parsed.Version, container.Version)}
+	}
+	if issue := recoveryMetadataCompatibilityIssue(parsed.Metadata); issue != "" {
+		return doctorCheck{name: "recovery compatibility", status: "WARN", detail: issue}
+	}
+	return doctorCheck{name: "recovery compatibility", status: "OK", detail: fmt.Sprintf("MYMV v%d recovery-vault metadata matches current config", parsed.Version)}
+}
+
+func recoveryMetadataCompatibilityIssue(meta container.Metadata) string {
+	if meta.Algorithm != container.AlgorithmAES256GCM {
+		return fmt.Sprintf("unexpected algorithm %s; expected %s", meta.Algorithm, container.AlgorithmAES256GCM)
+	}
+	if meta.KDF != container.KDFScrypt {
+		return fmt.Sprintf("unexpected KDF %s; expected %s", meta.KDF, container.KDFScrypt)
+	}
+	if meta.ScryptN != 0 && meta.ScryptN != config.ScryptN {
+		return fmt.Sprintf("scrypt_n=%d differs from current config %d; recovery may require the original config", meta.ScryptN, config.ScryptN)
+	}
+	if meta.ScryptR != 0 && meta.ScryptR != config.ScryptR {
+		return fmt.Sprintf("scrypt_r=%d differs from current config %d; recovery may require the original config", meta.ScryptR, config.ScryptR)
+	}
+	if meta.ScryptP != 0 && meta.ScryptP != config.ScryptP {
+		return fmt.Sprintf("scrypt_p=%d differs from current config %d; recovery may require the original config", meta.ScryptP, config.ScryptP)
+	}
+	if meta.KeySize != 0 && meta.KeySize != config.KeySize {
+		return fmt.Sprintf("key_size=%d differs from current config %d; recovery may require the original config", meta.KeySize, config.KeySize)
+	}
+	if meta.SaltSize != saltSize {
+		return fmt.Sprintf("salt_size=%d differs from expected %d", meta.SaltSize, saltSize)
+	}
+	return ""
 }
 
 func checkSharedVaultFreshness() doctorCheck {
@@ -247,4 +301,8 @@ func doctorIcon(status string) string {
 	default:
 		return "❌"
 	}
+}
+
+func formatDoctorTime(t time.Time) string {
+	return t.Format(time.RFC3339)
 }

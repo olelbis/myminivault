@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: clone or open the repository root, for example `/tmp/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.7.0`
+- Current baseline release: `v0.8.0`
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -15,7 +15,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `9.84 / 10`.
+Current assessment score: `9.86 / 10`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, macOS Keychain support for token master-key material, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -34,7 +34,7 @@ Main strengths:
 - tested `internal/commands` package for export/import/key validation helpers
 - tested `internal/clipboard` package for backend selection and clear-if-unchanged behavior
 - tested `internal/export` package for shell export rendering and restrictive file writes
-- internal package coverage at `86.6%`, with every tested internal package currently above `80.0%`
+- internal package coverage at `85.6%`, with every tested internal package currently above `80.0%`
 - automated CLI smoke coverage for critical workflows in the top-level `tests` package
 - explicit handling for recovery, token sync, locking, backups, export, and password changes
 - a handoff backlog that can restart work from a fresh chat
@@ -54,14 +54,38 @@ Strategic guidance:
 - document behavior before changing user-facing semantics
 - avoid claiming production security without external review
 
-Near-term hardening roadmap:
+## Roadmap Overview
 
-1. Version the vault container format with explicit non-sensitive metadata for algorithm, KDF, scrypt parameters, salt size, nonce size, and payload layout. Completed in `v0.5.0` through `MYMV v2`.
-2. Bind AES-GCM encryption to container context with AAD so file kind, version, metadata, and salt are authenticated. Completed in `v0.5.0` for `MYMV v2`.
-3. Tighten plaintext-output policy around `get`, clipboard, JSON output, and export workflows. Completed in `v0.6.0`; plaintext terminal/stdout output now requires explicit `--show`, `--stdout`, or `--json`.
-4. Harden recovery inspection and `vault doctor` checks for recovery file freshness, permissions, and compatibility. Started in `v0.7.0`; normal startup now tightens existing runtime file permissions to `0600` while `doctor` and `inspect-runtime` stay non-mutating.
-5. Improve token auditability and third-party API-style usage, including clearer revocation and expiry behavior.
-6. Continue slimming `cmd/vault` orchestration only where behavior is already covered by tests.
+Use this section first when resuming work. The detailed backlog below explains each item, but this overview decides what should happen next.
+
+### Immediate Next Work
+
+1. **Token Sync Policy Review**
+   - Status: next recommended hardening item after `v0.8.0`.
+   - Goal: keep token/shared-vault sync understandable, documented, and testable before changing behavior again.
+   - Suggested branch: `token-sync-next`.
+
+### Near-Term Hardening
+
+2. **Coverage And `cmd/vault` Cleanup**
+   - Goal: keep internal coverage healthy and extract only command-independent logic that is already protected by tests.
+   - Suggested branch: `coverage-next` or `cmd-vault-cleanup`.
+
+3. **Supply-Chain Hardening**
+   - Goal: consider SBOMs, signed checksum files, or platform-specific package signing after the current release process remains stable.
+   - Suggested branch: `supply-chain-hardening`.
+
+### Completed Hardening Milestones
+
+1. **Container metadata**: completed in `v0.5.0` through `MYMV v2`.
+2. **AES-GCM AAD binding**: completed in `v0.5.0` for `MYMV v2`.
+3. **Plaintext-output policy**: completed in `v0.6.0`; plaintext terminal/stdout output now requires explicit `--show`, `--stdout`, or `--json`.
+4. **Startup runtime permission hardening**: completed in `v0.7.0`; normal startup now tightens existing runtime file permissions to `0600` while `doctor` and `inspect-runtime` stay non-mutating.
+5. **Recovery inspect / doctor hardening**: completed in `v0.8.0`; `doctor` now reports recovery freshness and non-decrypting compatibility, and `inspect-runtime` includes a recovery relationship summary.
+
+### Later Product Ideas
+
+Product ideas such as `vault run`, profiles, namespaces, a TUI, hooks, and rotating one-time secret tokens stay below the hardening work unless they directly reduce operational risk.
 
 Docs-only maintenance can be done on `main` without creating a new release when it does not change Go code, workflows, generated package contents, CLI-visible behavior, release assets, or version numbers. Prefer a normal commit and push for those changes, then include them in the next functional release notes if they materially clarify user behavior.
 
@@ -175,6 +199,7 @@ Docs-only candidates:
 - Updated coverage baselines to `38.3%` full repository and `86.6%` internal packages after adding token JSON unit coverage.
 - Fixed review findings in `v0.4.12`: read-only token imports now persist, main vault atomic saves keep the primary file in place until the replacement is ready, failed token commands no longer consume uses, token JSON failures return non-zero exit status, literal `--json` values are preserved for token `set`, and sensitive rewrites force `0600` permissions.
 - Updated coverage baselines to `38.9%` full repository and `86.6%` internal packages after the bugfix coverage pass.
+- Added recovery doctor/inspect hardening and updated coverage baselines to `41.3%` full repository and `85.6%` internal packages.
 
 ## Current Verification
 
@@ -283,9 +308,39 @@ docs/
   token-sync-policy.md  main/shared token vault sync policy and deferred decisions
 ```
 
-## Next Recommended Steps
+## Detailed Roadmap
 
-### 1. Token Sync Policy Next Steps
+This section expands the overview above. Items are grouped by decision priority, not by the order in which they were originally added.
+
+### Completed / Watch: Recovery Inspect / Doctor Hardening
+
+Priority: completed in `v0.8.0`; watch for future recovery-format changes.
+
+Status: completed in `v0.8.0`.
+
+`v0.7.0` added startup permission hardening for existing runtime files. `v0.8.0` made `vault doctor` and `vault inspect-runtime` better at explaining recovery health, freshness, permissions, and format compatibility without mutating state.
+
+Current behavior:
+
+- recovery snapshot freshness output shows when the snapshot lags behind the main vault
+- recovery compatibility checks report unexpected container kind, older container versions, and crypto-parameter metadata drift
+- `inspect-runtime` includes a recovery relationship summary
+- `doctor` and `inspect-runtime` remain non-mutating
+
+Future watch items:
+
+- revisit if a future recovery container version changes compatibility expectations
+- consider a dedicated `refresh-recovery` command if users need a safer way to update recovery snapshots without rotating the recovery key
+
+Historical branch:
+
+```bash
+git switch main
+git pull
+git switch -c recovery-doctor-hardening
+```
+
+### Next: Token Sync Policy Review
 
 Priority: low-medium unless sync behavior changes again.
 
@@ -315,11 +370,11 @@ git pull
 git switch -c token-sync-next
 ```
 
-### 2. Quality Roadmap Beyond 9.72
+### Next: Quality Roadmap Beyond 9.86
 
 Priority: medium-high.
 
-These items are the most direct path beyond the current `9.72 / 10` assessment. Prefer them before adding new product features.
+These items are the most direct path beyond the current `9.86 / 10` assessment. Prefer them before adding new product features.
 
 Recommended order:
 
@@ -336,7 +391,7 @@ git pull
 git switch -c linux-keychain-storage-decision
 ```
 
-### 3. Coverage Follow-Up
+### Next: Coverage Follow-Up
 
 Priority: medium.
 
@@ -344,7 +399,7 @@ Current CI runs formatting, `go vet`, `go test ./...`, full coverage reporting, 
 
 Next actions:
 
-- keep `./internal/...` coverage at or above the current `80.0%` floor, with `86.6%` as the latest local baseline
+- keep `./internal/...` coverage at or above the current `80.0%` floor, with `85.6%` as the latest local baseline
 - raise `cmd/vault` coverage with focused unit tests or further extraction of command-independent logic where it improves clarity
 
 Suggested branch:
@@ -355,7 +410,7 @@ git pull
 git switch -c coverage-next
 ```
 
-### 4. Install And Release Packaging
+### Later Hardening: Install And Release Packaging
 
 Priority: medium.
 
@@ -377,7 +432,7 @@ git pull
 git switch -c install-packaging
 ```
 
-### 5. File Container Header
+### Completed / Watch: File Container Header
 
 Status: `MYMV v1` completed in `v0.4.6`; `MYMV v2` metadata and AAD hardening completed in `v0.5.0`.
 
@@ -409,7 +464,7 @@ git pull
 git switch -c file-container-header-next
 ```
 
-### 6. Runtime Inspect And Doctor Improvements
+### Later Hardening: Runtime Inspect And Doctor Improvements
 
 Priority: medium.
 
@@ -429,7 +484,7 @@ git pull
 git switch -c runtime-inspect
 ```
 
-### 7. Additional CLI Smoke Tests
+### Ongoing: Additional CLI Smoke Tests
 
 Automated smoke tests currently cover:
 
@@ -471,7 +526,7 @@ git pull
 git switch -c cli-smoke-tests-more
 ```
 
-### 8. Import/Export Format Review
+### Later Hardening: Import/Export Format Review
 
 Priority: low-medium.
 
@@ -504,7 +559,7 @@ git pull
 git switch -c import-export-format
 ```
 
-### 9. Future Refactor Candidates
+### Ongoing: Future Refactor Candidates
 
 Priority: low unless a bug or feature makes the extraction useful.
 
@@ -536,7 +591,7 @@ Future token sync simplification:
 - Per-key timestamps now exist; consider revision counters, merge-base metadata, or fuller delete tombstones before changing the policy further.
 - Document the final behavior in the user manual once the policy is stable.
 
-### 10. Memory Exposure Hardening Next Steps
+### Later Hardening: Memory Exposure Hardening
 
 Priority: low-medium.
 
@@ -557,7 +612,7 @@ git pull
 git switch -c memory-exposure-next
 ```
 
-### 11. OS Keychain For Token Master Key
+### Completed / Watch: OS Keychain For Token Master Key
 
 Priority: medium.
 
@@ -600,7 +655,7 @@ git switch -c linux-keychain-storage-decision
 
 These are intentionally lower priority than the stability/security work above. Revisit them after documentation cleanup, security review, token sync policy review, and test-depth work are in better shape.
 
-### 12. Machine-Readable Token Integration
+### Machine-Readable Token Integration
 
 Status: completed in `v0.4.11`.
 
@@ -641,7 +696,7 @@ git pull
 git switch -c machine-readable-token-integration
 ```
 
-### 13. `vault run -- <command>`
+### `vault run -- <command>`
 
 Run a command with vault entries injected as environment variables, without printing secrets:
 
@@ -658,7 +713,7 @@ git pull
 git switch -c vault-run-command
 ```
 
-### 14. Project Profiles
+### Project Profiles
 
 Support separate vault contexts for different projects or environments:
 
@@ -676,7 +731,7 @@ git pull
 git switch -c project-profiles
 ```
 
-### 15. Namespaces
+### Namespaces
 
 Support namespaced keys for environments such as `dev`, `staging`, and `prod`:
 
@@ -693,7 +748,7 @@ git pull
 git switch -c namespaces
 ```
 
-### 16. Token UX Cleanup
+### Token UX Cleanup
 
 Make token commands more consistent and automation-friendly:
 
@@ -711,7 +766,7 @@ git pull
 git switch -c token-ux
 ```
 
-### 17. Terminal UI
+### Terminal UI
 
 Add an optional TUI for browsing/searching keys, viewing token status, editing values, and triggering copy/export flows:
 
@@ -727,7 +782,7 @@ git pull
 git switch -c tui
 ```
 
-### 18. Secret Rotation Hooks
+### Secret Rotation Hooks
 
 Support command-driven rotation workflows:
 
@@ -743,7 +798,7 @@ git pull
 git switch -c secret-rotation
 ```
 
-### 19. Hook System
+### Hook System
 
 Allow local scripts to run after selected events such as `set`, `delete`, `backup`, or `token create`:
 
@@ -759,7 +814,7 @@ git pull
 git switch -c hooks
 ```
 
-### 20. Rotating One-Time Secret Tokens
+### Rotating One-Time Secret Tokens
 
 Create token flows that can reveal a secret once and then rotate that secret immediately after successful use.
 

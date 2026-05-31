@@ -32,6 +32,8 @@ func handleInspectRuntimeCommand() {
 		printRuntimeInspectionLine(spec.name, spec.path)
 	}
 
+	printRecoveryInspectionSummary()
+
 	legacy := legacyRuntimeFiles()
 	fmt.Println("\nLegacy current-directory files:")
 	if len(legacy) == 0 {
@@ -48,6 +50,15 @@ func handleInspectRuntimeCommand() {
 			}
 		}
 	}
+}
+
+func printRecoveryInspectionSummary() {
+	freshness := checkRecoveryFreshness()
+	compatibility := checkRecoveryCompatibility()
+
+	fmt.Println("\nRecovery relationship:")
+	fmt.Printf("  freshness: %s - %s\n", strings.ToLower(freshness.status), freshness.detail)
+	fmt.Printf("  compatibility: %s - %s\n", strings.ToLower(compatibility.status), compatibility.detail)
 }
 
 func tokenKeyStorageInspection() string {

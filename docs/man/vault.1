@@ -1,4 +1,4 @@
-.TH VAULT 1 "June 1, 2026" "myminivault 0.7.0" "User Commands"
+.TH VAULT 1 "June 1, 2026" "myminivault 0.8.0" "User Commands"
 .SH NAME
 vault \- local encrypted command-line key/value vault
 .SH SYNOPSIS
@@ -98,11 +98,13 @@ Generate a new local token master key and invalidate existing tokens.
 .TP
 .B doctor
 Check local runtime file permissions, config validity, backups, recovery
-freshness, token freshness, token key storage readiness, and lock state.
+freshness and compatibility, token freshness, token key storage readiness,
+and lock state.
 .TP
 .B inspect-runtime
 List active and legacy runtime files without decrypting vault data. Encrypted
-runtime files also show cleartext container format details when available.
+runtime files also show cleartext container format details when available,
+plus a recovery/main-vault relationship summary.
 .TP
 .B security-audit
 Print a local vault security summary.
