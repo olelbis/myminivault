@@ -1,0 +1,70 @@
+name: Bug report
+description: Report a reproducible myminivault problem.
+title: "Bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. Do not attach real vault files, recovery keys, compact tokens, passwords or secrets. Redact command output before posting it.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected instead.
+      placeholder: The command did X, but I expected Y.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: List the smallest sequence that reproduces the issue.
+      placeholder: |
+        1. Run `vault ...`
+        2. Run `vault ...`
+        3. See ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: myminivault version
+      placeholder: v0.4.12
+    validations:
+      required: true
+  - type: dropdown
+    id: install_method
+    attributes:
+      label: Install method
+      options:
+        - go install
+        - GitHub release tar.gz
+        - deb package
+        - rpm package
+        - macOS pkg
+        - local build from source
+        - other
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: macOS 15 arm64, Ubuntu 24.04 amd64, etc.
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Relevant output
+      description: Paste only redacted output. Never include secrets, vault files, recovery keys, compact tokens or passwords.
+      render: text
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I have removed or redacted secrets, tokens, recovery keys and vault files from this report.
+          required: true

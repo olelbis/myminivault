@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#2f6f73">
+    <meta
+      name="description"
+      content="myminivault is an experimental local encrypted command-line vault for personal key/value secrets, recovery workflows and temporary token access."
+    >
+    <meta property="og:title" content="myminivault documentation">
+    <meta
+      property="og:description"
+      content="Local encrypted CLI vault for personal key/value secrets, recovery workflows and temporary token access."
+    >
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://olelbis.github.io/myminivault/">
+    <meta property="og:image" content="https://olelbis.github.io/myminivault/assets/myminivault-pixel.png">
+    <title>myminivault documentation</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to content</a>
+
+    <header class="page-header">
+      <div class="header-inner">
+        <img class="logo" src="assets/myminivault-pixel.png" alt="myminivault pixel art vault">
+        <p class="eyebrow">Experimental local secrets CLI</p>
+        <h1>myminivault documentation</h1>
+        <p class="tagline">
+          A small Go command-line vault for encrypted local key/value secrets,
+          recovery workflows, temporary scoped tokens and practical runtime health checks.
+        </p>
+        <nav class="hero-actions" aria-label="Primary links">
+          <a href="https://github.com/olelbis/myminivault">View on GitHub</a>
+          <a href="https://github.com/olelbis/myminivault/releases/latest">Latest release</a>
+          <a href="https://pkg.go.dev/github.com/olelbis/myminivault">Go reference</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="content" class="main-content">
+      <section class="notice" aria-label="Project status">
+        <strong>Project status:</strong> experimental personal security tool on the
+        <code>v0.4.x</code> line. It is useful for local workflows and testing, but it has
+        not received an external security audit and should not be treated as a production
+        password manager.
+      </section>
+
+      <section>
+        <h2>Quick Start</h2>
+        <div class="code-block" role="img" aria-label="Quick start commands">
+          <pre><code>go install github.com/olelbis/myminivault/cmd/vault@latest
+vault set API_KEY secret-value
+vault get API_KEY
+vault copy API_KEY
+vault doctor</code></pre>
+        </div>
+      </section>
+
+      <section>
+        <h2>Documentation Map</h2>
+        <div class="doc-grid">
+          <a class="doc-card" href="https://github.com/olelbis/myminivault/blob/main/README.md">
+            <span>README</span>
+            Install paths, command overview, screenshots, runtime files and release assets.
+          </a>
+          <a class="doc-card" href="https://github.com/olelbis/myminivault/blob/main/docs/user-manual.md">
+            <span>User manual</span>
+            Full CLI workflows for vault data, recovery, tokens, runtime inspection and safe usage.
+          </a>
+          <a class="doc-card" href="https://github.com/olelbis/myminivault/blob/main/docs/security.md">
+            <span>Security model</span>
+            Assets, trust boundaries, threat model, mitigations and residual risks.
+          </a>
+          <a class="doc-card" href="https://github.com/olelbis/myminivault/blob/main/docs/token-sync-policy.md">
+            <span>Token sync policy</span>
+            How temporary token writes flow through the shared token vault into the main vault.
+          </a>
+          <a class="doc-card" href="https://github.com/olelbis/myminivault/blob/main/docs/recovery-policy.md">
+            <span>Recovery policy</span>
+            Recovery-key behavior, recovery snapshot semantics and operational guidance.
+          </a>
+          <a class="doc-card" href="https://github.com/olelbis/myminivault/blob/main/docs/development.md">
+            <span>Development guide</span>
+            Local tests, coverage, release workflow and contributor notes.
+          </a>
+          <a class="doc-card" href="https://github.com/olelbis/myminivault/blob/main/docs/coverage.md">
+            <span>Coverage notes</span>
+            Current full and internal package coverage baselines.
+          </a>
+          <a class="doc-card" href="https://github.com/olelbis/myminivault/blob/main/CHANGELOG.md">
+            <span>Changelog</span>
+            Release-by-release history and compatibility-preserving bugfix notes.
+          </a>
+          <a class="doc-card" href="#feedback">
+            <span>Feedback</span>
+            Report bugs, request features, discuss documentation gaps or share real-world usage notes.
+          </a>
+        </div>
+      </section>
+
+      <section>
+        <h2>What It Does</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Area</th>
+              <th>Behavior</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Local vault</td>
+              <td>AES-256-GCM encrypted key/value storage with scrypt key derivation.</td>
+            </tr>
+            <tr>
+              <td>Runtime files</td>
+              <td>Dedicated <code>~/.myminivault/</code> runtime directory with <code>MYMINIVAULT_HOME</code> override.</td>
+            </tr>
+            <tr>
+              <td>Recovery</td>
+              <td>Recovery-key setup, validation and password reset through a recovery-encrypted snapshot.</td>
+            </tr>
+            <tr>
+              <td>Tokens</td>
+              <td>Temporary scoped tokens with expiry, max-use limits, read/write permissions and JSON output.</td>
+            </tr>
+            <tr>
+              <td>Safety checks</td>
+              <td><code>vault doctor</code>, runtime inspection, restrictive file permissions and CI coverage gates.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Screenshots</h2>
+        <div class="screenshot-grid">
+          <figure>
+            <img src="assets/screenshots/quickstart.svg" alt="myminivault quickstart terminal screenshot">
+            <figcaption>Basic vault workflow</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/screenshots/token-flow.svg" alt="myminivault token workflow terminal screenshot">
+            <figcaption>Scoped token access</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/screenshots/recovery.svg" alt="myminivault recovery workflow terminal screenshot">
+            <figcaption>Recovery workflow</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section>
+        <h2>Release Artifacts</h2>
+        <ul class="release-list">
+          <li>Linux <code>.deb</code> packages for amd64 and arm64.</li>
+          <li>Linux <code>.rpm</code> packages for amd64 and arm64.</li>
+          <li>macOS arm64 <code>.pkg</code> package.</li>
+          <li><code>.tar.gz</code> archives, SHA-256 checksums and GitHub artifact attestations.</li>
+        </ul>
+      </section>
+
+      <section id="feedback">
+        <h2>Feedback</h2>
+        <p>
+          Real-world reports are useful while the project is still experimental.
+          Please avoid posting real secrets, vault files, recovery keys or compact tokens.
+        </p>
+        <div class="feedback-grid">
+          <a href="https://github.com/olelbis/myminivault/issues/new?template=bug_report.yml">
+            Bug report
+          </a>
+          <a href="https://github.com/olelbis/myminivault/issues/new?template=feature_request.yml">
+            Feature request
+          </a>
+          <a href="https://github.com/olelbis/myminivault/issues/new?template=docs_feedback.yml">
+            Documentation feedback
+          </a>
+          <a href="https://github.com/olelbis/myminivault/security/advisories/new">
+            Private security advisory
+          </a>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,21 @@
+<svg width="900" height="420" viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">myminivault quick start terminal screenshot</title>
+  <desc id="desc">A terminal-style screenshot showing set, get, list, and backup commands.</desc>
+  <rect width="900" height="420" rx="14" fill="#0b1220"/>
+  <rect x="0" y="0" width="900" height="46" rx="14" fill="#151f2f"/>
+  <circle cx="24" cy="23" r="7" fill="#ff5f57"/>
+  <circle cx="48" cy="23" r="7" fill="#ffbd2e"/>
+  <circle cx="72" cy="23" r="7" fill="#28c840"/>
+  <text x="450" y="29" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="15" fill="#9fb3c8">myminivault quick start</text>
+  <g font-family="Menlo, Consolas, monospace" font-size="20">
+    <text x="34" y="86" fill="#6ee7b7">$ ./bin/vault set API_KEY secret-value</text>
+    <text x="34" y="118" fill="#94a3b8">Password:</text>
+    <text x="34" y="150" fill="#e2e8f0">✅ Set API_KEY</text>
+    <text x="34" y="206" fill="#6ee7b7">$ ./bin/vault get API_KEY</text>
+    <text x="34" y="238" fill="#94a3b8">Password:</text>
+    <text x="34" y="270" fill="#e2e8f0">secret-value</text>
+    <text x="34" y="326" fill="#6ee7b7">$ ./bin/vault list</text>
+    <text x="34" y="358" fill="#e2e8f0">🔑 Keys in vault:</text>
+    <text x="58" y="390" fill="#38bdf8">API_KEY</text>
+  </g>
+</svg>

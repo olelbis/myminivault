@@ -129,6 +129,7 @@ vault use-token "$MYMV_TOKEN" get API_KEY --json
 
 ## Documentation
 
+- [Project Site](https://olelbis.github.io/myminivault/)
 - [User Manual](docs/user-manual.md)
 - [Development Guide](docs/development.md)
 - [Security Model](docs/security.md)
