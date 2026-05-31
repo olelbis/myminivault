@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/base64"
+	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -55,6 +57,64 @@ func TestShortTokenID(t *testing.T) {
 		if got := shortTokenID(input); got != want {
 			t.Fatalf("shortTokenID(%q) = %q, want %q", input, got, want)
 		}
+	}
+}
+
+func TestTokenJSONFlagParsing(t *testing.T) {
+	args := []string{"vault", "use-token", "token", "get", "API_KEY", "--json"}
+	if !tokenJSONRequested(args) {
+		t.Fatal("expected --json to be detected")
+	}
+
+	filtered := tokenCommandArgs(args)
+	want := []string{"vault", "use-token", "token", "get", "API_KEY"}
+	if strings.Join(filtered, "\x00") != strings.Join(want, "\x00") {
+		t.Fatalf("tokenCommandArgs = %#v, want %#v", filtered, want)
+	}
+}
+
+func TestExecuteTokenGetJSON(t *testing.T) {
+	vault := &ExtendedVault{Data: map[string]string{"API_KEY": "hello"}}
+	token := AccessToken{KeyPattern: "API_*", Permissions: []string{"read"}}
+
+	payload := captureTokenJSON(t, func() error {
+		return executeTokenGet(vault, token, "API_KEY", true)
+	})
+
+	if payload["key"] != "API_KEY" || payload["value"] != "hello" {
+		t.Fatalf("unexpected get payload: %#v", payload)
+	}
+}
+
+func TestExecuteTokenListJSONIsSorted(t *testing.T) {
+	vault := &ExtendedVault{Data: map[string]string{"API_Z": "z", "DB_KEY": "db", "API_A": "a"}}
+	token := AccessToken{KeyPattern: "API_*", Permissions: []string{"read"}}
+
+	payload := captureTokenJSON(t, func() error {
+		return executeTokenList(vault, token, true)
+	})
+
+	keys, ok := payload["keys"].([]any)
+	if !ok {
+		t.Fatalf("keys payload has type %T", payload["keys"])
+	}
+	if len(keys) != 2 || keys[0] != "API_A" || keys[1] != "API_Z" {
+		t.Fatalf("unexpected sorted keys: %#v", keys)
+	}
+	if payload["count"] != float64(2) {
+		t.Fatalf("unexpected count: %#v", payload["count"])
+	}
+}
+
+func TestExecuteTokenSearchJSONError(t *testing.T) {
+	token := AccessToken{KeyPattern: "API_*", Permissions: []string{"write"}}
+
+	payload := captureTokenJSON(t, func() error {
+		return executeTokenSearch(&ExtendedVault{Data: map[string]string{}}, token, "API", true)
+	})
+
+	if !strings.Contains(payload["error"].(string), "read permission") {
+		t.Fatalf("unexpected error payload: %#v", payload)
 	}
 }
 
@@ -114,4 +174,35 @@ func TestCreateShortSignedTokenChangesWithSecret(t *testing.T) {
 func decodeSignedTokenPayload(token string) (string, error) {
 	decoded, err := base64.URLEncoding.DecodeString(addBase64Padding(token))
 	return string(decoded), err
+}
+
+func captureTokenJSON(t *testing.T, fn func() error) map[string]any {
+	t.Helper()
+
+	originalStdout := os.Stdout
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe: %v", err)
+	}
+	os.Stdout = writer
+	defer func() {
+		os.Stdout = originalStdout
+	}()
+
+	err = fn()
+	if closeErr := writer.Close(); closeErr != nil {
+		t.Fatalf("close writer: %v", closeErr)
+	}
+	if err != nil {
+		t.Fatalf("command returned error: %v", err)
+	}
+
+	var payload map[string]any
+	if err := json.NewDecoder(reader).Decode(&payload); err != nil {
+		t.Fatalf("decode JSON: %v", err)
+	}
+	if closeErr := reader.Close(); closeErr != nil {
+		t.Fatalf("close reader: %v", closeErr)
+	}
+	return payload
 }

@@ -19,6 +19,7 @@ func main() {
 	}
 
 	command := os.Args[1]
+	suppressRuntimeWarnings = command == "use-token" && tokenJSONRequested(os.Args)
 
 	switch command {
 	case "help", "--help", "-h":
@@ -237,7 +238,7 @@ func showUsage() {
 }
 
 func showHelp() {
-	fmt.Println(`🔐 myminivault CLI v0.4.10
+	fmt.Println(`🔐 myminivault CLI v0.4.11
 Author: olelbis
 
 BASIC COMMANDS:

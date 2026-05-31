@@ -1,4 +1,4 @@
-.TH VAULT 1 "May 29, 2026" "myminivault 0.4.10" "User Commands"
+.TH VAULT 1 "May 31, 2026" "myminivault 0.4.11" "User Commands"
 .SH NAME
 vault \- local encrypted command-line key/value vault
 .SH SYNOPSIS
@@ -70,6 +70,9 @@ Run a permitted token command such as
 .BR list ,
 or
 .BR search .
+Pass
+.B --json
+to token commands for machine-readable success and error output.
 .TP
 .B list-tokens
 List configured token records.

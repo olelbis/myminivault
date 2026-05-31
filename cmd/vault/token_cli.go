@@ -2,10 +2,12 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -131,7 +133,11 @@ func cleanupExpiredTokens(vault *ExtendedVault) error {
 }
 
 func executeWithToken() error {
-	if len(os.Args) < 4 {
+	args := tokenCommandArgs(os.Args)
+	if len(args) < 4 {
+		if tokenJSONRequested(os.Args) {
+			return writeJSONError("usage: vault use-token <token> <command> [args...]")
+		}
 		fmt.Println("Usage: vault use-token <token> <command> [args...]")
 		fmt.Println("Examples:")
 		fmt.Println("  vault use-token <token> get API_KEY")
@@ -140,11 +146,15 @@ func executeWithToken() error {
 		return nil
 	}
 
-	tokenStr := os.Args[2]
-	command := os.Args[3]
+	jsonOutput := tokenJSONRequested(os.Args)
+	tokenStr := args[2]
+	command := args[3]
 
 	token, vault, err := parseAndValidateProductionToken(tokenStr)
 	if err != nil {
+		if jsonOutput {
+			return writeJSONError("token validation failed: " + err.Error())
+		}
 		return fmt.Errorf("token validation failed: %w", err)
 	}
 
@@ -152,29 +162,66 @@ func executeWithToken() error {
 
 	switch command {
 	case "get":
-		if len(os.Args) < 5 {
-			return errors.New("usage: vault use-token <token> get <key>")
+		if len(args) < 5 {
+			return tokenCommandError(jsonOutput, "usage: vault use-token <token> get <key>")
 		}
-		return executeTokenGet(vault, token, os.Args[4])
+		return executeTokenGet(vault, token, args[4], jsonOutput)
 
 	case "set":
-		if len(os.Args) < 6 {
-			return errors.New("usage: vault use-token <token> set <key> <value>")
+		if len(args) < 6 {
+			return tokenCommandError(jsonOutput, "usage: vault use-token <token> set <key> <value>")
 		}
-		return executeTokenSet(vault, token, os.Args[4], os.Args[5])
+		return executeTokenSet(vault, token, args[4], args[5], jsonOutput)
 
 	case "list":
-		return executeTokenList(vault, token)
+		return executeTokenList(vault, token, jsonOutput)
 
 	case "search":
-		if len(os.Args) < 5 {
-			return errors.New("usage: vault use-token <token> search <pattern>")
+		if len(args) < 5 {
+			return tokenCommandError(jsonOutput, "usage: vault use-token <token> search <pattern>")
 		}
-		return executeTokenSearch(vault, token, os.Args[4])
+		return executeTokenSearch(vault, token, args[4], jsonOutput)
 
 	default:
-		return fmt.Errorf("command '%s' not allowed with tokens (only: get, set, list, search)", command)
+		return tokenCommandError(jsonOutput, fmt.Sprintf("command '%s' not allowed with tokens (only: get, set, list, search)", command))
 	}
+}
+
+func tokenJSONRequested(args []string) bool {
+	for _, arg := range args[2:] {
+		if arg == "--json" {
+			return true
+		}
+	}
+	return false
+}
+
+func tokenCommandArgs(args []string) []string {
+	filtered := make([]string, 0, len(args))
+	for _, arg := range args {
+		if arg == "--json" {
+			continue
+		}
+		filtered = append(filtered, arg)
+	}
+	return filtered
+}
+
+func tokenCommandError(jsonOutput bool, message string) error {
+	if jsonOutput {
+		return writeJSONError(message)
+	}
+	return errors.New(message)
+}
+
+func writeJSONError(message string) error {
+	return writeJSON(map[string]string{"error": message})
+}
+
+func writeJSON(value any) error {
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetEscapeHTML(false)
+	return encoder.Encode(value)
 }
 
 func parseAndValidateProductionToken(tokenStr string) (AccessToken, *ExtendedVault, error) {
@@ -201,42 +248,45 @@ func saveTokenRegistry(registry *TokenRegistry) error {
 	return vaulttoken.SaveRegistry(tokenRegistry, registry)
 }
 
-func executeTokenGet(vault *ExtendedVault, token AccessToken, key string) error {
+func executeTokenGet(vault *ExtendedVault, token AccessToken, key string, jsonOutput bool) error {
 	if !contains(token.Permissions, "read") {
-		return errors.New("token does not have read permission")
+		return tokenCommandError(jsonOutput, "token does not have read permission")
 	}
 
 	matched, err := matchKeyPattern(token.KeyPattern, key)
 	if err != nil {
-		return fmt.Errorf("pattern matching error: %w", err)
+		return tokenCommandError(jsonOutput, fmt.Sprintf("pattern matching error: %v", err))
 	}
 	if !matched {
-		return fmt.Errorf("key '%s' not allowed by token pattern '%s'", key, token.KeyPattern)
+		return tokenCommandError(jsonOutput, fmt.Sprintf("key '%s' not allowed by token pattern '%s'", key, token.KeyPattern))
 	}
 
 	if value, exists := vault.Data[key]; exists {
+		if jsonOutput {
+			return writeJSON(map[string]string{"key": key, "value": value})
+		}
 		fmt.Println(value)
 		return nil
 	}
 
-	return fmt.Errorf("key '%s' not found", key)
+	return tokenCommandError(jsonOutput, fmt.Sprintf("key '%s' not found", key))
 }
 
-func executeTokenSet(vault *ExtendedVault, token AccessToken, key, value string) error {
+func executeTokenSet(vault *ExtendedVault, token AccessToken, key, value string, jsonOutput bool) error {
 	if !contains(token.Permissions, "write") {
-		return errors.New("token does not have write permission")
+		return tokenCommandError(jsonOutput, "token does not have write permission")
 	}
 
 	matched, err := matchKeyPattern(token.KeyPattern, key)
 	if err != nil {
-		return fmt.Errorf("pattern matching error: %w", err)
+		return tokenCommandError(jsonOutput, fmt.Sprintf("pattern matching error: %v", err))
 	}
 	if !matched {
-		return fmt.Errorf("key '%s' not allowed by token pattern '%s'", key, token.KeyPattern)
+		return tokenCommandError(jsonOutput, fmt.Sprintf("key '%s' not allowed by token pattern '%s'", key, token.KeyPattern))
 	}
 
 	if err := validateKey(key); err != nil {
-		return fmt.Errorf("invalid key: %w", err)
+		return tokenCommandError(jsonOutput, fmt.Sprintf("invalid key: %v", err))
 	}
 
 	tokenVaultMutex.Lock()
@@ -246,7 +296,15 @@ func executeTokenSet(vault *ExtendedVault, token AccessToken, key, value string)
 	markKeyUpdated(vault, key)
 
 	if err := saveTokenVaultEncrypted(vault, sharedTokenVault); err != nil {
-		return fmt.Errorf("failed to save changes: %w", err)
+		return tokenCommandError(jsonOutput, fmt.Sprintf("failed to save changes: %v", err))
+	}
+
+	if jsonOutput {
+		return writeJSON(map[string]string{
+			"key":     key,
+			"message": "set via token in the shared token vault",
+			"status":  "ok",
+		})
 	}
 
 	fmt.Printf("✅ Key '%s' set via token in the shared token vault\n", key)
@@ -254,39 +312,57 @@ func executeTokenSet(vault *ExtendedVault, token AccessToken, key, value string)
 	return nil
 }
 
-func executeTokenList(vault *ExtendedVault, token AccessToken) error {
+func executeTokenList(vault *ExtendedVault, token AccessToken, jsonOutput bool) error {
 	if !contains(token.Permissions, "read") {
-		return errors.New("token does not have read permission")
+		return tokenCommandError(jsonOutput, "token does not have read permission")
 	}
 
-	fmt.Printf("🔑 Keys accessible with this token (pattern: %s):\n", token.KeyPattern)
-	count := 0
-
+	keys := make([]string, 0)
 	for key := range vault.Data {
 		matched, _ := matchKeyPattern(token.KeyPattern, key)
 		if matched {
-			fmt.Printf("  %s\n", key)
-			count++
+			keys = append(keys, key)
 		}
 	}
+	sort.Strings(keys)
 
-	if count == 0 {
+	if jsonOutput {
+		return writeJSON(struct {
+			Pattern string   `json:"pattern"`
+			Keys    []string `json:"keys"`
+			Count   int      `json:"count"`
+		}{
+			Pattern: token.KeyPattern,
+			Keys:    keys,
+			Count:   len(keys),
+		})
+	}
+
+	fmt.Printf("🔑 Keys accessible with this token (pattern: %s):\n", token.KeyPattern)
+	for _, key := range keys {
+		fmt.Printf("  %s\n", key)
+	}
+
+	if len(keys) == 0 {
 		fmt.Println("  No keys match the token pattern")
 	} else {
-		fmt.Printf("\n📊 Total accessible keys: %d\n", count)
+		fmt.Printf("\n📊 Total accessible keys: %d\n", len(keys))
 	}
 
 	return nil
 }
 
-func executeTokenSearch(vault *ExtendedVault, token AccessToken, pattern string) error {
+func executeTokenSearch(vault *ExtendedVault, token AccessToken, pattern string, jsonOutput bool) error {
 	if !contains(token.Permissions, "read") {
-		return errors.New("token does not have read permission")
+		return tokenCommandError(jsonOutput, "token does not have read permission")
 	}
 
-	fmt.Printf("🔍 Searching accessible keys for pattern: '%s'\n", pattern)
 	searchPattern := strings.ToLower(pattern)
-	count := 0
+	type tokenSearchResult struct {
+		Key   string `json:"key"`
+		Value string `json:"value"`
+	}
+	results := make([]tokenSearchResult, 0)
 
 	for key, value := range vault.Data {
 		tokenMatched, _ := matchKeyPattern(token.KeyPattern, key)
@@ -295,15 +371,34 @@ func executeTokenSearch(vault *ExtendedVault, token AccessToken, pattern string)
 		}
 
 		if strings.Contains(strings.ToLower(key), searchPattern) {
-			fmt.Printf("  %s: %s\n", key, value)
-			count++
+			results = append(results, tokenSearchResult{Key: key, Value: value})
 		}
 	}
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Key < results[j].Key
+	})
 
-	if count == 0 {
+	if jsonOutput {
+		return writeJSON(struct {
+			Pattern string              `json:"pattern"`
+			Results []tokenSearchResult `json:"results"`
+			Count   int                 `json:"count"`
+		}{
+			Pattern: pattern,
+			Results: results,
+			Count:   len(results),
+		})
+	}
+
+	fmt.Printf("🔍 Searching accessible keys for pattern: '%s'\n", pattern)
+	for _, result := range results {
+		fmt.Printf("  %s: %s\n", result.Key, result.Value)
+	}
+
+	if len(results) == 0 {
 		fmt.Printf("❌ No accessible keys found matching '%s'\n", pattern)
 	} else {
-		fmt.Printf("✅ Found %d matching keys\n", count)
+		fmt.Printf("✅ Found %d matching keys\n", len(results))
 	}
 
 	return nil

@@ -59,6 +59,8 @@ Token `set` writes immediately to the shared token vault. The write becomes visi
 - a master-password command imports staged token writes, or
 - the user runs `sync-tokens`
 
+Token commands also support `--json` for third-party subprocess callers. JSON output changes the command presentation only; it does not change token validation, sync, expiry, max-use, or permission semantics.
+
 ## `sync-tokens`
 
 `sync-tokens` imports staged token writes from `shared-token-vault.json` into the main vault and then saves `vault.db`.

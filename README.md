@@ -111,6 +111,16 @@ Create a backup:
 | `doctor` | Check runtime file permissions and local health |
 | `inspect-runtime` | List active and legacy runtime files without decrypting |
 
+Token commands can emit JSON for third-party integrations:
+
+```bash
+vault use-token "$MYMV_TOKEN" get API_KEY --json
+```
+
+```json
+{"key":"API_KEY","value":"secret"}
+```
+
 ## Screenshots
 
 ![Token workflow terminal screenshot](assets/screenshots/token-flow.svg)
