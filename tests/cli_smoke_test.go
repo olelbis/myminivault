@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"os"
 	"os/exec"
@@ -28,7 +29,7 @@ const (
 	sharedTokenVault = "shared-token-vault.json"
 	tokenRegistry    = "vault-tokens.json"
 	saltSize         = 16
-	vaultVersion     = "0.4.10"
+	vaultVersion     = "0.4.11"
 	vaultHomeEnv     = "MYMINIVAULT_HOME"
 )
 
@@ -227,6 +228,51 @@ func TestCLISmokeTokenReadAndWrite(t *testing.T) {
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", token, "set", "API_KEY", "updated")), "set via token")
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "sync-tokens")), "synchronized")
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY")), "updated")
+}
+
+func TestCLISmokeTokenJSONOutput(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "API_KEY", "hello"))
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "DB_KEY", "world"))
+
+	createOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=*_KEY", "--duration=1h", "--permissions=read,write", "--max-uses=20"))
+	token := extractCompactToken(t, createOutput)
+
+	getPayload := parseJSONMap(t, requireOK(t, runVault(t, bin, dir, "", "use-token", token, "get", "API_KEY", "--json")))
+	if getPayload["key"] != "API_KEY" || getPayload["value"] != "hello" {
+		t.Fatalf("get json = %#v", getPayload)
+	}
+
+	setPayload := parseJSONMap(t, requireOK(t, runVault(t, bin, dir, "", "use-token", token, "set", "API_KEY", "updated", "--json")))
+	if setPayload["status"] != "ok" || setPayload["key"] != "API_KEY" {
+		t.Fatalf("set json = %#v", setPayload)
+	}
+
+	listPayload := parseJSONMap(t, requireOK(t, runVault(t, bin, dir, "", "use-token", token, "list", "--json")))
+	if listPayload["count"].(float64) != 2 {
+		t.Fatalf("list json = %#v", listPayload)
+	}
+
+	searchPayload := parseJSONMap(t, requireOK(t, runVault(t, bin, dir, "", "use-token", token, "search", "API", "--json")))
+	if searchPayload["count"].(float64) != 1 {
+		t.Fatalf("search json = %#v", searchPayload)
+	}
+}
+
+func TestCLISmokeTokenJSONErrors(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "API_KEY", "hello"))
+	createOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=API_*", "--duration=1h", "--permissions=read", "--max-uses=10"))
+	token := extractCompactToken(t, createOutput)
+
+	payload := parseJSONMap(t, requireOK(t, runVault(t, bin, dir, "", "use-token", token, "get", "DB_KEY", "--json")))
+	if !strings.Contains(payload["error"].(string), "not allowed") {
+		t.Fatalf("error json = %#v", payload)
+	}
 }
 
 func TestCLISmokeTokenWriteImportedByMasterCommand(t *testing.T) {
@@ -635,6 +681,16 @@ func extractCompactToken(t *testing.T, output string) string {
 	}
 
 	return matches[1]
+}
+
+func parseJSONMap(t *testing.T, output string) map[string]any {
+	t.Helper()
+
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(output), &payload); err != nil {
+		t.Fatalf("parse json output: %v\n%s", err, output)
+	}
+	return payload
 }
 
 func onlyExportLines(output string) string {

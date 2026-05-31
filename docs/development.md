@@ -172,7 +172,7 @@ printf 'oldpass\n' | ./vault get TEST_KEY
 
 The automated CLI smoke tests live in `./tests`, create temporary directories, and use fake data. Do not run manual smoke commands in a directory that contains real vault files unless that is intentional.
 
-Current automated checks cover CLI smoke flows, token lifecycle behavior, config error handling, `vault doctor`, `vault inspect-runtime`, shell-safe import/export round trips, export-to-file behavior, clipboard clear behavior, audit-log redaction, disabled audit logging, token sync metadata decisions, token master-key and compact-token helper behavior, core unit behavior, and package-level coverage for `internal/storage`, `internal/token`, `internal/recovery`, `internal/lock`, `internal/audit`, `internal/sync`, `internal/commands`, `internal/clipboard`, `internal/export`, `internal/container`, `internal/paths`, `internal/config`, and `internal/keychain`. CI enforces `80.0%` minimum coverage for `./internal/...`.
+Current automated checks cover CLI smoke flows, token lifecycle behavior, token JSON output, config error handling, `vault doctor`, `vault inspect-runtime`, shell-safe import/export round trips, export-to-file behavior, clipboard clear behavior, audit-log redaction, disabled audit logging, token sync metadata decisions, token master-key and compact-token helper behavior, core unit behavior, and package-level coverage for `internal/storage`, `internal/token`, `internal/recovery`, `internal/lock`, `internal/audit`, `internal/sync`, `internal/commands`, `internal/clipboard`, `internal/export`, `internal/container`, `internal/paths`, `internal/config`, and `internal/keychain`. CI enforces `80.0%` minimum coverage for `./internal/...`.
 
 ## Branch Workflow
 

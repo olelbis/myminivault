@@ -335,6 +335,69 @@ Search accessible keys:
 ./bin/vault use-token <token> search API
 ```
 
+Machine-readable token output for third-party programs:
+
+```bash
+./bin/vault use-token <token> get API_KEY --json
+./bin/vault use-token <token> list --json
+./bin/vault use-token <token> search API --json
+```
+
+Example success payload:
+
+```json
+{"key":"API_KEY","value":"secret"}
+```
+
+Example error payload:
+
+```json
+{"error":"token has expired"}
+```
+
+When `--json` is used, token command errors are printed as JSON so subprocess callers can parse stdout instead of scraping human text. The compact token is still a bearer secret: pass it through a secret store or environment variable, avoid committing it, and avoid logging command lines that contain it.
+
+Python:
+
+```python
+import json
+import os
+import subprocess
+
+payload = subprocess.check_output(
+    ["vault", "use-token", os.environ["MYMV_TOKEN"], "get", "API_KEY", "--json"],
+    text=True,
+)
+secret = json.loads(payload)["value"]
+```
+
+Go:
+
+```go
+out, err := exec.Command("vault", "use-token", os.Getenv("MYMV_TOKEN"), "get", "API_KEY", "--json").Output()
+if err != nil {
+    panic(err)
+}
+var payload struct {
+    Key   string `json:"key"`
+    Value string `json:"value"`
+}
+if err := json.Unmarshal(out, &payload); err != nil {
+    panic(err)
+}
+secret := payload.Value
+```
+
+Java:
+
+```java
+Process p = new ProcessBuilder("vault", "use-token", System.getenv("MYMV_TOKEN"), "get", "API_KEY", "--json").start();
+String payload = new String(p.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+if (p.waitFor() != 0) {
+    throw new IllegalStateException(payload);
+}
+```
+
 ### Manage Tokens
 
 ```bash

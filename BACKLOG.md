@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: clone or open the repository root, for example `/tmp/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.4.10`
+- Current baseline release: `v0.4.11`
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -15,7 +15,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `9.72 / 10`.
+Current assessment score: `9.74 / 10`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, macOS Keychain support for token master-key material, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -162,6 +162,8 @@ Docs-only candidates:
 - Added macOS Keychain storage for token master-key material in `auto`/`keychain` modes, with path-scoped Keychain accounts and file fallback elsewhere.
 - Updated coverage baselines to `37.2%` full repository and `86.6%` internal packages after adding macOS Keychain storage.
 - Strengthened Linux Secret Service readiness detection to require both DBus and `secret-tool`, while keeping Linux token key storage on the file fallback.
+- Added machine-readable JSON output for token commands and third-party subprocess integration examples.
+- Updated coverage baselines to `38.3%` full repository and `86.6%` internal packages after adding token JSON unit coverage.
 
 ## Current Verification
 
@@ -583,7 +585,48 @@ git switch -c linux-keychain-storage-decision
 
 These are intentionally lower priority than the stability/security work above. Revisit them after documentation cleanup, security review, token sync policy review, and test-depth work are in better shape.
 
-### 12. `vault run -- <command>`
+### 12. Machine-Readable Token Integration
+
+Status: completed in `v0.4.11`.
+
+Make token commands easier to consume from Java, Go, Python, shell scripts, CI jobs, and other third-party tools without exposing the master password.
+
+Start with a small CLI contract instead of an SDK or daemon:
+
+```bash
+vault use-token "$TOKEN" get API_KEY --json
+```
+
+Target success output:
+
+```json
+{"key":"API_KEY","value":"secret"}
+```
+
+Target error output:
+
+```json
+{"error":"token expired"}
+```
+
+Recommended scope:
+
+- JSON output is available for `use-token <token> get`, `set`, `list`, and `search`
+- plaintext default output remains unchanged for backward compatibility
+- error output is machine-readable when `--json` is requested
+- subprocess examples for Python, Go, and Java are documented
+- smoke coverage verifies token JSON success and failure paths
+- defer SDKs, agents, and richer APIs until the CLI JSON contract is stable
+
+Suggested branch:
+
+```bash
+git switch main
+git pull
+git switch -c machine-readable-token-integration
+```
+
+### 13. `vault run -- <command>`
 
 Run a command with vault entries injected as environment variables, without printing secrets:
 
@@ -600,7 +643,7 @@ git pull
 git switch -c vault-run-command
 ```
 
-### 13. Project Profiles
+### 14. Project Profiles
 
 Support separate vault contexts for different projects or environments:
 
@@ -618,7 +661,7 @@ git pull
 git switch -c project-profiles
 ```
 
-### 14. Namespaces
+### 15. Namespaces
 
 Support namespaced keys for environments such as `dev`, `staging`, and `prod`:
 
@@ -635,7 +678,7 @@ git pull
 git switch -c namespaces
 ```
 
-### 15. Token UX Cleanup
+### 16. Token UX Cleanup
 
 Make token commands more consistent and automation-friendly:
 
@@ -653,7 +696,7 @@ git pull
 git switch -c token-ux
 ```
 
-### 16. Terminal UI
+### 17. Terminal UI
 
 Add an optional TUI for browsing/searching keys, viewing token status, editing values, and triggering copy/export flows:
 
@@ -669,7 +712,7 @@ git pull
 git switch -c tui
 ```
 
-### 17. Secret Rotation Hooks
+### 18. Secret Rotation Hooks
 
 Support command-driven rotation workflows:
 
@@ -685,7 +728,7 @@ git pull
 git switch -c secret-rotation
 ```
 
-### 18. Hook System
+### 19. Hook System
 
 Allow local scripts to run after selected events such as `set`, `delete`, `backup`, or `token create`:
 
@@ -701,7 +744,7 @@ git pull
 git switch -c hooks
 ```
 
-### 19. Rotating One-Time Secret Tokens
+### 20. Rotating One-Time Secret Tokens
 
 Create token flows that can reveal a secret once and then rotate that secret immediately after successful use.
 

@@ -2,11 +2,19 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
-## Unreleased
+## [v0.4.11] - 2026-05-31
+
+### Added
+
+- Added machine-readable JSON output for `use-token` commands with `--json`, including `get`, `set`, `list`, `search`, and JSON error payloads.
+- Added third-party integration documentation with subprocess examples for Python, Go, and Java.
+- Added CLI smoke coverage for token JSON success and error paths.
 
 ### Changed
 
 - Documented the Linux token key storage policy: file-backed by design for now, with Secret Service detection kept informational.
+- Updated the coverage baselines to `38.3%` full repository and `86.6%` internal packages.
+- Updated the CLI-visible version to `0.4.11`.
 
 ## [v0.4.10] - 2026-05-29
 

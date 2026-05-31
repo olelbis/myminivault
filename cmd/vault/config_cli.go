@@ -23,18 +23,19 @@ const (
 	sharedTokenVaultName = "shared-token-vault.json"
 	lockFileName         = ".myminivault.lock"
 	saltSize             = 16
-	vaultVersion         = "0.4.10"
+	vaultVersion         = "0.4.11"
 )
 
 var (
-	runtimeHome      string
-	vaultFile        = vaultFileName
-	configFile       = configFileName
-	logFile          = logFileName
-	tokenRegistry    = tokenRegistryName
-	tokenKeyFile     = tokenKeyFileName
-	sharedTokenVault = sharedTokenVaultName
-	vaultLockFile    = lockFileName
+	runtimeHome             string
+	vaultFile               = vaultFileName
+	configFile              = configFileName
+	logFile                 = logFileName
+	tokenRegistry           = tokenRegistryName
+	tokenKeyFile            = tokenKeyFileName
+	sharedTokenVault        = sharedTokenVaultName
+	vaultLockFile           = lockFileName
+	suppressRuntimeWarnings bool
 )
 
 func showConfig() {
@@ -132,6 +133,10 @@ func migrateLegacyRuntimeFiles(home string) error {
 }
 
 func warnLegacyRuntimeConflict(name, legacyPath, targetPath string) {
+	if suppressRuntimeWarnings {
+		return
+	}
+
 	fmt.Printf("⚠️  Legacy runtime file was not migrated because the runtime-home file already exists: %s\n", name)
 	printRuntimeFileDetails("Active", targetPath)
 	printRuntimeFileDetails("Legacy", legacyPath)
