@@ -86,6 +86,14 @@ Future improvements to consider:
 
 - a dedicated `rotate-recovery` command with clearer output
 - a `refresh-recovery` command that asks for the recovery key and rewrites `vault.db.recovery` without changing the master password
-- a `vault doctor` warning when recovery is configured but the recovery snapshot appears older than the main vault
+- richer recovery repair guidance after `vault doctor` reports a stale or incompatible recovery snapshot
 - versioned recovery metadata for future verifier migrations
 - clearer backup cleanup guidance after recovery rotation
+
+## Inspection And Doctor Checks
+
+`vault doctor` checks recovery state without decrypting vault contents. It reports whether the recovery snapshot is missing, older than the main vault, unexpectedly present without a main vault, or stored in an older or incompatible container shape.
+
+`vault inspect-runtime` includes a recovery relationship summary next to the active and legacy runtime-file listing. Use it when `vault doctor` reports recovery freshness or compatibility warnings, especially if `MYMINIVAULT_HOME` is set or legacy current-directory files may still exist.
+
+These commands are intentionally non-mutating. Normal startup tightens runtime permissions when possible, but `doctor` and `inspect-runtime` only report what they see.

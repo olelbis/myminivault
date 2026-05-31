@@ -2,6 +2,21 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.8.0] - 2026-06-01
+
+### Added
+
+- Added a dedicated recovery compatibility check to `vault doctor` for non-decrypting recovery container kind, version, and crypto-parameter metadata.
+- Added a recovery relationship summary to `vault inspect-runtime`.
+- Added focused tests for stale recovery snapshots, incompatible recovery containers, config metadata drift, and recovery inspection output.
+
+### Changed
+
+- Made recovery freshness warnings more actionable by showing how far the recovery snapshot lags behind the main vault.
+- Updated recovery, security, user, developer, man-page, and backlog documentation.
+- Updated coverage baselines to `41.3%` full repository and `85.6%` internal packages.
+- Updated the CLI-visible version to `0.8.0`.
+
 ## [v0.7.0] - 2026-06-01
 
 ### Added

@@ -246,6 +246,7 @@ Development notes:
 - path resolution lives in `internal/paths`
 - CLI globals are initialized by `initRuntimePaths`
 - runtime inspection output lives in `cmd/vault/runtime_inspect.go`
+- recovery freshness and compatibility checks live in `cmd/vault/doctor_cli.go` and are reused by `inspect-runtime`
 - legacy cwd migration is intentionally conservative and skips files when the runtime-home target already exists
 
 Runtime files are ignored by Git and should not be committed:
