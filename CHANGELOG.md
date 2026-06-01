@@ -2,6 +2,21 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.9.0] - 2026-06-01
+
+### Added
+
+- Added explicit legacy sync-decision accounting when token/shared-vault imports fall back because per-key metadata is missing.
+- Added tests for legacy token sync fallback decisions and clearer token sync freshness warnings.
+- Added practical token sync policy examples for token writes, newer main values, newer shared values, legacy metadata fallback, and doctor warnings.
+
+### Changed
+
+- Made token sync freshness warnings more actionable by showing how far `shared-token-vault.json` is ahead of `vault.db`.
+- Updated README and user manual guidance for staged token writes and `vault sync-tokens`.
+- Updated coverage baselines to `41.9%` full repository and `85.7%` internal packages.
+- Updated the CLI-visible version to `0.9.0`.
+
 ## [v0.8.0] - 2026-06-01
 
 ### Added

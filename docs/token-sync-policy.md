@@ -73,11 +73,49 @@ Current conflict behavior is timestamp-aware when both sides have sync metadata.
 
 If both the main vault and shared token vault have update timestamps for a key, the newer timestamp wins. If the shared token vault contains an older value for a key that was updated more recently in the main vault, the import skips that shared value and prints a warning.
 
-Legacy vaults without sync metadata keep the previous import behavior for compatibility.
+Legacy vaults without sync metadata keep the previous import behavior for compatibility. When an import decision uses that fallback path, the CLI reports that legacy sync metadata fallback was used so the user understands that the decision was not fully timestamp-based.
 
 There is still no merge base or rich conflict object. If metadata is absent or incomplete, behavior falls back to simple import semantics.
 
 This policy is local and best-effort. It should not be described as multi-device sync, distributed conflict resolution, or a shared source of truth.
+
+## Practical Examples
+
+### Token write, then explicit sync
+
+If a token writes a value, the change is saved immediately in `shared-token-vault.json`:
+
+```bash
+vault use-token "$TOKEN" set API_KEY new-value
+```
+
+The main vault is updated when the user runs:
+
+```bash
+vault sync-tokens
+```
+
+or when a later master-password command imports staged token writes.
+
+### Newer main value wins
+
+If `vault.db` has `API_KEY=main-new` with newer sync metadata and `shared-token-vault.json` has `API_KEY=token-old` with older metadata, import skips the shared value and keeps the main value.
+
+The CLI reports a skipped older token conflict.
+
+### Newer shared value wins
+
+If `shared-token-vault.json` has `API_KEY=token-new` with newer sync metadata than the main vault, import copies that value into the main vault and records a fresh main-vault update timestamp.
+
+### Legacy metadata fallback
+
+If either side lacks per-key sync metadata, the importer keeps compatibility with older vaults and uses the previous simple import behavior. This can overwrite the main value because there is no reliable per-key timestamp to compare.
+
+The CLI reports that legacy metadata fallback was used. After the next successful save, current metadata is written and future decisions can use the timestamp-aware path.
+
+### Doctor warning for staged token writes
+
+If `shared-token-vault.json` is newer than `vault.db`, `vault doctor` reports how far ahead the shared token vault appears to be and suggests `vault sync-tokens`. This usually means token writes may be staged but not yet persisted into the main vault.
 
 ## Delete Semantics
 

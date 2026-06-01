@@ -39,6 +39,9 @@ func TestShouldImportSharedValueFallsBackForLegacyVaults(t *testing.T) {
 	if !ShouldImportSharedValue(mainVault, sharedVault, "API_KEY") {
 		t.Fatal("legacy vaults without sync metadata should keep previous import behavior")
 	}
+	if !UsesLegacyImportDecision(mainVault, sharedVault, "API_KEY") {
+		t.Fatal("legacy vaults without sync metadata should report legacy decision path")
+	}
 }
 
 func TestMarkKeyUpdatedAndDeleted(t *testing.T) {
@@ -110,6 +113,9 @@ func TestImportSharedVaultImportsDeletesAndSkipsOlderConflicts(t *testing.T) {
 	if result.Imported != 1 || result.Deleted != 1 || result.SkippedConflicts != 1 {
 		t.Fatalf("result = %+v, want imported=1 deleted=1 skipped=1", result)
 	}
+	if result.LegacyDecisions != 0 {
+		t.Fatalf("legacy decisions = %d, want 0", result.LegacyDecisions)
+	}
 	if mainVault.Data["NEW_KEY"] != "value" {
 		t.Fatalf("NEW_KEY = %q, want value", mainVault.Data["NEW_KEY"])
 	}
@@ -118,6 +124,44 @@ func TestImportSharedVaultImportsDeletesAndSkipsOlderConflicts(t *testing.T) {
 	}
 	if mainVault.Data["NEWER_MAIN"] != "main" {
 		t.Fatalf("NEWER_MAIN = %q, want main", mainVault.Data["NEWER_MAIN"])
+	}
+}
+
+func TestImportSharedVaultReportsLegacyMetadataFallbacks(t *testing.T) {
+	now := time.Now()
+	mainVault := &model.ExtendedVault{
+		Data: map[string]string{
+			"LEGACY_IMPORT": "main",
+			"LEGACY_DELETE": "old",
+		},
+	}
+	sharedVault := &model.ExtendedVault{
+		Data: map[string]string{
+			"LEGACY_IMPORT": "shared",
+		},
+		Sync: &model.SyncMetadata{
+			UpdatedAt: map[string]time.Time{
+				"LEGACY_IMPORT": now,
+			},
+			DeletedAt: map[string]time.Time{
+				"LEGACY_DELETE": now,
+			},
+		},
+	}
+
+	result := ImportSharedVault(mainVault, sharedVault, now.Add(time.Minute))
+
+	if result.Imported != 1 || result.Deleted != 1 {
+		t.Fatalf("result = %+v, want imported=1 deleted=1", result)
+	}
+	if result.LegacyDecisions != 2 {
+		t.Fatalf("legacy decisions = %d, want 2", result.LegacyDecisions)
+	}
+	if mainVault.Data["LEGACY_IMPORT"] != "shared" {
+		t.Fatalf("LEGACY_IMPORT = %q, want shared", mainVault.Data["LEGACY_IMPORT"])
+	}
+	if _, exists := mainVault.Data["LEGACY_DELETE"]; exists {
+		t.Fatal("LEGACY_DELETE should be removed")
 	}
 }
 

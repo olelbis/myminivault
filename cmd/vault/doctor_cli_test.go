@@ -97,23 +97,54 @@ func TestPrintRecoveryInspectionSummaryIncludesFreshnessAndCompatibility(t *test
 	}
 }
 
+func TestCheckSharedVaultFreshnessExplainsNewerSharedVault(t *testing.T) {
+	dir := t.TempDir()
+	restore := useDoctorTestRuntime(t, dir)
+	defer restore()
+
+	writeDoctorRuntimeFile(t, vaultFile, []byte("main"))
+	writeDoctorRuntimeFile(t, sharedTokenVault, []byte("shared"))
+
+	mainTime := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
+	sharedTime := mainTime.Add(45 * time.Minute)
+	if err := os.Chtimes(vaultFile, mainTime, mainTime); err != nil {
+		t.Fatalf("chtimes main: %v", err)
+	}
+	if err := os.Chtimes(sharedTokenVault, sharedTime, sharedTime); err != nil {
+		t.Fatalf("chtimes shared: %v", err)
+	}
+
+	check := checkSharedVaultFreshness()
+	if check.status != "WARN" {
+		t.Fatalf("status = %s, want WARN", check.status)
+	}
+	for _, want := range []string{"shared token vault newer than main vault by 45m0s", "run vault sync-tokens"} {
+		if !strings.Contains(check.detail, want) {
+			t.Fatalf("detail missing %q: %s", want, check.detail)
+		}
+	}
+}
+
 func useDoctorTestRuntime(t *testing.T, dir string) func() {
 	t.Helper()
 
 	originalRuntimeHome := runtimeHome
 	originalVaultFile := vaultFile
 	originalConfigFile := configFile
+	originalSharedTokenVault := sharedTokenVault
 	originalConfig := config
 
 	runtimeHome = dir
 	vaultFile = filepath.Join(dir, vaultFileName)
 	configFile = filepath.Join(dir, configFileName)
+	sharedTokenVault = filepath.Join(dir, sharedTokenVaultName)
 	config = vaultconfig.Default
 
 	return func() {
 		runtimeHome = originalRuntimeHome
 		vaultFile = originalVaultFile
 		configFile = originalConfigFile
+		sharedTokenVault = originalSharedTokenVault
 		config = originalConfig
 	}
 }

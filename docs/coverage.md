@@ -11,8 +11,8 @@ Current local baseline:
 
 | Scope | Statement coverage |
 | --- | --- |
-| Full repository | 41.3% |
-| Internal packages | 85.6% |
+| Full repository | 41.9% |
+| Internal packages | 85.7% |
 
 The README badge tracks internal package coverage because the project has many CLI smoke tests that execute the compiled `vault` binary as a subprocess. Those smoke tests are valuable behavior checks, but subprocess execution does not contribute much statement coverage to the parent `cmd/vault` test process.
 

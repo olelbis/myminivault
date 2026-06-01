@@ -35,6 +35,9 @@ func importSharedVaultToMainVault(mainVault *ExtendedVault) (vaultsync.ImportRes
 	if result.SkippedConflicts > 0 {
 		fmt.Printf("⚠️  Skipped %d older token conflict(s); main vault values were newer\n", result.SkippedConflicts)
 	}
+	if result.LegacyDecisions > 0 {
+		fmt.Printf("ℹ️  %d token sync decision(s) used legacy metadata fallback; run vault sync-tokens after important token writes\n", result.LegacyDecisions)
+	}
 
 	return result, nil
 }

@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: clone or open the repository root, for example `/tmp/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.8.0`
+- Current baseline release: `v0.9.0`
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -15,7 +15,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `9.86 / 10`.
+Current assessment score: `9.87 / 10`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, macOS Keychain support for token master-key material, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -34,7 +34,7 @@ Main strengths:
 - tested `internal/commands` package for export/import/key validation helpers
 - tested `internal/clipboard` package for backend selection and clear-if-unchanged behavior
 - tested `internal/export` package for shell export rendering and restrictive file writes
-- internal package coverage at `85.6%`, with every tested internal package currently above `80.0%`
+- internal package coverage at `85.7%`, with every tested internal package currently above `80.0%`
 - automated CLI smoke coverage for critical workflows in the top-level `tests` package
 - explicit handling for recovery, token sync, locking, backups, export, and password changes
 - a handoff backlog that can restart work from a fresh chat
@@ -60,18 +60,14 @@ Use this section first when resuming work. The detailed backlog below explains e
 
 ### Immediate Next Work
 
-1. **Token Sync Policy Review**
-   - Status: next recommended hardening item after `v0.8.0`.
-   - Goal: keep token/shared-vault sync understandable, documented, and testable before changing behavior again.
-   - Suggested branch: `token-sync-next`.
-
-### Near-Term Hardening
-
-2. **Coverage And `cmd/vault` Cleanup**
+1. **Coverage And `cmd/vault` Cleanup**
+   - Status: next recommended hardening item after `v0.9.0`.
    - Goal: keep internal coverage healthy and extract only command-independent logic that is already protected by tests.
    - Suggested branch: `coverage-next` or `cmd-vault-cleanup`.
 
-3. **Supply-Chain Hardening**
+### Near-Term Hardening
+
+2. **Supply-Chain Hardening**
    - Goal: consider SBOMs, signed checksum files, or platform-specific package signing after the current release process remains stable.
    - Suggested branch: `supply-chain-hardening`.
 
@@ -82,6 +78,7 @@ Use this section first when resuming work. The detailed backlog below explains e
 3. **Plaintext-output policy**: completed in `v0.6.0`; plaintext terminal/stdout output now requires explicit `--show`, `--stdout`, or `--json`.
 4. **Startup runtime permission hardening**: completed in `v0.7.0`; normal startup now tightens existing runtime file permissions to `0600` while `doctor` and `inspect-runtime` stay non-mutating.
 5. **Recovery inspect / doctor hardening**: completed in `v0.8.0`; `doctor` now reports recovery freshness and non-decrypting compatibility, and `inspect-runtime` includes a recovery relationship summary.
+6. **Token sync policy review**: completed in `v0.9.0`; legacy sync fallback decisions are visible, token sync freshness warnings are clearer, and policy docs include practical examples.
 
 ### Later Product Ideas
 
@@ -200,6 +197,7 @@ Docs-only candidates:
 - Fixed review findings in `v0.4.12`: read-only token imports now persist, main vault atomic saves keep the primary file in place until the replacement is ready, failed token commands no longer consume uses, token JSON failures return non-zero exit status, literal `--json` values are preserved for token `set`, and sensitive rewrites force `0600` permissions.
 - Updated coverage baselines to `38.9%` full repository and `86.6%` internal packages after the bugfix coverage pass.
 - Added recovery doctor/inspect hardening and updated coverage baselines to `41.3%` full repository and `85.6%` internal packages.
+- Added token sync legacy-fallback visibility, clearer shared-vault freshness warnings, practical token sync policy examples, and updated coverage baselines to `41.9%` full repository and `85.7%` internal packages.
 
 ## Current Verification
 
@@ -340,29 +338,30 @@ git pull
 git switch -c recovery-doctor-hardening
 ```
 
-### Next: Token Sync Policy Review
+### Completed / Watch: Token Sync Policy Review
 
-Priority: low-medium unless sync behavior changes again.
+Priority: completed in `v0.9.0`; watch if sync behavior changes again.
 
 Token sync is now timestamp-aware when both vaults have metadata, but it is still not a distributed merge system.
 
-Remaining concerns:
+Current behavior:
 
 - master commands import token-side writes automatically
 - legacy vaults without metadata fall back to simple import behavior
+- legacy metadata fallback decisions are counted and reported during import
+- `vault doctor` reports how far `shared-token-vault.json` appears ahead of `vault.db`
 - there is no revision counter or merge-base record
 - delete markers are timestamp metadata, not a full distributed tombstone system
 - sync is still local-file oriented, not multi-device oriented
 
-Possible directions:
+Future watch items:
 
 - introduce pending-write metadata before making sync explicit-only
 - add revision counters or merge-base records if conflict handling grows
 - upgrade delete markers into explicit tombstones if sync becomes more distributed
-- keep `vault doctor` warnings for shared-token-vault freshness
 - document any policy change before changing command behavior
 
-Suggested branch:
+Historical branch:
 
 ```bash
 git switch main
@@ -370,11 +369,11 @@ git pull
 git switch -c token-sync-next
 ```
 
-### Next: Quality Roadmap Beyond 9.86
+### Next: Quality Roadmap Beyond 9.87
 
 Priority: medium-high.
 
-These items are the most direct path beyond the current `9.86 / 10` assessment. Prefer them before adding new product features.
+These items are the most direct path beyond the current `9.87 / 10` assessment. Prefer them before adding new product features.
 
 Recommended order:
 
@@ -399,7 +398,7 @@ Current CI runs formatting, `go vet`, `go test ./...`, full coverage reporting, 
 
 Next actions:
 
-- keep `./internal/...` coverage at or above the current `80.0%` floor, with `85.6%` as the latest local baseline
+- keep `./internal/...` coverage at or above the current `80.0%` floor, with `85.7%` as the latest local baseline
 - raise `cmd/vault` coverage with focused unit tests or further extraction of command-independent logic where it improves clarity
 
 Suggested branch:

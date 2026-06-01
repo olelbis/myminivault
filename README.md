@@ -13,7 +13,7 @@
   <img alt="Go" src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white">
   <img alt="Latest release" src="https://img.shields.io/github/v/release/olelbis/myminivault?sort=semver">
   <img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/olelbis/myminivault.svg">
-  <img alt="Internal coverage" src="https://img.shields.io/badge/internal_coverage-85.6%25-brightgreen">
+  <img alt="Internal coverage" src="https://img.shields.io/badge/internal_coverage-85.7%25-brightgreen">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
   <img alt="Status" src="https://img.shields.io/badge/status-experimental-orange">
   <img alt="CLI" src="https://img.shields.io/badge/interface-CLI-2f3337">
@@ -120,6 +120,8 @@ vault use-token "$MYMV_TOKEN" get API_KEY --json
 ```json
 {"key":"API_KEY","value":"secret"}
 ```
+
+Token writes are staged in `shared-token-vault.json` and imported into the main vault by master-password commands or explicitly with `vault sync-tokens`. `vault doctor` warns when the shared token vault appears newer than the main vault, which usually means staged token writes should be synced.
 
 ## Screenshots
 
