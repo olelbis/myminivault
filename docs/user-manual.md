@@ -441,6 +441,7 @@ Sync policy:
 - ordinary password commands do not create token runtime files until token features are used
 - master mutations mirror the full main vault back to the shared vault after saving once token runtime files exist, so deletes remain deleted
 - conflict handling uses per-key sync timestamps when both vaults have metadata; legacy vaults without metadata fall back to simple import behavior
+- when `vault doctor` reports that `shared-token-vault.json` is newer than `vault.db`, run `sync-tokens` to persist staged token writes into the main vault
 
 ## Locking And Concurrent CLI Usage
 

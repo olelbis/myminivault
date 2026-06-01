@@ -282,14 +282,15 @@ func checkSharedVaultFreshness() doctorCheck {
 	}
 	if mainErr != nil {
 		if os.IsNotExist(mainErr) {
-			return doctorCheck{name: "token sync freshness", status: "WARN", detail: "shared token vault exists but main vault is missing"}
+			return doctorCheck{name: "token sync freshness", status: "WARN", detail: "shared token vault exists but main vault is missing; run vault inspect-runtime to confirm active files"}
 		}
 		return doctorCheck{name: "token sync freshness", status: "FAIL", detail: mainErr.Error()}
 	}
 	if sharedInfo.ModTime().After(mainInfo.ModTime()) {
-		return doctorCheck{name: "token sync freshness", status: "WARN", detail: "shared token vault newer than main vault; run vault sync-tokens or a master-password command"}
+		age := sharedInfo.ModTime().Sub(mainInfo.ModTime()).Round(time.Second)
+		return doctorCheck{name: "token sync freshness", status: "WARN", detail: fmt.Sprintf("shared token vault newer than main vault by %s; run vault sync-tokens to persist staged token writes", age)}
 	}
-	return doctorCheck{name: "token sync freshness", status: "OK", detail: "shared token vault not newer than main vault"}
+	return doctorCheck{name: "token sync freshness", status: "OK", detail: fmt.Sprintf("shared token vault not newer than main vault; main %s, shared %s", formatDoctorTime(mainInfo.ModTime()), formatDoctorTime(sharedInfo.ModTime()))}
 }
 
 func doctorIcon(status string) string {

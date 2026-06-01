@@ -11,6 +11,7 @@ type ImportResult struct {
 	Imported         int
 	Deleted          int
 	SkippedConflicts int
+	LegacyDecisions  int
 }
 
 // ImportSharedVault applies shared-token-vault changes to mainVault according
@@ -26,6 +27,9 @@ func ImportSharedVault(mainVault, sharedVault *model.ExtendedVault, now time.Tim
 
 	for key, value := range sharedVault.Data {
 		if ShouldImportSharedValue(mainVault, sharedVault, key) {
+			if UsesLegacyImportDecision(mainVault, sharedVault, key) {
+				result.LegacyDecisions++
+			}
 			mainVault.Data[key] = value
 			MarkKeyUpdatedAt(mainVault, key, now)
 			result.Imported++
@@ -42,6 +46,9 @@ func ImportSharedVault(mainVault, sharedVault *model.ExtendedVault, now time.Tim
 			mainUpdatedAt := UpdatedAt(mainVault, key)
 			if mainUpdatedAt.IsZero() || sharedDeletedAt.After(mainUpdatedAt) {
 				if _, exists := mainVault.Data[key]; exists {
+					if mainUpdatedAt.IsZero() {
+						result.LegacyDecisions++
+					}
 					delete(mainVault.Data, key)
 					MarkKeyDeletedAt(mainVault, key, now)
 					result.Deleted++
@@ -51,6 +58,18 @@ func ImportSharedVault(mainVault, sharedVault *model.ExtendedVault, now time.Tim
 	}
 
 	return result
+}
+
+// UsesLegacyImportDecision reports whether an import decision is falling back
+// because one side lacks per-key update metadata for key.
+func UsesLegacyImportDecision(mainVault, sharedVault *model.ExtendedVault, key string) bool {
+	if UpdatedAt(sharedVault, key).IsZero() {
+		return true
+	}
+	if _, exists := mainVault.Data[key]; exists {
+		return UpdatedAt(mainVault, key).IsZero()
+	}
+	return false
 }
 
 // ShouldImportSharedValue reports whether a shared value should overwrite the
