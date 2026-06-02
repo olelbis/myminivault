@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: clone or open the repository root, for example `/tmp/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.9.0`
+- Current baseline release: `v0.10.0`
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -15,7 +15,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `9.87 / 10`.
+Current assessment score: `9.88 / 10`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, macOS Keychain support for token master-key material, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -34,7 +34,8 @@ Main strengths:
 - tested `internal/commands` package for export/import/key validation helpers
 - tested `internal/clipboard` package for backend selection and clear-if-unchanged behavior
 - tested `internal/export` package for shell export rendering and restrictive file writes
-- internal package coverage at `85.7%`, with every tested internal package currently above `80.0%`
+- tested `internal/health` package for non-decrypting runtime metadata compatibility checks
+- internal package coverage at `86.0%`, with every tested internal package currently above `80.0%`
 - automated CLI smoke coverage for critical workflows in the top-level `tests` package
 - explicit handling for recovery, token sync, locking, backups, export, and password changes
 - a handoff backlog that can restart work from a fresh chat
@@ -60,16 +61,16 @@ Use this section first when resuming work. The detailed backlog below explains e
 
 ### Immediate Next Work
 
-1. **Coverage And `cmd/vault` Cleanup**
-   - Status: next recommended hardening item after `v0.9.0`.
-   - Goal: keep internal coverage healthy and extract only command-independent logic that is already protected by tests.
-   - Suggested branch: `coverage-next` or `cmd-vault-cleanup`.
+1. **Supply-Chain Hardening**
+   - Status: next recommended hardening item after `v0.10.0`.
+   - Goal: consider SBOMs, signed checksum files, or platform-specific package signing after the current release process remains stable.
+   - Suggested branch: `supply-chain-hardening`.
 
 ### Near-Term Hardening
 
-2. **Supply-Chain Hardening**
-   - Goal: consider SBOMs, signed checksum files, or platform-specific package signing after the current release process remains stable.
-   - Suggested branch: `supply-chain-hardening`.
+2. **Coverage And `cmd/vault` Cleanup**
+   - Goal: keep internal coverage healthy and extract only command-independent logic that is already protected by tests.
+   - Suggested branch: `coverage-next` or `cmd-vault-cleanup`.
 
 ### Completed Hardening Milestones
 
@@ -79,6 +80,7 @@ Use this section first when resuming work. The detailed backlog below explains e
 4. **Startup runtime permission hardening**: completed in `v0.7.0`; normal startup now tightens existing runtime file permissions to `0600` while `doctor` and `inspect-runtime` stay non-mutating.
 5. **Recovery inspect / doctor hardening**: completed in `v0.8.0`; `doctor` now reports recovery freshness and non-decrypting compatibility, and `inspect-runtime` includes a recovery relationship summary.
 6. **Token sync policy review**: completed in `v0.9.0`; legacy sync fallback decisions are visible, token sync freshness warnings are clearer, and policy docs include practical examples.
+7. **Initial `cmd/vault` cleanup pass**: completed in `v0.10.0`; recovery metadata compatibility moved into `internal/health` with focused tests.
 
 ### Later Product Ideas
 
@@ -198,6 +200,8 @@ Docs-only candidates:
 - Updated coverage baselines to `38.9%` full repository and `86.6%` internal packages after the bugfix coverage pass.
 - Added recovery doctor/inspect hardening and updated coverage baselines to `41.3%` full repository and `85.6%` internal packages.
 - Added token sync legacy-fallback visibility, clearer shared-vault freshness warnings, practical token sync policy examples, and updated coverage baselines to `41.9%` full repository and `85.7%` internal packages.
+- Added `internal/health` and moved recovery metadata compatibility checks out of `cmd/vault` doctor orchestration.
+- Updated coverage baselines to `42.2%` full repository and `86.0%` internal packages.
 
 ## Current Verification
 
@@ -298,6 +302,8 @@ internal/
     clipboard.go        clipboard backend detection and clear-if-unchanged helper
   export/
     export.go           shell export rendering and restrictive export-file writes
+  health/
+    metadata.go         non-decrypting runtime health metadata checks
 docs/
   user-manual.md        user-facing workflows and operational notes
   development.md        architecture, test, and release workflow notes
@@ -369,11 +375,11 @@ git pull
 git switch -c token-sync-next
 ```
 
-### Next: Quality Roadmap Beyond 9.87
+### Next: Quality Roadmap Beyond 9.88
 
 Priority: medium-high.
 
-These items are the most direct path beyond the current `9.87 / 10` assessment. Prefer them before adding new product features.
+These items are the most direct path beyond the current `9.88 / 10` assessment. Prefer them before adding new product features.
 
 Recommended order:
 
@@ -398,7 +404,7 @@ Current CI runs formatting, `go vet`, `go test ./...`, full coverage reporting, 
 
 Next actions:
 
-- keep `./internal/...` coverage at or above the current `80.0%` floor, with `85.7%` as the latest local baseline
+- keep `./internal/...` coverage at or above the current `80.0%` floor, with `86.0%` as the latest local baseline
 - raise `cmd/vault` coverage with focused unit tests or further extraction of command-independent logic where it improves clarity
 
 Suggested branch:

@@ -10,6 +10,7 @@ import (
 
 	vaultconfig "github.com/olelbis/myminivault/internal/config"
 	"github.com/olelbis/myminivault/internal/container"
+	"github.com/olelbis/myminivault/internal/health"
 	"github.com/olelbis/myminivault/internal/keychain"
 )
 
@@ -240,35 +241,16 @@ func checkRecoveryCompatibility() doctorCheck {
 	if parsed.Version < container.Version {
 		return doctorCheck{name: "recovery compatibility", status: "WARN", detail: fmt.Sprintf("older MYMV v%d recovery snapshot; current writer uses v%d", parsed.Version, container.Version)}
 	}
-	if issue := recoveryMetadataCompatibilityIssue(parsed.Metadata); issue != "" {
+	if issue := health.MetadataCompatibilityIssue(parsed.Metadata, health.CryptoConfig{
+		ScryptN:  config.ScryptN,
+		ScryptR:  config.ScryptR,
+		ScryptP:  config.ScryptP,
+		KeySize:  config.KeySize,
+		SaltSize: saltSize,
+	}); issue != "" {
 		return doctorCheck{name: "recovery compatibility", status: "WARN", detail: issue}
 	}
 	return doctorCheck{name: "recovery compatibility", status: "OK", detail: fmt.Sprintf("MYMV v%d recovery-vault metadata matches current config", parsed.Version)}
-}
-
-func recoveryMetadataCompatibilityIssue(meta container.Metadata) string {
-	if meta.Algorithm != container.AlgorithmAES256GCM {
-		return fmt.Sprintf("unexpected algorithm %s; expected %s", meta.Algorithm, container.AlgorithmAES256GCM)
-	}
-	if meta.KDF != container.KDFScrypt {
-		return fmt.Sprintf("unexpected KDF %s; expected %s", meta.KDF, container.KDFScrypt)
-	}
-	if meta.ScryptN != 0 && meta.ScryptN != config.ScryptN {
-		return fmt.Sprintf("scrypt_n=%d differs from current config %d; recovery may require the original config", meta.ScryptN, config.ScryptN)
-	}
-	if meta.ScryptR != 0 && meta.ScryptR != config.ScryptR {
-		return fmt.Sprintf("scrypt_r=%d differs from current config %d; recovery may require the original config", meta.ScryptR, config.ScryptR)
-	}
-	if meta.ScryptP != 0 && meta.ScryptP != config.ScryptP {
-		return fmt.Sprintf("scrypt_p=%d differs from current config %d; recovery may require the original config", meta.ScryptP, config.ScryptP)
-	}
-	if meta.KeySize != 0 && meta.KeySize != config.KeySize {
-		return fmt.Sprintf("key_size=%d differs from current config %d; recovery may require the original config", meta.KeySize, config.KeySize)
-	}
-	if meta.SaltSize != saltSize {
-		return fmt.Sprintf("salt_size=%d differs from expected %d", meta.SaltSize, saltSize)
-	}
-	return ""
 }
 
 func checkSharedVaultFreshness() doctorCheck {
