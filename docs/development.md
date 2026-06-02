@@ -54,6 +54,8 @@ internal/
     export.go           shell export rendering and restrictive export-file writes
   keychain/
     keychain.go         OS keychain detection and macOS token key storage
+  health/
+    metadata.go         non-decrypting runtime health metadata checks
 docs/
   man/
     vault.1              manual page installed by release packages
@@ -84,6 +86,7 @@ docs/
 - `internal/clipboard`: clipboard backend detection and best-effort clearing
 - `internal/export`: shell export rendering and restrictive export-file writes
 - `internal/keychain`: OS keychain availability detection and macOS token master-key storage through the `security` tool
+- `internal/health`: reusable runtime health checks that do not decrypt secrets
 
 The project still keeps command-line parsing, prompts, output, and top-level orchestration in `cmd/vault`. Future extractions should happen only when tests cover the behavior well enough.
 

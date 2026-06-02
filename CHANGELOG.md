@@ -2,6 +2,20 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.10.0] - 2026-06-02
+
+### Added
+
+- Added `internal/health` for reusable non-decrypting runtime health metadata checks.
+- Added focused tests for runtime metadata compatibility checks.
+
+### Changed
+
+- Moved recovery metadata compatibility logic out of `cmd/vault` doctor orchestration.
+- Updated development documentation for the new internal health package.
+- Updated coverage baselines to `42.2%` full repository and `86.0%` internal packages.
+- Updated the CLI-visible version to `0.10.0`.
+
 ## [v0.9.0] - 2026-06-01
 
 ### Added
