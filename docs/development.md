@@ -21,7 +21,9 @@ cmd/
     recovery_cli.go     recovery and password-change CLI flows
     storage_bridge.go   main vault load/save wrappers
     sync.go             main/shared vault synchronization
-    token_cli.go        token creation, validation, token commands
+    token_execute_cli.go token command execution and JSON/plaintext output policy
+    token_key_cli.go     token master-key storage and keychain selection
+    token_manage_cli.go  token creation, revocation, listing, audit status
     types.go            compatibility aliases for shared data structures
 internal/
   config/
@@ -39,7 +41,7 @@ internal/
   token/
     token.go            token signing, validation, registry, and shared token vault persistence
   lock/
-    lock.go             advisory file lock helper
+    lock.go             advisory file lock helper with timeout support
   paths/
     paths.go            runtime home resolution and secure directory creation
   audit/
@@ -79,7 +81,7 @@ docs/
 - `internal/recovery`: recovery keys, verifier checks, recovery snapshot decrypt, recovery file write
 - `internal/storage`: main vault load/save, checksum, atomic writes
 - `internal/token`: token signing, validation, registry, encrypted shared token vault
-- `internal/lock`: advisory file locking for cooperating local CLI processes
+- `internal/lock`: advisory file locking with timeout support for cooperating local CLI processes
 - `internal/audit`: redacted audit log formatting and writes
 - `internal/sync`: sync metadata and shared-vault import policy helpers
 - `internal/commands`: export/import/key validation helpers

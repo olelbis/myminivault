@@ -447,6 +447,8 @@ Sync policy:
 
 Vault commands use `.myminivault.lock` to serialize separate CLI processes while they access runtime vault files. This reduces cross-process write races around `vault.db`, token files, and the shared token vault.
 
+If another `vault` process keeps the lock busy, a command waits for a bounded time and then exits with a readable timeout message instead of waiting indefinitely.
+
 The lock is advisory. It coordinates cooperating `vault` processes, but it does not stop unrelated programs from editing or deleting files.
 
 ## Security Audit
