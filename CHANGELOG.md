@@ -2,6 +2,19 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.11.0] - 2026-07-02
+
+### Added
+
+- Added lock acquisition timeout coverage so a busy vault lock returns a readable error instead of waiting indefinitely.
+
+### Changed
+
+- Split the token CLI implementation into focused key-storage, token-execution, and token-management files under `cmd/vault`.
+- Changed top-level vault locking to use a bounded wait before reporting that another vault command may still be running.
+- Updated coverage baselines to `42.5%` full repository and `85.9%` internal packages.
+- Updated the CLI-visible version to `0.11.0`.
+
 ## [v0.10.0] - 2026-06-02
 
 ### Added
