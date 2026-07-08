@@ -2,6 +2,15 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.11.1] - 2026-07-08
+
+### Changed
+
+- Simplified main vault payload parsing by consolidating extended and legacy JSON decoding in `internal/storage`.
+- Added focused storage tests for extended payloads, legacy map payloads, missing data maps, and invalid JSON.
+- Updated coverage baselines to `42.6%` full repository and `86.0%` internal packages.
+- Updated the CLI-visible version to `0.11.1`.
+
 ## [v0.11.0] - 2026-07-02
 
 ### Added

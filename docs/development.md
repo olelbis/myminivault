@@ -79,7 +79,7 @@ docs/
 - `internal/crypto`: scrypt, AES-GCM, secure random bytes
 - `internal/model`: persisted data structures
 - `internal/recovery`: recovery keys, verifier checks, recovery snapshot decrypt, recovery file write
-- `internal/storage`: main vault load/save, checksum, atomic writes
+- `internal/storage`: main vault load/save, checksum, atomic writes, legacy payload parsing
 - `internal/token`: token signing, validation, registry, encrypted shared token vault
 - `internal/lock`: advisory file locking with timeout support for cooperating local CLI processes
 - `internal/audit`: redacted audit log formatting and writes
