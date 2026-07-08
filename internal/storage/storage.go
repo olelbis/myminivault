@@ -93,31 +93,27 @@ func LoadFile(file, password string, opts Options) (*model.ExtendedVault, []byte
 		return nil, nil, err
 	}
 
-	var vault model.ExtendedVault
-	if err := json.Unmarshal(decrypted, &vault); err != nil {
-		var oldVault map[string]string
-		if err := json.Unmarshal(decrypted, &oldVault); err != nil {
-			return nil, nil, err
-		}
-
-		vault = model.ExtendedVault{
-			Data: oldVault,
-			Metadata: model.VaultMetadata{
-				Version:   opts.Version,
-				CreatedAt: time.Now(),
-			},
-		}
+	vault, err := parseVaultPayload(decrypted, opts.Version)
+	if err != nil {
+		return nil, nil, err
 	}
+
+	return &vault, parsed.Salt, nil
+}
+
+func parseVaultPayload(payload []byte, currentVersion string) (model.ExtendedVault, error) {
+	var vault model.ExtendedVault
+	if err := json.Unmarshal(payload, &vault); err != nil {
+		legacy, err := parseLegacyPayload(payload)
+		if err != nil {
+			return model.ExtendedVault{}, err
+		}
+		return legacyVault(legacy, currentVersion), nil
+	}
+
 	if vault.Data == nil && vault.Metadata.Version == "" {
-		var oldVault map[string]string
-		if err := json.Unmarshal(decrypted, &oldVault); err == nil {
-			vault = model.ExtendedVault{
-				Data: oldVault,
-				Metadata: model.VaultMetadata{
-					Version:   opts.Version,
-					CreatedAt: time.Now(),
-				},
-			}
+		if legacy, err := parseLegacyPayload(payload); err == nil {
+			return legacyVault(legacy, currentVersion), nil
 		}
 	}
 
@@ -125,7 +121,23 @@ func LoadFile(file, password string, opts Options) (*model.ExtendedVault, []byte
 		vault.Data = make(map[string]string)
 	}
 
-	return &vault, parsed.Salt, nil
+	return vault, nil
+}
+
+func parseLegacyPayload(payload []byte) (map[string]string, error) {
+	var legacy map[string]string
+	err := json.Unmarshal(payload, &legacy)
+	return legacy, err
+}
+
+func legacyVault(legacy map[string]string, currentVersion string) model.ExtendedVault {
+	return model.ExtendedVault{
+		Data: legacy,
+		Metadata: model.VaultMetadata{
+			Version:   currentVersion,
+			CreatedAt: time.Now(),
+		},
+	}
 }
 
 // Save encrypts the vault payload and writes it atomically. When recovery is

@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: clone or open the repository root, for example `/tmp/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.11.0`
+- Current baseline release: `v0.11.1`
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -35,7 +35,7 @@ Main strengths:
 - tested `internal/clipboard` package for backend selection and clear-if-unchanged behavior
 - tested `internal/export` package for shell export rendering and restrictive file writes
 - tested `internal/health` package for non-decrypting runtime metadata compatibility checks
-- internal package coverage at `85.9%`, with every tested internal package currently above `80.0%`
+- internal package coverage at `86.0%`, with every tested internal package currently above `80.0%`
 - automated CLI smoke coverage for critical workflows in the top-level `tests` package
 - explicit handling for recovery, token sync, locking, backups, export, and password changes
 - a handoff backlog that can restart work from a fresh chat
@@ -62,7 +62,7 @@ Use this section first when resuming work. The detailed backlog below explains e
 ### Immediate Next Work
 
 1. **Supply-Chain Hardening**
-   - Status: next recommended hardening item after `v0.11.0`.
+   - Status: next recommended hardening item after `v0.11.1`.
    - Goal: consider SBOMs, signed checksum files, or platform-specific package signing after the current release process remains stable.
    - Suggested branch: `supply-chain-hardening`.
 
@@ -82,6 +82,7 @@ Use this section first when resuming work. The detailed backlog below explains e
 6. **Token sync policy review**: completed in `v0.9.0`; legacy sync fallback decisions are visible, token sync freshness warnings are clearer, and policy docs include practical examples.
 7. **Initial `cmd/vault` cleanup pass**: completed in `v0.10.0`; recovery metadata compatibility moved into `internal/health` with focused tests.
 8. **Token CLI split and lock timeout**: completed in `v0.11.0`; token command code is split into focused files and lock acquisition now has a bounded wait.
+9. **Storage legacy parse cleanup**: completed in `v0.11.1`; main vault payload parsing now has one tested path for extended and legacy JSON.
 
 ### Later Product Ideas
 
@@ -206,6 +207,8 @@ Docs-only candidates:
 - Split `cmd/vault/token_cli.go` into focused token key-storage, execution, and management files.
 - Added a bounded vault lock wait so busy locks return a readable timeout instead of hanging indefinitely.
 - Updated coverage baselines to `42.5%` full repository and `85.9%` internal packages.
+- Consolidated main vault payload parsing in `internal/storage` and added direct tests for extended and legacy JSON formats.
+- Updated coverage baselines to `42.6%` full repository and `86.0%` internal packages.
 
 ## Current Verification
 
@@ -410,7 +413,7 @@ Current CI runs formatting, `go vet`, `go test ./...`, full coverage reporting, 
 
 Next actions:
 
-- keep `./internal/...` coverage at or above the current `80.0%` floor, with `85.9%` as the latest local baseline
+- keep `./internal/...` coverage at or above the current `80.0%` floor, with `86.0%` as the latest local baseline
 - raise `cmd/vault` coverage with focused unit tests or further extraction of command-independent logic where it improves clarity
 
 Suggested branch:

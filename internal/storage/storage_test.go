@@ -116,6 +116,75 @@ func TestLoadFileInitializesMissingDataMap(t *testing.T) {
 	}
 }
 
+func TestParseVaultPayloadSupportsExtendedVault(t *testing.T) {
+	payload := []byte(`{"data":{"API_KEY":"secret"},"metadata":{"version":"saved"}}`)
+
+	vault, err := parseVaultPayload(payload, "current")
+	if err != nil {
+		t.Fatalf("parseVaultPayload: %v", err)
+	}
+	if vault.Data["API_KEY"] != "secret" {
+		t.Fatalf("secret = %q, want secret", vault.Data["API_KEY"])
+	}
+	if vault.Metadata.Version != "saved" {
+		t.Fatalf("version = %q, want saved", vault.Metadata.Version)
+	}
+}
+
+func TestParseVaultPayloadSupportsLegacyMap(t *testing.T) {
+	payload := []byte(`{"API_KEY":"legacy-secret"}`)
+
+	vault, err := parseVaultPayload(payload, "current")
+	if err != nil {
+		t.Fatalf("parseVaultPayload: %v", err)
+	}
+	if vault.Data["API_KEY"] != "legacy-secret" {
+		t.Fatalf("secret = %q, want legacy-secret", vault.Data["API_KEY"])
+	}
+	if vault.Metadata.Version != "current" {
+		t.Fatalf("version = %q, want current", vault.Metadata.Version)
+	}
+	if vault.Metadata.CreatedAt.IsZero() {
+		t.Fatal("legacy CreatedAt should be initialized")
+	}
+}
+
+func TestParseVaultPayloadInitializesMissingDataMap(t *testing.T) {
+	payload := []byte(`{"metadata":{"version":"saved"}}`)
+
+	vault, err := parseVaultPayload(payload, "current")
+	if err != nil {
+		t.Fatalf("parseVaultPayload: %v", err)
+	}
+	if vault.Data == nil {
+		t.Fatal("Data map should be initialized")
+	}
+	if vault.Metadata.Version != "saved" {
+		t.Fatalf("version = %q, want saved", vault.Metadata.Version)
+	}
+}
+
+func TestParseVaultPayloadKeepsEmptyExtendedMetadata(t *testing.T) {
+	payload := []byte(`{"metadata":{}}`)
+
+	vault, err := parseVaultPayload(payload, "current")
+	if err != nil {
+		t.Fatalf("parseVaultPayload: %v", err)
+	}
+	if vault.Data == nil {
+		t.Fatal("Data map should be initialized")
+	}
+	if vault.Metadata.Version != "" {
+		t.Fatalf("version = %q, want empty", vault.Metadata.Version)
+	}
+}
+
+func TestParseVaultPayloadRejectsInvalidJSON(t *testing.T) {
+	if _, err := parseVaultPayload([]byte("{not-json"), "current"); err == nil {
+		t.Fatal("expected invalid JSON error")
+	}
+}
+
 func TestLoadSupportsLegacyJSONVault(t *testing.T) {
 	opts := storageTestOptions(t.TempDir())
 	legacy := map[string]string{"API_KEY": "legacy-secret", "LONG_KEY_NAME": "legacy-value"}
