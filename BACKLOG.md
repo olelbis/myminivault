@@ -15,7 +15,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `9.9 / 10` after the severe-review fixes in `v0.12.5`.
+Current assessment score: `9.9 / 10` under the ordinary project model and `8.8 / 10` under the expanded paranoid review model after `v0.12.5`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, macOS Keychain support for token master-key material, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -35,7 +35,7 @@ Main strengths:
 - tested `internal/clipboard` package for backend selection and clear-if-unchanged behavior
 - tested `internal/export` package for shell export rendering and restrictive file writes
 - tested `internal/health` package for non-decrypting runtime metadata compatibility checks
-- internal package coverage at `86.0%`, with every tested internal package currently above `80.0%`
+- internal package coverage at `85.6%`, with every tested internal package currently above `80.0%`
 - automated CLI smoke coverage for critical workflows in the top-level `tests` package
 - explicit handling for recovery, token sync, locking, backups, export, and password changes
 - a handoff backlog that can restart work from a fresh chat
@@ -47,6 +47,9 @@ Main risks:
 - package-level unit coverage is strong across the core internal packages, while `cmd/vault` remains intentionally measured through both focused tests and end-to-end CLI smoke tests
 - `cmd/vault` still contains orchestration that may deserve future extraction when it produces a clearer command boundary
 - the security model is clearer, but it is still self-reviewed and not an external audit
+- secret values and compact tokens can still be exposed through process arguments when passed directly on the command line
+- runtime file operations do not yet reject symlinks defensively
+- authenticated containers detect tampering but do not prevent replacement with an older valid vault
 
 Strategic guidance:
 
@@ -61,14 +64,26 @@ Use this section first when resuming work. The detailed backlog below explains e
 
 ### Immediate Next Work
 
-1. **Supply-Chain Hardening**
-   - Status: next recommended hardening item after `v0.12.0`.
-   - Goal: consider SBOMs, signed checksum files, or platform-specific package signing after the current release process remains stable.
-   - Suggested branch: `supply-chain-hardening`.
+1. **Secret Input And Runtime Path Hardening**
+   - Status: highest-priority follow-up from the paranoid review after `v0.12.5`.
+   - Goal: add stdin/file-descriptor secret input, reduce direct secret/token exposure in process arguments, reject sensitive runtime symlinks, and use no-follow file opens where supported.
+   - Suggested branch: `secret-input-path-hardening`.
 
 ### Near-Term Hardening
 
-2. **Coverage And `cmd/vault` Cleanup**
+2. **Container KDF And Crash Consistency**
+   - Goal: define a safe policy for authenticated container KDF parameters, bounded compatibility, directory sync after atomic renames, and migration tests.
+   - Suggested branch: `container-runtime-hardening`.
+
+3. **Supply-Chain Hardening**
+   - Goal: generate an SBOM, pin third-party Actions to immutable commit SHAs, and evaluate signed tags/checksums and platform signing.
+   - Suggested branch: `supply-chain-hardening`.
+
+4. **Rollback Policy**
+   - Goal: design monotonic revision or trusted-state checks without breaking backup and recovery workflows. Treat this as a design task before implementation.
+   - Suggested branch: `rollback-policy`.
+
+5. **Coverage And `cmd/vault` Cleanup**
    - Goal: keep internal coverage healthy and extract only command-independent logic that is already protected by tests.
    - Suggested branch: `coverage-next` or `cmd-vault-cleanup`.
 
@@ -344,7 +359,7 @@ Current behavior:
 Future watch items:
 
 - revisit if a future recovery container version changes compatibility expectations
-- consider a dedicated `refresh-recovery` command if users need a safer way to update recovery snapshots without rotating the recovery key
+- keep `refresh-recovery` behavior and compatibility tests current as the recovery format evolves
 
 Historical branch:
 
@@ -385,18 +400,22 @@ git pull
 git switch -c token-sync-next
 ```
 
-### Next: Quality Roadmap Beyond 9.88
+### Next: Quality Roadmap Beyond 9.9
 
 Priority: medium-high.
 
-These items are the most direct path beyond the current `9.88 / 10` assessment. Prefer them before adding new product features.
+These items are the most direct path beyond the current `9.9 / 10` ordinary assessment and `8.8 / 10` paranoid assessment. Prefer them before adding new product features.
 
 Recommended order:
 
-1. keep Linux token key storage file-backed by design for now; revisit real Secret Service storage only if a reliable desktop/headless strategy emerges
-2. keep the internal coverage floor healthy as new internal packages are added
-3. continue reducing broad orchestration in `cmd/vault` only where tests already protect behavior
-4. add supply-chain hardening such as SBOMs, signed checksum files, or platform-specific package signing when the release process is ready
+1. add stdin/file-descriptor secret input and explicit process-argument warnings
+2. reject symlinks for sensitive runtime paths and use no-follow opens where supported
+3. bind KDF loading policy to authenticated container metadata with anti-DoS limits
+4. add directory sync after atomic renames and document crash-consistency guarantees
+5. generate SBOMs and pin third-party Actions to immutable commit SHAs
+6. design rollback detection around recovery and backup compatibility before implementation
+7. keep Linux token key storage file-backed until a reliable desktop/headless Secret Service strategy emerges
+8. keep the internal coverage floor healthy and reduce `cmd/vault` orchestration only when tests protect the boundary
 
 Suggested branches:
 
@@ -414,7 +433,7 @@ Current CI runs formatting, `go vet`, `go test ./...`, full coverage reporting, 
 
 Next actions:
 
-- keep `./internal/...` coverage at or above the current `80.0%` floor, with `86.0%` as the latest local baseline
+- keep `./internal/...` coverage at or above the current `80.0%` floor, with `85.6%` as the latest local baseline
 - raise `cmd/vault` coverage with focused unit tests or further extraction of command-independent logic where it improves clarity
 
 Suggested branch:

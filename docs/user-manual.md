@@ -87,6 +87,8 @@ Keys must:
 
 `get --show` prints plaintext to the terminal by explicit request. Use `copy` when terminal scrollback is a concern.
 
+Values passed directly to `vault set` and compact tokens passed to `vault use-token` are process arguments. They may be visible to process inspection, shell history, wrappers, monitoring, or crash diagnostics depending on the platform. Avoid recording these commands in persistent scripts or shared shell sessions. A stdin/file-descriptor alternative is planned but is not available in `v0.12.5`.
+
 ### Delete A Secret
 
 ```bash

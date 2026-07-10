@@ -192,7 +192,7 @@ git pull
 git switch -c <task-name>
 ```
 
-Keep branches small and merge with fast-forward when possible.
+Keep branches small. The current project workflow normally uses an explicit `--no-ff` merge commit so completed work remains visible in history.
 
 Docs-only maintenance can be committed directly on `main` when it only changes documentation or handoff notes and does not change Go code, workflows, release assets, generated package contents, CLI-visible behavior, version numbers, or tests. Examples include backlog cleanup, README wording, user manual clarification, development notes, and threat-model wording that documents existing behavior.
 
@@ -206,10 +206,10 @@ For each completed branch:
 2. Update the help banner in `cmd/vault/main.go`.
 3. Update `CHANGELOG.md`.
 4. Update `BACKLOG.md` when project state or priorities change.
-5. Run `go test ./...`.
+5. Run `go test -count=1 ./...` when behavior or smoke-test expectations changed; use the normal cached command for quick iteration.
 6. Commit the branch.
 7. Push the branch.
-8. Fast-forward merge to `main`.
+8. Merge to `main` with an explicit merge commit (`git merge --no-ff <branch>`).
 9. Run `go test ./...` again on `main`.
 10. Create and push the release tag.
 11. Create the GitHub release.

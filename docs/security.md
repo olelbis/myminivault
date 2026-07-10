@@ -38,6 +38,7 @@ It does not cover hosted infrastructure, remote synchronization services, browse
 - hardware-backed key storage
 - strong memory-hardening against local process inspection
 - protection from secrets copied into shell history, terminal scrollback, logs, screenshots, remote desktop tools, or clipboard managers
+- protection from secrets or compact tokens passed directly in process arguments
 - guaranteed recovery from every backup or historical vault state
 
 ## Protected Assets
@@ -103,11 +104,15 @@ The CLI process is trusted while it runs. Plaintext secrets, passwords, derived 
 
 The CLI disables core dumps on supported Unix-like systems as a best-effort mitigation, but this is not a sandbox and not a defense against same-user process inspection. Core storage APIs accept byte-slice passwords so callers can wipe their local password buffers after use; this reduces avoidable immutable string copies in the storage layer but does not guarantee full memory erasure in Go.
 
+Secret values passed to `vault set` and compact tokens passed to `vault use-token` are currently command-line arguments. Depending on the operating system and execution environment, process arguments may be visible to process inspection, monitoring, shell history, wrappers, or crash diagnostics. Avoid placing commands containing real secrets in persistent scripts or recorded shells. A stdin/file-descriptor input path is planned but not implemented in `v0.12.5`.
+
 ### Runtime File Boundary
 
 Runtime files are local files under `~/.myminivault/` by default. Encrypted vault files are designed to tolerate file copying better than plaintext files, but copied files still enable offline password guessing and may contain historical secrets.
 
 File permissions are an important local mitigation, not a complete security boundary. Normal startup tightens existing runtime files to `0600` when possible and fails early if a critical sensitive path cannot be secured. `vault doctor` and `vault inspect-runtime` are intentionally non-mutating and report the current state without auto-fixing it. They also report recovery freshness and non-decrypting recovery container compatibility so recovery drift is visible before the recovery path is needed.
+
+Sensitive runtime paths are not yet opened with a complete no-follow policy. A runtime directory controlled by another process under the same account, or an intentionally unsafe `MYMINIVAULT_HOME`, may expose symlink and file-replacement races. Use a private local runtime directory and do not treat `0700`/`0600` modes as protection from the same OS user.
 
 Newly saved encrypted runtime files include a small cleartext `MYMV` container header with a container format version, file kind, and non-sensitive crypto metadata. Current `MYMV v2` saves record details such as `AES-256-GCM`, `scrypt`, scrypt parameters, salt size, nonce size, and payload layout. The `MYMV v2` header, metadata, and salt are authenticated as AES-GCM additional authenticated data, so tampering with that cleartext context makes decryption fail. This supports safer inspection and future migrations without decrypting secrets. The header reveals that a file is a myminivault encrypted container and whether it is a main, recovery, or shared-token vault file; it does not reveal key names, values, recovery metadata, token contents, or encrypted vault metadata.
 
@@ -136,6 +141,8 @@ This is a local convenience model, not distributed synchronization. Per-key time
 GitHub Releases publish source tags, binary archives, and installable packages. Per-target checksum files and the aggregate `SHA256SUMS` manifest help detect accidental corruption or mismatched downloads. Release workflow artifacts also receive GitHub artifact attestations, which provide signed build provenance for assets produced by GitHub Actions.
 
 The project does not currently require manually signed commits or tags, and release packages are not notarized or signed with platform-specific installer certificates.
+
+Third-party Actions currently use version tags rather than immutable commit SHAs, and releases do not yet include an SBOM.
 
 ## Runtime Files
 
@@ -277,6 +284,7 @@ Current mitigations:
 | Terminal capture | Out of scope once plaintext is printed |
 | Clipboard capture | Partially mitigated by TTL clearing, but not prevented |
 | Runtime file tampering | Partially mitigated by authenticated encryption and checksums |
+| Replacement with an older valid vault | Not detected; authenticated encryption does not provide freshness or rollback protection |
 | Supply-chain compromise | Partially mitigated by CI, checksums, and GitHub artifact attestations; still not a full external audit or platform signing process |
 
 ## Operational Guidance
@@ -347,6 +355,12 @@ Recommended next steps:
 - keep hardening token sync if it moves beyond local-file workflows
 - decide whether revision counters, merge-base metadata, or fuller delete tombstones are needed
 - consider log rotation or retention controls if logs become more detailed
-- consider macOS Keychain or another OS key store for protecting `vault-token.key`
-- consider signed tags, SBOMs, signed checksum manifests, or platform-specific package signing later in the release process
+- add stdin/file-descriptor paths for secret values and compact tokens so direct process arguments are optional
+- reject symlinks for sensitive runtime paths and use no-follow opens where supported
+- define how authenticated KDF metadata controls loading, with strict anti-DoS bounds and legacy compatibility tests
+- sync runtime directories after atomic renames where supported and document the remaining crash-consistency limits
+- design rollback detection without undermining intentional backup and recovery restores
+- keep macOS Keychain support current and reconsider Linux Secret Service storage only with a reliable desktop/headless policy
+- pin third-party Actions to immutable commit SHAs and add SBOMs before stronger supply-chain claims
+- consider signed tags, signed checksum manifests, or platform-specific package signing later in the release process
 - avoid claiming production security without an external audit
