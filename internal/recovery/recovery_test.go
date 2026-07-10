@@ -42,6 +42,19 @@ func TestHashAndValidateKey(t *testing.T) {
 	}
 }
 
+func TestHashAndValidateKeyBytes(t *testing.T) {
+	recovery := &model.RecoveryData{}
+	key := []byte("RECOVERY-KEY")
+	HashKeyBytes(recovery, key)
+
+	if !ValidateKeyBytes(recovery, key) {
+		t.Fatal("expected byte key to validate")
+	}
+	if ValidateKeyBytes(recovery, []byte("WRONG-KEY")) {
+		t.Fatal("wrong byte key should not validate")
+	}
+}
+
 func TestDecryptVaultRoundTrip(t *testing.T) {
 	recoveryKey := "RECOVERY-KEY"
 	salt := []byte("1234567890123456")
@@ -52,6 +65,22 @@ func TestDecryptVaultRoundTrip(t *testing.T) {
 	loaded, err := DecryptVault(salt, encrypted, recoveryKey, opts)
 	if err != nil {
 		t.Fatalf("DecryptVault: %v", err)
+	}
+	if loaded.Data["API_KEY"] != "secret" {
+		t.Fatalf("secret = %q, want secret", loaded.Data["API_KEY"])
+	}
+}
+
+func TestDecryptVaultBytesRoundTrip(t *testing.T) {
+	recoveryKey := []byte("RECOVERY-KEY")
+	salt := []byte("1234567890123456")
+	opts := Options{Scrypt: testScrypt}
+	vault := recoveryTestVault(string(recoveryKey))
+	encrypted := encryptRecoveryVault(t, vault, string(recoveryKey), salt, opts)
+
+	loaded, err := DecryptVaultBytes(salt, encrypted, recoveryKey, opts)
+	if err != nil {
+		t.Fatalf("DecryptVaultBytes: %v", err)
 	}
 	if loaded.Data["API_KEY"] != "secret" {
 		t.Fatalf("secret = %q, want secret", loaded.Data["API_KEY"])

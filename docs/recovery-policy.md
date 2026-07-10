@@ -28,7 +28,7 @@ Treat `vault.db.recovery` plus the matching recovery key as equivalent to the ma
 
 New recovery snapshots use a dedicated random salt, separate from the main vault salt. This keeps the master-password encryption context and recovery-key encryption context independent while preserving the same container format.
 
-Older recovery snapshots that reused the main vault salt remain readable because each recovery file carries the salt needed to decrypt its own snapshot. No manual migration is required: the next successful recovery rewrite, such as `setup-recovery` or `recover`, writes the recovery snapshot with a dedicated recovery salt. `vault doctor` reports legacy shared-salt recovery snapshots as compatible and notes that they will be refreshed on the next recovery rewrite.
+Older recovery snapshots that reused the main vault salt remain readable because each recovery file carries the salt needed to decrypt its own snapshot. No manual migration is required: the next successful recovery rewrite, such as `setup-recovery`, `refresh-recovery`, or `recover`, writes the recovery snapshot with a dedicated recovery salt. `vault doctor` reports legacy shared-salt recovery snapshots as compatible and notes that they will be refreshed on the next recovery rewrite.
 
 ## Snapshot Behavior
 
@@ -37,6 +37,7 @@ Older recovery snapshots that reused the main vault salt remain readable because
 That currently happens when:
 
 - `setup-recovery` creates the first recovery key and saves the vault
+- `refresh-recovery` validates the recovery key and rewrites the snapshot from the current vault
 - `recover` decrypts the recovery snapshot, updates recovery metadata, and saves the vault with the new master password
 - a command saves the vault while the current process has the recovery key set
 
@@ -91,7 +92,6 @@ After rotating recovery, review old backups and exported copies of `vault.db.rec
 Future improvements to consider:
 
 - a dedicated `rotate-recovery` command with clearer output
-- a `refresh-recovery` command that asks for the recovery key and rewrites `vault.db.recovery` without changing the master password
 - richer recovery repair guidance after `vault doctor` reports a stale or incompatible recovery snapshot
 - versioned recovery metadata for future verifier migrations
 - clearer backup cleanup guidance after recovery rotation

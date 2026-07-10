@@ -132,7 +132,7 @@ This is a local convenience model, not distributed synchronization. Per-key time
 
 ### Release Boundary
 
-GitHub Releases publish source tags, binary archives, and installable packages. Release checksums help detect accidental corruption or mismatched downloads. Release workflow artifacts also receive GitHub artifact attestations, which provide signed build provenance for assets produced by GitHub Actions.
+GitHub Releases publish source tags, binary archives, and installable packages. Per-target checksum files and the aggregate `SHA256SUMS` manifest help detect accidental corruption or mismatched downloads. Release workflow artifacts also receive GitHub artifact attestations, which provide signed build provenance for assets produced by GitHub Actions.
 
 The project does not currently require manually signed commits or tags, and release packages are not notarized or signed with platform-specific installer certificates.
 
@@ -347,5 +347,5 @@ Recommended next steps:
 - decide whether revision counters, merge-base metadata, or fuller delete tombstones are needed
 - consider log rotation or retention controls if logs become more detailed
 - consider macOS Keychain or another OS key store for protecting `vault-token.key`
-- consider signed tags, signed release checksums, SBOMs, or platform-specific package signing later in the release process
+- consider signed tags, SBOMs, signed checksum manifests, or platform-specific package signing later in the release process
 - avoid claiming production security without an external audit

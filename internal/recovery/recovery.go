@@ -47,25 +47,47 @@ func GroupKey(encoded string) string {
 
 // ValidateKey checks whether key matches the verifier stored in RecoveryData.
 func ValidateKey(recovery *model.RecoveryData, key string) bool {
-	hash := sha256.Sum256([]byte(key))
+	keyBytes := []byte(key)
+	defer wipeBytes(keyBytes)
+	return ValidateKeyBytes(recovery, keyBytes)
+}
+
+// ValidateKeyBytes checks whether key matches the verifier stored in RecoveryData.
+func ValidateKeyBytes(recovery *model.RecoveryData, key []byte) bool {
+	hash := sha256.Sum256(key)
 	return hmac.Equal(recovery.RecoveryKeyHash, hash[:])
 }
 
 // HashKey stores the recovery key verifier in RecoveryData.
 func HashKey(recovery *model.RecoveryData, key string) {
-	hash := sha256.Sum256([]byte(key))
+	keyBytes := []byte(key)
+	defer wipeBytes(keyBytes)
+	HashKeyBytes(recovery, keyBytes)
+}
+
+// HashKeyBytes stores the recovery key verifier in RecoveryData.
+func HashKeyBytes(recovery *model.RecoveryData, key []byte) {
+	hash := sha256.Sum256(key)
 	recovery.RecoveryKeyHash = hash[:]
 }
 
 // DecryptVault decrypts a recovery snapshot and validates that the provided
 // recovery key belongs to the embedded vault metadata.
 func DecryptVault(salt, encryptedData []byte, recoveryKey string, opts Options, aad ...[]byte) (*model.ExtendedVault, error) {
+	recoveryKeyBytes := []byte(recoveryKey)
+	defer wipeBytes(recoveryKeyBytes)
+	return DecryptVaultBytes(salt, encryptedData, recoveryKeyBytes, opts, aad...)
+}
+
+// DecryptVaultBytes decrypts a recovery snapshot using a byte-slice recovery key.
+func DecryptVaultBytes(salt, encryptedData []byte, recoveryKey []byte, opts Options, aad ...[]byte) (*model.ExtendedVault, error) {
 	// The recovery key decrypts a recovery-encrypted vault snapshot, then the
 	// embedded recovery verifier proves the key belongs to this vault.
-	key, err := vaultcrypto.DeriveKey([]byte(recoveryKey), salt, opts.Scrypt)
+	key, err := vaultcrypto.DeriveKey(recoveryKey, salt, opts.Scrypt)
 	if err != nil {
 		return nil, fmt.Errorf("key derivation failed: %w", err)
 	}
+	defer wipeBytes(key)
 
 	var associatedData []byte
 	if len(aad) > 0 {
@@ -86,11 +108,17 @@ func DecryptVault(salt, encryptedData []byte, recoveryKey string, opts Options, 
 		return nil, fmt.Errorf("failed to parse vault data: %w", err)
 	}
 
-	if vault.Recovery == nil || !ValidateKey(vault.Recovery, recoveryKey) {
+	if vault.Recovery == nil || !ValidateKeyBytes(vault.Recovery, recoveryKey) {
 		return nil, errors.New("recovery key not found or invalid")
 	}
 
 	return &vault, nil
+}
+
+func wipeBytes(data []byte) {
+	for i := range data {
+		data[i] = 0
+	}
 }
 
 // SaveFile writes the recovery-encrypted vault snapshot next to the main vault.

@@ -1,4 +1,4 @@
-.TH VAULT 1 "July 11, 2026" "myminivault 0.12.1" "User Commands"
+.TH VAULT 1 "July 11, 2026" "myminivault 0.12.2" "User Commands"
 .SH NAME
 vault \- local encrypted command-line key/value vault
 .SH SYNOPSIS
@@ -52,6 +52,9 @@ Print vault metadata and summary counts.
 .TP
 .B setup-recovery
 Create or replace a high-entropy recovery key and recovery snapshot.
+.TP
+.B refresh-recovery
+Validate the recovery key and rewrite the recovery snapshot from the current vault.
 .TP
 .B test-recovery
 Validate a recovery key against the configured recovery metadata.
@@ -152,7 +155,7 @@ or
 .B export --output
 when terminal exposure matters.
 
-Release artifacts include SHA-256 checksums and GitHub artifact attestations
+Release artifacts include SHA-256 checksums, an aggregate SHA256SUMS manifest, and GitHub artifact attestations
 when built by the release workflow. Verify release assets before installing
 them in sensitive environments.
 .SH SEE ALSO

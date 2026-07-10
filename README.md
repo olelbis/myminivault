@@ -42,7 +42,7 @@ GitHub Releases also publish installable packages:
 - `.pkg` for macOS arm64
 - `.tar.gz` archives for direct unpacking
 
-Release assets include SHA-256 checksum files and GitHub artifact attestations when built by the release workflow.
+Release assets include per-target SHA-256 checksum files, an aggregate `SHA256SUMS` manifest, and GitHub artifact attestations when built by the release workflow.
 
 Token keychain support is intentionally platform-specific. On macOS, `token_key_storage=auto` prefers macOS Keychain for token master-key material when available. On Linux, token key storage is file-based by design for now; `vault doctor` can report Secret Service readiness when both a DBus session and `secret-tool` are present, but the supported Linux storage path remains the portable `vault-token.key` fallback.
 
@@ -104,6 +104,7 @@ Create a backup:
 | `export --output <file>` | Write shell-safe export lines to a restrictive plaintext file |
 | `import <file>` | Import values from a file |
 | `setup-recovery` | Create a recovery key |
+| `refresh-recovery` | Rewrite the recovery snapshot |
 | `recover` | Reset the master password with the recovery key |
 | `create-token` | Create temporary token access |
 | `use-token` | Use a temporary token |

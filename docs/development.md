@@ -213,7 +213,7 @@ For each completed branch:
 9. Run `go test ./...` again on `main`.
 10. Create and push the release tag.
 11. Create the GitHub release.
-12. Wait for the release package workflow to upload archives, `.deb`, `.rpm`, `.pkg`, checksums, and artifact attestations.
+12. Wait for the release package workflow to upload archives, `.deb`, `.rpm`, `.pkg`, per-target checksums, the aggregate `SHA256SUMS` manifest, and artifact attestations.
 13. Delete the completed branch locally and remotely.
 
 Current versioning style:
@@ -229,7 +229,7 @@ Release packaging currently publishes:
 - `.rpm` packages for Linux x86_64 and Linux aarch64
 - `.pkg` packages for macOS arm64
 - SHA-256 checksum manifests for each target
-- GitHub artifact attestations for workflow-built artifacts
+- an aggregate `SHA256SUMS` manifest and GitHub artifact attestations for workflow-built artifacts
 
 ## Runtime Files
 

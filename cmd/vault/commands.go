@@ -3,6 +3,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -224,26 +225,51 @@ func readSecurePassword() (string, error) {
 	return readPasswordPrompt("🔐 Password: ")
 }
 
+func readSecurePasswordBytes() ([]byte, error) {
+	return readPasswordPromptBytes("🔐 Password: ")
+}
+
 func readPasswordPrompt(prompt string) (string, error) {
+	password, err := readPasswordPromptBytes(prompt)
+	if err != nil {
+		return "", err
+	}
+	defer wipeBytes(password)
+	return string(password), nil
+}
+
+func readPasswordPromptBytes(prompt string) ([]byte, error) {
 	if term.IsTerminal(int(syscall.Stdin)) {
 		fmt.Print(prompt)
 		pwd, err := term.ReadPassword(int(syscall.Stdin))
 		fmt.Println()
 		if err == nil {
-			password := strings.TrimSpace(string(pwd))
+			password := bytes.TrimSpace(pwd)
 			if len(password) == 0 {
-				return "", errors.New("password cannot be empty")
+				wipeBytes(pwd)
+				return nil, errors.New("password cannot be empty")
 			}
-			return password, nil
+			out := append([]byte(nil), password...)
+			wipeBytes(pwd)
+			return out, nil
 		}
 	}
-	return readLinePrompt(prompt)
+	return readLinePromptBytes(prompt)
 }
 
 func readLinePrompt(prompt string) (string, error) {
+	line, err := readLinePromptBytes(prompt)
+	if err != nil {
+		return "", err
+	}
+	defer wipeBytes(line)
+	return string(line), nil
+}
+
+func readLinePromptBytes(prompt string) ([]byte, error) {
 	fmt.Print(prompt)
 
-	var line strings.Builder
+	line := make([]byte, 0, 64)
 	buffer := make([]byte, 1)
 	for {
 		n, err := os.Stdin.Read(buffer)
@@ -251,17 +277,19 @@ func readLinePrompt(prompt string) (string, error) {
 			if buffer[0] == '\n' {
 				break
 			}
-			line.WriteByte(buffer[0])
+			line = append(line, buffer[0])
 		}
 		if err != nil {
-			if line.Len() > 0 {
+			if len(line) > 0 {
 				break
 			}
-			return "", err
+			return nil, err
 		}
 	}
 
-	return strings.TrimSpace(line.String()), nil
+	out := append([]byte(nil), bytes.TrimSpace(line)...)
+	wipeBytes(line)
+	return out, nil
 }
 
 func validateKey(key string) error {

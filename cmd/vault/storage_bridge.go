@@ -9,13 +9,21 @@ import (
 func loadAndDecryptExtendedVault(password string) (*ExtendedVault, []byte, error) {
 	passwordBytes := []byte(password)
 	defer wipeBytes(passwordBytes)
-	return vaultstorage.LoadBytes(passwordBytes, storageOptions())
+	return loadAndDecryptExtendedVaultBytes(passwordBytes)
+}
+
+func loadAndDecryptExtendedVaultBytes(password []byte) (*ExtendedVault, []byte, error) {
+	return vaultstorage.LoadBytes(password, storageOptions())
 }
 
 func saveExtendedVault(vault *ExtendedVault, password string, salt []byte) error {
 	passwordBytes := []byte(password)
 	defer wipeBytes(passwordBytes)
-	return vaultstorage.SaveBytes(vault, passwordBytes, salt, storageOptions())
+	return saveExtendedVaultBytes(vault, passwordBytes, salt)
+}
+
+func saveExtendedVaultBytes(vault *ExtendedVault, password []byte, salt []byte) error {
+	return vaultstorage.SaveBytes(vault, password, salt, storageOptions())
 }
 
 func wipeBytes(data []byte) {
@@ -34,10 +42,11 @@ func tryLoadParsed(file string) (container.Parsed, error) {
 
 func storageOptions() vaultstorage.Options {
 	return vaultstorage.Options{
-		VaultFile:   vaultFile,
-		SaltSize:    saltSize,
-		Version:     vaultVersion,
-		RecoveryKey: getCurrentRecoveryKey(),
+		VaultFile:        vaultFile,
+		SaltSize:         saltSize,
+		Version:          vaultVersion,
+		RecoveryKey:      getCurrentRecoveryKey(),
+		RecoveryKeyBytes: getCurrentRecoveryKeyBytes(),
 		Scrypt: vaultcrypto.ScryptConfig{
 			N:       config.ScryptN,
 			R:       config.ScryptR,

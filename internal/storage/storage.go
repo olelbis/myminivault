@@ -20,6 +20,7 @@ type Options struct {
 	Version          string
 	Scrypt           vaultcrypto.ScryptConfig
 	RecoveryKey      string
+	RecoveryKeyBytes []byte
 	SaveRecoveryFile func(salt, recoveryCiphertext []byte, metadata ...container.Metadata) error
 }
 
@@ -185,9 +186,10 @@ func SaveBytes(vault *model.ExtendedVault, password []byte, salt []byte, opts Op
 		return err
 	}
 
-	if vault.Recovery != nil && opts.RecoveryKey != "" && opts.SaveRecoveryFile != nil {
+	recoveryKey := recoveryKeyBytes(opts)
+	if vault.Recovery != nil && len(recoveryKey) > 0 && opts.SaveRecoveryFile != nil {
 		recoverySalt := vaultcrypto.Random(opts.SaltSize)
-		recoveryKeyDerived, err := vaultcrypto.DeriveKey([]byte(opts.RecoveryKey), recoverySalt, opts.Scrypt)
+		recoveryKeyDerived, err := vaultcrypto.DeriveKey(recoveryKey, recoverySalt, opts.Scrypt)
 		if err != nil {
 			return err
 		}
@@ -206,6 +208,13 @@ func SaveBytes(vault *model.ExtendedVault, password []byte, salt []byte, opts Op
 	}
 
 	return SaveFileAtomic(opts.VaultFile, salt, ciphertext, meta)
+}
+
+func recoveryKeyBytes(opts Options) []byte {
+	if len(opts.RecoveryKeyBytes) > 0 {
+		return opts.RecoveryKeyBytes
+	}
+	return []byte(opts.RecoveryKey)
 }
 
 func wipeBytes(data []byte) {

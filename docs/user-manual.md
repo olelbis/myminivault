@@ -28,6 +28,7 @@ Keep these rules in mind:
 | Import shell-style secrets | `vault import secrets.env` |
 | Check local file health | `vault doctor` |
 | Create recovery access | `vault setup-recovery` |
+| Refresh recovery snapshot | `vault refresh-recovery` |
 | Test recovery access | `vault test-recovery` |
 | Create scoped temporary access | `vault create-token --keys="API_*" --duration="2h"` |
 | Import staged token writes | `vault sync-tokens` |
@@ -247,6 +248,14 @@ The recovery key alone is not enough to recover the vault, and `vault.db.recover
 ```
 
 Checks whether a recovery key matches the configured recovery data.
+
+### Refresh Recovery Snapshot
+
+```bash
+./bin/vault refresh-recovery
+```
+
+Asks for the recovery key, validates it, and rewrites `vault.db.recovery` from the current main vault without changing the recovery key or master password. Use this after important vault changes when recovery is part of your operational plan.
 
 ### Recover Master Password
 
