@@ -40,7 +40,13 @@ var fileOps = struct {
 // Load opens the primary vault, falls back to a backup only when the primary is
 // missing, and creates an empty vault when no persisted vault exists.
 func Load(password string, opts Options) (*model.ExtendedVault, []byte, error) {
-	vault, salt, err := LoadFile(opts.VaultFile, password, opts)
+	return LoadBytes([]byte(password), opts)
+}
+
+// LoadBytes is the byte-slice variant of Load. Callers that already hold
+// sensitive password material as bytes can wipe their buffer after this call.
+func LoadBytes(password []byte, opts Options) (*model.ExtendedVault, []byte, error) {
+	vault, salt, err := LoadFileBytes(opts.VaultFile, password, opts)
 	if err == nil {
 		return vault, salt, nil
 	}
@@ -48,7 +54,7 @@ func Load(password string, opts Options) (*model.ExtendedVault, []byte, error) {
 	// Only use the .bak fallback when the primary vault is missing. A bad
 	// password against an existing vault must fail instead of trying stale data.
 	if os.IsNotExist(err) {
-		vault, salt, err := LoadFile(opts.VaultFile+".bak", password, opts)
+		vault, salt, err := LoadFileBytes(opts.VaultFile+".bak", password, opts)
 		if err == nil {
 			return vault, salt, nil
 		}
@@ -70,6 +76,12 @@ func Load(password string, opts Options) (*model.ExtendedVault, []byte, error) {
 // LoadFile decrypts a specific vault file and returns both the vault payload
 // and the salt needed to save it again.
 func LoadFile(file, password string, opts Options) (*model.ExtendedVault, []byte, error) {
+	return LoadFileBytes(file, []byte(password), opts)
+}
+
+// LoadFileBytes decrypts a specific vault file using a byte-slice password and
+// returns both the vault payload and the salt needed to save it again.
+func LoadFileBytes(file string, password []byte, opts Options) (*model.ExtendedVault, []byte, error) {
 	parsed, err := tryLoadContainer(file, opts.SaltSize)
 	if err != nil {
 		return nil, nil, err
@@ -78,10 +90,11 @@ func LoadFile(file, password string, opts Options) (*model.ExtendedVault, []byte
 		return nil, nil, errors.New("unexpected container kind for main vault")
 	}
 
-	key, err := vaultcrypto.DeriveKey([]byte(password), parsed.Salt, opts.Scrypt)
+	key, err := vaultcrypto.DeriveKey(password, parsed.Salt, opts.Scrypt)
 	if err != nil {
 		return nil, nil, err
 	}
+	defer wipeBytes(key)
 
 	decrypted, err := vaultcrypto.DecryptWithAAD(parsed.Ciphertext, key, parsed.AssociatedData)
 	if err != nil {
@@ -143,15 +156,23 @@ func legacyVault(legacy map[string]string, currentVersion string) model.Extended
 // Save encrypts the vault payload and writes it atomically. When recovery is
 // configured, it also refreshes the recovery-encrypted snapshot.
 func Save(vault *model.ExtendedVault, password string, salt []byte, opts Options) error {
+	return SaveBytes(vault, []byte(password), salt, opts)
+}
+
+// SaveBytes encrypts the vault payload using a byte-slice password and writes
+// it atomically. It avoids creating an extra immutable password string in core
+// storage code, but callers remain responsible for wiping their own buffers.
+func SaveBytes(vault *model.ExtendedVault, password []byte, salt []byte, opts Options) error {
 	dataWithChecksum, err := marshalWithChecksum(vault)
 	if err != nil {
 		return err
 	}
 
-	masterKey, err := vaultcrypto.DeriveKey([]byte(password), salt, opts.Scrypt)
+	masterKey, err := vaultcrypto.DeriveKey(password, salt, opts.Scrypt)
 	if err != nil {
 		return err
 	}
+	defer wipeBytes(masterKey)
 
 	meta := containerMetadata(opts)
 	aad, err := container.AssociatedData(container.KindMainVault, salt, meta)
@@ -170,6 +191,7 @@ func Save(vault *model.ExtendedVault, password string, salt []byte, opts Options
 		if err != nil {
 			return err
 		}
+		defer wipeBytes(recoveryKeyDerived)
 		recoveryAAD, err := container.AssociatedData(container.KindRecoveryVault, recoverySalt, meta)
 		if err != nil {
 			return err
@@ -184,6 +206,12 @@ func Save(vault *model.ExtendedVault, password string, salt []byte, opts Options
 	}
 
 	return SaveFileAtomic(opts.VaultFile, salt, ciphertext, meta)
+}
+
+func wipeBytes(data []byte) {
+	for i := range data {
+		data[i] = 0
+	}
 }
 
 // SaveFileAtomic writes to a temporary file and renames it into place. Existing

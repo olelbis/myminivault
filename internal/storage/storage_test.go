@@ -53,6 +53,29 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 	}
 }
 
+func TestSaveLoadBytesRoundTrip(t *testing.T) {
+	opts := storageTestOptions(t.TempDir())
+	password := []byte("password")
+	vault := &model.ExtendedVault{
+		Data: map[string]string{"API_KEY": "secret"},
+		Metadata: model.VaultMetadata{
+			Version:   opts.Version,
+			CreatedAt: time.Date(2026, 5, 16, 10, 0, 0, 0, time.UTC),
+		},
+	}
+
+	if err := SaveBytes(vault, password, []byte("1234567890123456"), opts); err != nil {
+		t.Fatalf("SaveBytes: %v", err)
+	}
+	loaded, _, err := LoadBytes(password, opts)
+	if err != nil {
+		t.Fatalf("LoadBytes: %v", err)
+	}
+	if loaded.Data["API_KEY"] != "secret" {
+		t.Fatalf("loaded secret = %q, want secret", loaded.Data["API_KEY"])
+	}
+}
+
 func TestLoadRejectsChecksumMismatch(t *testing.T) {
 	opts := storageTestOptions(t.TempDir())
 	writeEncryptedPlaintext(t, opts, []byte("password"), []byte("1234567890123456"), append(bytes.Repeat([]byte{0x01}, sha256.Size), []byte(`{"data":{"A":"B"}}`)...))

@@ -2,6 +2,13 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.12.1] - 2026-07-11
+
+### Changed
+
+- Added byte-slice storage APIs for master-password load/save paths and wiped the CLI bridge's local password byte copies after use.
+- Updated the CLI-visible version to `0.12.1`.
+
 ## [v0.12.0] - 2026-07-10
 
 ### Changed

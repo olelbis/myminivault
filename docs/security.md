@@ -100,7 +100,7 @@ A modified executable becomes dangerous when a user runs it and provides credent
 
 The CLI process is trusted while it runs. Plaintext secrets, passwords, derived keys, and decrypted vault data may exist in process memory during command execution.
 
-The CLI disables core dumps on supported Unix-like systems as a best-effort mitigation, but this is not a sandbox and not a defense against same-user process inspection.
+The CLI disables core dumps on supported Unix-like systems as a best-effort mitigation, but this is not a sandbox and not a defense against same-user process inspection. Core storage APIs accept byte-slice passwords so callers can wipe their local password buffers after use; this reduces avoidable immutable string copies in the storage layer but does not guarantee full memory erasure in Go.
 
 ### Runtime File Boundary
 
