@@ -200,6 +200,7 @@ On normal startup, commands tighten existing runtime file permissions to `0600` 
 | `vault.db.recovery` | Recovery-encrypted vault copy |
 | `vault-token.key` | Local token master key when file-backed token key storage is used |
 | `shared-token-vault.json` | Encrypted shared vault used by token access |
+| `shared-token-vault.json.bak` | Previous encrypted shared vault retained during atomic replacement |
 | `vault-tokens.json` | Token registry metadata |
 | `vault.log` | Audit log |
 | `vault-config.json` | Optional config override |

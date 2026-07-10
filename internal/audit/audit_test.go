@@ -14,6 +14,9 @@ func TestFormatRedactsSensitiveContext(t *testing.T) {
 	if got := Format(TokenEntry, "get"); got != "TOKEN Action: get" {
 		t.Fatalf("token format = %q, want TOKEN Action: get", got)
 	}
+	if got := Format(TokenEntry, "get\nforged\tentry"); got != "TOKEN Action: getforgedentry" {
+		t.Fatalf("token format contains control characters: %q", got)
+	}
 }
 
 func TestWriteAppendsRedactedEntryWithRestrictivePermissions(t *testing.T) {

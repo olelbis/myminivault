@@ -12,10 +12,16 @@ import (
 
 func main() {
 	disableCoreDumps()
+	if err := run(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
 
+func run() error {
 	if len(os.Args) < 2 {
 		showUsage()
-		return
+		return nil
 	}
 
 	command := os.Args[1]
@@ -24,57 +30,53 @@ func main() {
 	switch command {
 	case "help", "--help", "-h":
 		showHelp()
-		return
+		return nil
 	}
 
 	if err := initRuntimePaths(); err != nil {
-		fmt.Printf("Runtime path error: %v\n", err)
-		return
+		return fmt.Errorf("runtime path error: %w", err)
 	}
 
 	if command == "doctor" {
 		handleDoctorCommand()
-		return
+		return nil
 	}
 	if command == "inspect-runtime" {
 		handleInspectRuntimeCommand()
-		return
+		return nil
 	}
 
 	if err := hardenRuntimeFilePermissions(); err != nil {
-		fmt.Printf("Runtime permission error: %v\n", err)
-		return
+		return fmt.Errorf("runtime permission error: %w", err)
 	}
 
 	if err := loadConfig(); err != nil {
-		fmt.Printf("Config error: %v\n", err)
-		return
+		return fmt.Errorf("config error: %w", err)
 	}
 
 	switch command {
 	case "config":
 		if len(os.Args) < 3 {
 			showConfig()
-			return
+			return nil
 		}
 		if err := handleConfigCommand(); err != nil {
-			fmt.Printf("Config error: %v\n", err)
+			return fmt.Errorf("config error: %w", err)
 		}
-		return
+		return nil
 	case "use-token":
 		if err := withVaultLock(executeWithToken); err != nil {
 			if tokenJSONRequested(os.Args) {
-				os.Exit(1)
+				return err
 			}
-			fmt.Printf("❌ Token access failed: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("❌ Token access failed: %w", err)
 		}
-		return
+		return nil
 	case "recover":
 		if err := withVaultLock(recoverMasterPassword); err != nil {
-			fmt.Printf("❌ Recovery failed: %v\n", err)
+			return fmt.Errorf("❌ Recovery failed: %w", err)
 		}
-		return
+		return nil
 	case "regenerate-token-key":
 		fmt.Print("⚠️  This will invalidate ALL existing tokens. Continue? (yes/no): ")
 		reader := bufio.NewReader(os.Stdin)
@@ -82,29 +84,27 @@ func main() {
 		if strings.TrimSpace(strings.ToLower(confirm)) == "yes" {
 			if err := withVaultLock(func() error {
 				key := generateRandom(32)
+				defer wipeBytes(key)
 				return saveTokenMasterKey(key)
 			}); err != nil {
-				fmt.Printf("❌ Failed: %v\n", err)
+				return fmt.Errorf("❌ Failed: %w", err)
 			} else {
 				fmt.Println("✅ New token master key generated")
 				fmt.Println("⚠️  All existing tokens are now invalid")
 			}
 		}
-		return
+		return nil
 	}
 
 	password, err := readSecurePasswordBytes()
 	if err != nil {
-		fmt.Printf("Error reading password: %v\n", err)
-		return
+		return fmt.Errorf("error reading password: %w", err)
 	}
 	defer wipeBytes(password)
 
-	if err := withVaultLock(func() error {
+	return withVaultLock(func() error {
 		return runPasswordCommandBytes(command, password)
-	}); err != nil {
-		fmt.Printf("%v\n", err)
-	}
+	})
 }
 
 func runPasswordCommand(command, password string) error {
@@ -265,7 +265,7 @@ func showUsage() {
 }
 
 func showHelp() {
-	fmt.Println(`🔐 myminivault CLI v0.12.3
+	fmt.Println(`🔐 myminivault CLI v0.12.4
 Author: olelbis
 
 BASIC COMMANDS:

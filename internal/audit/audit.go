@@ -3,6 +3,8 @@ package audit
 import (
 	"log"
 	"os"
+	"strings"
+	"unicode"
 )
 
 // EntryType identifies the audit event family without exposing secret-bearing
@@ -18,8 +20,22 @@ const (
 
 // Format returns the redacted log message for an audit entry.
 func Format(entryType EntryType, action string) string {
+	action = sanitizeAction(action)
 	if entryType == TokenEntry {
 		return "TOKEN Action: " + action
+	}
+	return action
+}
+
+func sanitizeAction(action string) string {
+	action = strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, action)
+	if action == "" {
+		return "unknown"
 	}
 	return action
 }

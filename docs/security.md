@@ -53,6 +53,7 @@ Treat these as sensitive:
 - `vault.db.bak`
 - `vault.db.recovery`
 - `shared-token-vault.json`
+- `shared-token-vault.json.bak`
 - `vault-tokens.json`
 - backup files such as `vault.db.<timestamp>.bak`
 - `vault.log` if command timing or action metadata reveals context
@@ -154,7 +155,7 @@ Security notes for `MYMINIVAULT_HOME`:
 | `vault.db.bak` | High | Historical encrypted secrets | Same encrypted format, restrictive writes |
 | `vault.db.recovery` | High | Recovery-encrypted snapshot exposure | High-entropy recovery key, restrictive writes |
 | `vault-token.key` | Critical | Token system compromise | Restrictive writes, `regenerate-token-key`, macOS Keychain support with file fallback |
-| `shared-token-vault.json` | High | Token-access vault exposure | Encrypted shared vault, token master key |
+| `shared-token-vault.json` and `.bak` | High | Token-access vault exposure | Encrypted current and previous shared vault, token master key |
 | `vault-tokens.json` | Medium | Token registry metadata leakage | Restrictive writes |
 | `vault.log` | Medium | Operational metadata leakage | Redacted key/token identifiers, optional logging |
 | `vault-config.json` | Low/Medium | Unsafe runtime configuration | Validation on load |

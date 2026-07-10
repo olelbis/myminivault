@@ -66,6 +66,23 @@ func TestLoadMasterKeyRejectsInvalidLength(t *testing.T) {
 	}
 }
 
+func TestLoadMasterKeyReportsReadError(t *testing.T) {
+	keyPath := filepath.Join(t.TempDir(), "vault-token.key")
+	if err := os.Mkdir(keyPath, 0700); err != nil {
+		t.Fatalf("mkdir key path: %v", err)
+	}
+	if _, err := LoadMasterKey(keyPath); err == nil {
+		t.Fatal("expected token key read error")
+	}
+}
+
+func TestSaveMasterKeyReportsWriteError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "missing", "vault-token.key")
+	if err := SaveMasterKey(path, bytesOf(0x42, 32)); err == nil {
+		t.Fatal("expected token key write error")
+	}
+}
+
 func TestGetOrCreateMasterKeyLoadsExistingKey(t *testing.T) {
 	keyFile := filepath.Join(t.TempDir(), "vault-token.key")
 	key := bytesOf(0x44, 32)
@@ -99,6 +116,25 @@ func TestGetOrCreateMasterKeyCreatesMissingKey(t *testing.T) {
 	}
 	if string(loaded) != string(key) {
 		t.Fatal("created key was not persisted")
+	}
+}
+
+func TestGetOrCreateMasterKeyDoesNotReplaceInvalidKey(t *testing.T) {
+	keyFile := filepath.Join(t.TempDir(), "vault-token.key")
+	original := []byte("invalid-existing-key")
+	if err := os.WriteFile(keyFile, original, 0600); err != nil {
+		t.Fatalf("write invalid key: %v", err)
+	}
+
+	if _, err := GetOrCreateMasterKey(Options{TokenKeyFile: keyFile}); err == nil {
+		t.Fatal("expected existing invalid key to fail")
+	}
+	got, err := os.ReadFile(keyFile)
+	if err != nil {
+		t.Fatalf("read invalid key: %v", err)
+	}
+	if !bytes.Equal(got, original) {
+		t.Fatal("existing invalid key was replaced")
 	}
 }
 
@@ -149,6 +185,14 @@ func TestLoadRegistryRejectsMalformedJSON(t *testing.T) {
 
 	if _, err := LoadRegistry(registryFile, "", ""); err == nil {
 		t.Fatal("expected malformed registry error")
+	}
+}
+
+func TestSaveRegistryReportsWriteError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "missing", "vault-tokens.json")
+	registry := &model.TokenRegistry{Tokens: make(map[string]string)}
+	if err := SaveRegistry(path, registry); err == nil {
+		t.Fatal("expected registry write error")
 	}
 }
 
@@ -349,6 +393,46 @@ func TestSaveVaultFileAtomicReportsCreateError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "failed to create temp file") {
 		t.Fatalf("error = %v, want temp file context", err)
+	}
+}
+
+func TestSaveVaultFileAtomicRejectsExistingDirectory(t *testing.T) {
+	sharedVault := filepath.Join(t.TempDir(), "shared-token-vault.json")
+	if err := os.Mkdir(sharedVault, 0700); err != nil {
+		t.Fatalf("mkdir shared vault: %v", err)
+	}
+
+	err := SaveVaultFileAtomic(sharedVault, []byte("1234567890123456"), []byte("encrypted"))
+	if err == nil || !strings.Contains(err.Error(), "is a directory") {
+		t.Fatalf("error = %v, want directory rejection", err)
+	}
+	if info, err := os.Stat(sharedVault); err != nil || !info.IsDir() {
+		t.Fatalf("existing directory was modified: info=%v err=%v", info, err)
+	}
+}
+
+func TestSaveVaultFileAtomicPreservesPreviousVersionAsBackup(t *testing.T) {
+	sharedVault := filepath.Join(t.TempDir(), "shared-token-vault.json")
+	if err := os.WriteFile(sharedVault, []byte("previous"), 0644); err != nil {
+		t.Fatalf("write previous vault: %v", err)
+	}
+
+	if err := SaveVaultFileAtomic(sharedVault, []byte("1234567890123456"), []byte("new")); err != nil {
+		t.Fatalf("SaveVaultFileAtomic: %v", err)
+	}
+	backup, err := os.ReadFile(sharedVault + ".bak")
+	if err != nil {
+		t.Fatalf("read backup: %v", err)
+	}
+	if string(backup) != "previous" {
+		t.Fatalf("backup = %q, want previous", backup)
+	}
+	info, err := os.Stat(sharedVault + ".bak")
+	if err != nil {
+		t.Fatalf("stat backup: %v", err)
+	}
+	if info.Mode().Perm() != 0600 {
+		t.Fatalf("backup mode = %04o, want 0600", info.Mode().Perm())
 	}
 }
 

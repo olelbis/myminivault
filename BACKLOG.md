@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: clone or open the repository root, for example `/tmp/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.12.3`
+- Current baseline release: `v0.12.4`
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -15,7 +15,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `9.88 / 10`.
+Current assessment score: `9.9 / 10` after the severe-review fixes in `v0.12.4`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, macOS Keychain support for token master-key material, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -44,8 +44,8 @@ Main risks:
 
 - the project handles real secrets, so the threat model must stay current as behavior changes
 - token/shared-vault synchronization is better guarded than before, but still conceptually complex
-- package-level unit coverage is now strong across the core internal packages, but more edge-case coverage is still useful as behavior grows
-- `cmd/vault` still contains some orchestration and command logic that may deserve future extraction
+- package-level unit coverage is strong across the core internal packages, while `cmd/vault` remains intentionally measured through both focused tests and end-to-end CLI smoke tests
+- `cmd/vault` still contains orchestration that may deserve future extraction when it produces a clearer command boundary
 - the security model is clearer, but it is still self-reviewed and not an external audit
 
 Strategic guidance:

@@ -19,6 +19,8 @@ func getOrCreateTokenMasterKey() ([]byte, error) {
 	}
 	if key, err := vaulttoken.LoadMasterKey(tokenKeyFile); err == nil {
 		return key, nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("failed to load token master key: %w", err)
 	}
 
 	fmt.Println("🔑 Generating secure token master key...")
@@ -78,6 +80,8 @@ func getOrCreateKeychainTokenMasterKey() ([]byte, error) {
 			fmt.Println("✅ Token master key migrated to macOS Keychain")
 		}
 		return key, nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("failed to load token master key for migration: %w", err)
 	}
 
 	fmt.Println("🔑 Generating secure token master key in macOS Keychain...")

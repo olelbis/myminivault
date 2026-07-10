@@ -1,5 +1,20 @@
 # Changelog
 
+## [v0.12.4] - 2026-07-11
+
+### Changed
+
+- Made CLI failures return a non-zero process status through a single top-level error boundary.
+- Strengthened shared token-vault atomic saves with close-error handling and a restrictive previous-version backup.
+- Sanitized control characters from audit action names.
+- Updated the backlog assessment and immediate priorities after the severe review.
+- Updated the CLI-visible version to `0.12.4`.
+
+### Fixed
+
+- Prevented an unreadable or malformed existing token master key from being silently replaced and invalidating tokens.
+- Added regression coverage for token-key preservation, token-vault backups, audit sanitization, and CLI failure exit codes.
+
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
 ## [v0.12.3] - 2026-07-11

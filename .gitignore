@@ -3,6 +3,7 @@ vault.db.*
 vault-token.key
 vault-tokens.json
 shared-token-vault.json
+shared-token-vault.json.bak
 vault.log
 bin/
 test.txt
