@@ -2,6 +2,14 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## Unreleased
+
+### Changed
+
+- Added `refresh-recovery` to rewrite the recovery snapshot from the current vault after validating the recovery key.
+- Added byte-slice recovery-key APIs and best-effort wiping for recovery and token encryption keys.
+- Added an aggregate release `SHA256SUMS` manifest to the package workflow.
+
 ## [v0.12.1] - 2026-07-11
 
 ### Changed

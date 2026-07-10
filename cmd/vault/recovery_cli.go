@@ -3,6 +3,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -77,6 +78,7 @@ func handleTestRecovery(vault *ExtendedVault) {
 }
 
 func recoverMasterPassword() error {
+	defer clearCurrentRecoveryKey()
 	fmt.Println("🔄 Master Password Recovery")
 
 	parsed, err := tryLoadParsed(vaultFile + ".recovery")
@@ -87,39 +89,42 @@ func recoverMasterPassword() error {
 		}
 	}
 
-	recoveryKey, err := readLinePrompt("🔑 Enter your recovery key: ")
+	recoveryKey, err := readLinePromptBytes("🔑 Enter your recovery key: ")
 	if err != nil {
 		return fmt.Errorf("failed to read recovery key: %w", err)
 	}
+	defer wipeBytes(recoveryKey)
 
-	setCurrentRecoveryKey(recoveryKey)
+	setCurrentRecoveryKeyBytes(recoveryKey)
 
-	vault, err := vaultrecovery.DecryptVault(parsed.Salt, parsed.Ciphertext, recoveryKey, recoveryOptions(), parsed.AssociatedData)
+	vault, err := vaultrecovery.DecryptVaultBytes(parsed.Salt, parsed.Ciphertext, recoveryKey, recoveryOptions(), parsed.AssociatedData)
 	if err != nil {
 		return err
 	}
 
-	newPassword, err := readPasswordPrompt("🔐 Enter new master password: ")
+	newPassword, err := readPasswordPromptBytes("🔐 Enter new master password: ")
 	if err != nil {
 		return fmt.Errorf("failed to read password: %w", err)
 	}
+	defer wipeBytes(newPassword)
 	if len(newPassword) == 0 {
 		return errors.New("password cannot be empty")
 	}
 
-	confirmPassword, err := readPasswordPrompt("🔐 Confirm new master password: ")
+	confirmPassword, err := readPasswordPromptBytes("🔐 Confirm new master password: ")
 	if err != nil {
 		return fmt.Errorf("failed to read password confirmation: %w", err)
 	}
+	defer wipeBytes(confirmPassword)
 
-	if newPassword != confirmPassword {
+	if !bytes.Equal(newPassword, confirmPassword) {
 		return errors.New("passwords don't match")
 	}
 
 	vault.Recovery.LastUsed = time.Now()
 	vault.Recovery.UseCount++
 
-	if err := saveExtendedVault(vault, newPassword, parsed.Salt); err != nil {
+	if err := saveExtendedVaultBytes(vault, newPassword, vaultcrypto.Random(saltSize)); err != nil {
 		return fmt.Errorf("failed to save vault with new password: %w", err)
 	}
 
@@ -128,29 +133,31 @@ func recoverMasterPassword() error {
 }
 
 func handleChangePassword(vault *ExtendedVault, salt []byte) {
-	newPassword, err := readPasswordPrompt("🔐 Enter new master password: ")
+	newPassword, err := readPasswordPromptBytes("🔐 Enter new master password: ")
 	if err != nil {
 		fmt.Printf("Error reading new password: %v\n", err)
 		return
 	}
+	defer wipeBytes(newPassword)
 
 	if len(newPassword) == 0 {
 		fmt.Println("❌ Password cannot be empty")
 		return
 	}
 
-	confirmPassword, err := readPasswordPrompt("🔐 Confirm new master password: ")
+	confirmPassword, err := readPasswordPromptBytes("🔐 Confirm new master password: ")
 	if err != nil {
 		fmt.Printf("Error reading confirmation: %v\n", err)
 		return
 	}
+	defer wipeBytes(confirmPassword)
 
-	if newPassword != confirmPassword {
+	if !bytes.Equal(newPassword, confirmPassword) {
 		fmt.Println("❌ Passwords don't match")
 		return
 	}
 
-	if err := saveExtendedVault(vault, newPassword, salt); err != nil {
+	if err := saveExtendedVaultBytes(vault, newPassword, salt); err != nil {
 		fmt.Printf("❌ Failed to save: %v\n", err)
 		return
 	}
@@ -172,10 +179,47 @@ func hashRecoveryKey(recovery *RecoveryData, key string) {
 
 func setCurrentRecoveryKey(key string) {
 	currentRecoveryKey = key
+	currentRecoveryKeyBytes = []byte(key)
+}
+
+func setCurrentRecoveryKeyBytes(key []byte) {
+	wipeBytes(currentRecoveryKeyBytes)
+	currentRecoveryKey = ""
+	currentRecoveryKeyBytes = append(currentRecoveryKeyBytes[:0], key...)
 }
 
 func getCurrentRecoveryKey() string {
 	return currentRecoveryKey
+}
+
+func getCurrentRecoveryKeyBytes() []byte {
+	return currentRecoveryKeyBytes
+}
+
+func clearCurrentRecoveryKey() {
+	currentRecoveryKey = ""
+	wipeBytes(currentRecoveryKeyBytes)
+	currentRecoveryKeyBytes = currentRecoveryKeyBytes[:0]
+}
+
+func handleRefreshRecovery(vault *ExtendedVault, salt []byte, password []byte) error {
+	if vault.Recovery == nil {
+		return errors.New("no recovery key configured; run vault setup-recovery first")
+	}
+	recoveryKey, err := readLinePromptBytes("🔑 Enter recovery key to refresh snapshot: ")
+	if err != nil {
+		return fmt.Errorf("failed to read recovery key: %w", err)
+	}
+	defer wipeBytes(recoveryKey)
+	if !vaultrecovery.ValidateKeyBytes(vault.Recovery, recoveryKey) {
+		return errors.New("invalid recovery key")
+	}
+	setCurrentRecoveryKeyBytes(recoveryKey)
+	if err := saveExtendedVaultBytes(vault, password, salt); err != nil {
+		return fmt.Errorf("failed to refresh recovery snapshot: %w", err)
+	}
+	fmt.Println("✅ Recovery snapshot refreshed")
+	return nil
 }
 
 func saveRecoveryFile(salt, recoveryCiphertext []byte, metadata ...container.Metadata) error {

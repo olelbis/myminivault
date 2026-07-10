@@ -104,12 +104,14 @@ func SaveEncryptedVault(vault *model.ExtendedVault, tokenVaultPath string, opts 
 	if err != nil {
 		return fmt.Errorf("failed to get token master key: %w", err)
 	}
+	defer wipeBytes(tokenKey)
 
 	salt := vaultcrypto.Random(opts.SaltSize)
 	key, err := vaultcrypto.DeriveKey(tokenKey, salt, opts.Scrypt)
 	if err != nil {
 		return err
 	}
+	defer wipeBytes(key)
 
 	meta := containerMetadata(opts)
 	aad, err := container.AssociatedData(container.KindSharedTokenVault, salt, meta)
@@ -144,11 +146,13 @@ func LoadEncryptedVault(tokenFilePath string, opts Options) (*model.ExtendedVaul
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token master key: %w", err)
 	}
+	defer wipeBytes(tokenKey)
 
 	key, err := vaultcrypto.DeriveKey(tokenKey, parsed.Salt, opts.Scrypt)
 	if err != nil {
 		return nil, err
 	}
+	defer wipeBytes(key)
 
 	decrypted, err := vaultcrypto.DecryptWithAAD(parsed.Ciphertext, key, parsed.AssociatedData)
 	if err != nil {
@@ -231,10 +235,23 @@ func GetOrCreateMasterKey(opts Options) ([]byte, error) {
 }
 
 func masterKey(opts Options) ([]byte, error) {
+	var key []byte
+	var err error
 	if opts.MasterKey != nil {
-		return opts.MasterKey()
+		key, err = opts.MasterKey()
+	} else {
+		key, err = GetOrCreateMasterKey(opts)
 	}
-	return GetOrCreateMasterKey(opts)
+	if err != nil {
+		return nil, err
+	}
+	return append([]byte(nil), key...), nil
+}
+
+func wipeBytes(data []byte) {
+	for i := range data {
+		data[i] = 0
+	}
 }
 
 // StripChecksum verifies and removes the checksum prefix from token vault data.

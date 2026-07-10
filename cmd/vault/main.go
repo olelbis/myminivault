@@ -93,21 +93,29 @@ func main() {
 		return
 	}
 
-	password, err := readSecurePassword()
+	password, err := readSecurePasswordBytes()
 	if err != nil {
 		fmt.Printf("Error reading password: %v\n", err)
 		return
 	}
+	defer wipeBytes(password)
 
 	if err := withVaultLock(func() error {
-		return runPasswordCommand(command, password)
+		return runPasswordCommandBytes(command, password)
 	}); err != nil {
 		fmt.Printf("%v\n", err)
 	}
 }
 
 func runPasswordCommand(command, password string) error {
-	extendedVault, salt, err := loadAndDecryptExtendedVault(password)
+	passwordBytes := []byte(password)
+	defer wipeBytes(passwordBytes)
+	return runPasswordCommandBytes(command, passwordBytes)
+}
+
+func runPasswordCommandBytes(command string, password []byte) error {
+	defer clearCurrentRecoveryKey()
+	extendedVault, salt, err := loadAndDecryptExtendedVaultBytes(password)
 	if err != nil {
 		return fmt.Errorf("error loading vault: %w", err)
 	}
@@ -132,7 +140,7 @@ func runPasswordCommand(command, password string) error {
 		if !tokenImportChanged {
 			return nil
 		}
-		return saveExtendedVault(extendedVault, password, salt)
+		return saveExtendedVaultBytes(extendedVault, password, salt)
 	}
 
 	switch command {
@@ -198,6 +206,8 @@ func runPasswordCommand(command, password string) error {
 	case "change-password":
 		handleChangePassword(extendedVault, salt)
 		return nil
+	case "refresh-recovery":
+		return handleRefreshRecovery(extendedVault, salt, password)
 
 	case "create-token":
 		handleCreateToken(extendedVault)
@@ -232,7 +242,7 @@ func runPasswordCommand(command, password string) error {
 		return nil
 	}
 
-	if err := saveExtendedVault(extendedVault, password, salt); err != nil {
+	if err := saveExtendedVaultBytes(extendedVault, password, salt); err != nil {
 		return fmt.Errorf("❌ Error saving vault: %w", err)
 	}
 
@@ -248,7 +258,7 @@ func runPasswordCommand(command, password string) error {
 func showUsage() {
 	fmt.Println("Usage: vault <command> [args]")
 	fmt.Println("Basic: set, get, copy, delete, export, list, search, clear, import, backup, stats")
-	fmt.Println("Recovery: setup-recovery, recover, test-recovery, change-password")
+	fmt.Println("Recovery: setup-recovery, refresh-recovery, recover, test-recovery, change-password")
 	fmt.Println("Tokens: create-token, list-tokens, revoke-token, use-token, token-info, cleanup-tokens")
 	fmt.Println("Sync: sync-tokens")
 	fmt.Println("Security: security-audit, doctor, inspect-runtime, config, regenerate-token-key, help")
@@ -274,6 +284,7 @@ BASIC COMMANDS:
 
 RECOVERY COMMANDS:
   setup-recovery        Generate recovery key
+  refresh-recovery      Rewrite recovery snapshot from current vault
   recover               Reset password with recovery key
   test-recovery         Test recovery key
   change-password       Change master password

@@ -611,6 +611,21 @@ func TestCLISmokeSetupAndTestRecovery(t *testing.T) {
 	requireContains(t, invalidOutput, "Invalid recovery key")
 }
 
+func TestCLISmokeRefreshRecoveryIncludesCurrentVaultData(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "API_KEY", "hello"))
+	_, recoveryKey := runSetupRecovery(t, bin, dir, "pass")
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "NEW_KEY", "fresh"))
+
+	refreshOutput := requireOK(t, runVault(t, bin, dir, "pass\n"+recoveryKey+"\n", "refresh-recovery"))
+	requireContains(t, refreshOutput, "Recovery snapshot refreshed")
+
+	requireContains(t, requireOK(t, runVault(t, bin, dir, recoveryKey+"\nnewpass\nnewpass\n", "recover")), "Master password changed successfully")
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "newpass\n", "get", "NEW_KEY", "--show")), "fresh")
+}
+
 func runSetupRecovery(t *testing.T, bin, dir, password string) (string, string) {
 	t.Helper()
 
