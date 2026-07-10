@@ -4,19 +4,16 @@ All notable project changes are recorded here. Application releases use Git tags
 
 ## [v0.12.3] - 2026-07-11
 
-### Fixed
-
-- Fixed the aggregate release `SHA256SUMS` workflow job to pass the repository explicitly when running without a checkout.
-- Updated the CLI-visible version to `0.12.3`.
-
-## [v0.12.2] - 2026-07-11
-
 ### Changed
 
 - Added `refresh-recovery` to rewrite the recovery snapshot from the current vault after validating the recovery key.
 - Added byte-slice recovery-key APIs and best-effort wiping for recovery and token encryption keys.
 - Added an aggregate release `SHA256SUMS` manifest to the package workflow.
-- Updated the CLI-visible version to `0.12.2`.
+- Updated the CLI-visible version to `0.12.3`.
+
+### Fixed
+
+- Fixed the aggregate release `SHA256SUMS` workflow job to pass the repository explicitly when running without a checkout.
 
 ## [v0.12.1] - 2026-07-11
 
