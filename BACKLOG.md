@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: clone or open the repository root, for example `/tmp/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.11.1`
+- Current baseline release: `v0.12.0`
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -62,7 +62,7 @@ Use this section first when resuming work. The detailed backlog below explains e
 ### Immediate Next Work
 
 1. **Supply-Chain Hardening**
-   - Status: next recommended hardening item after `v0.11.1`.
+   - Status: next recommended hardening item after `v0.12.0`.
    - Goal: consider SBOMs, signed checksum files, or platform-specific package signing after the current release process remains stable.
    - Suggested branch: `supply-chain-hardening`.
 
@@ -83,6 +83,7 @@ Use this section first when resuming work. The detailed backlog below explains e
 7. **Initial `cmd/vault` cleanup pass**: completed in `v0.10.0`; recovery metadata compatibility moved into `internal/health` with focused tests.
 8. **Token CLI split and lock timeout**: completed in `v0.11.0`; token command code is split into focused files and lock acquisition now has a bounded wait.
 9. **Storage legacy parse cleanup**: completed in `v0.11.1`; main vault payload parsing now has one tested path for extended and legacy JSON.
+10. **Dedicated recovery salt**: completed in `v0.12.0`; new recovery snapshots use a dedicated random salt while legacy shared-salt snapshots remain readable and are refreshed on the next recovery rewrite.
 
 ### Later Product Ideas
 
