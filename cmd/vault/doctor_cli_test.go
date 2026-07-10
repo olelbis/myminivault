@@ -76,6 +76,24 @@ func TestCheckRecoveryCompatibilityWarnsOnConfigMismatch(t *testing.T) {
 	}
 }
 
+func TestCheckRecoveryCompatibilityNotesLegacySharedSalt(t *testing.T) {
+	dir := t.TempDir()
+	restore := useDoctorTestRuntime(t, dir)
+	defer restore()
+
+	meta := doctorTestMetadata()
+	writeDoctorContainer(t, vaultFile, container.KindMainVault, meta)
+	writeDoctorContainer(t, vaultFile+".recovery", container.KindRecoveryVault, meta)
+
+	check := checkRecoveryCompatibility()
+	if check.status != "OK" {
+		t.Fatalf("status = %s, want OK", check.status)
+	}
+	if !strings.Contains(check.detail, "legacy shared salt") {
+		t.Fatalf("detail = %q, want legacy shared salt note", check.detail)
+	}
+}
+
 func TestPrintRecoveryInspectionSummaryIncludesFreshnessAndCompatibility(t *testing.T) {
 	dir := t.TempDir()
 	restore := useDoctorTestRuntime(t, dir)

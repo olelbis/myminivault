@@ -24,6 +24,12 @@ Recovery uses:
 
 Treat `vault.db.recovery` plus the matching recovery key as equivalent to the master password for that recovery snapshot. The recovery key alone is not enough, and the recovery file alone is not enough, but together they can recover the secrets stored in that snapshot. See [Security Model](security.md#recovery-flow) for the threat-model summary and incident response guidance.
 
+## Recovery Salt Policy
+
+New recovery snapshots use a dedicated random salt, separate from the main vault salt. This keeps the master-password encryption context and recovery-key encryption context independent while preserving the same container format.
+
+Older recovery snapshots that reused the main vault salt remain readable because each recovery file carries the salt needed to decrypt its own snapshot. No manual migration is required: the next successful recovery rewrite, such as `setup-recovery` or `recover`, writes the recovery snapshot with a dedicated recovery salt. `vault doctor` reports legacy shared-salt recovery snapshots as compatible and notes that they will be refreshed on the next recovery rewrite.
+
 ## Snapshot Behavior
 
 `vault.db.recovery` is updated only when the application can save a vault while the recovery key is available in memory.

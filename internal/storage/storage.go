@@ -165,11 +165,12 @@ func Save(vault *model.ExtendedVault, password string, salt []byte, opts Options
 	}
 
 	if vault.Recovery != nil && opts.RecoveryKey != "" && opts.SaveRecoveryFile != nil {
-		recoveryKeyDerived, err := vaultcrypto.DeriveKey([]byte(opts.RecoveryKey), salt, opts.Scrypt)
+		recoverySalt := vaultcrypto.Random(opts.SaltSize)
+		recoveryKeyDerived, err := vaultcrypto.DeriveKey([]byte(opts.RecoveryKey), recoverySalt, opts.Scrypt)
 		if err != nil {
 			return err
 		}
-		recoveryAAD, err := container.AssociatedData(container.KindRecoveryVault, salt, meta)
+		recoveryAAD, err := container.AssociatedData(container.KindRecoveryVault, recoverySalt, meta)
 		if err != nil {
 			return err
 		}
@@ -177,7 +178,7 @@ func Save(vault *model.ExtendedVault, password string, salt []byte, opts Options
 		if err != nil {
 			return err
 		}
-		if err := opts.SaveRecoveryFile(salt, recoveryCiphertext, meta); err != nil {
+		if err := opts.SaveRecoveryFile(recoverySalt, recoveryCiphertext, meta); err != nil {
 			return err
 		}
 	}

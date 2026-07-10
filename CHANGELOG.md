@@ -2,6 +2,15 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.12.0] - 2026-07-10
+
+### Changed
+
+- New recovery snapshots now use a dedicated random recovery salt instead of reusing the main vault salt.
+- Kept legacy shared-salt recovery snapshots readable and documented the automatic rewrite path.
+- Added a non-mutating `vault doctor` note for compatible legacy recovery snapshots that still share the main vault salt.
+- Updated the CLI-visible version to `0.12.0`.
+
 ## [v0.11.1] - 2026-07-08
 
 ### Changed

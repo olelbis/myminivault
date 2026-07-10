@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -250,7 +251,22 @@ func checkRecoveryCompatibility() doctorCheck {
 	}); issue != "" {
 		return doctorCheck{name: "recovery compatibility", status: "WARN", detail: issue}
 	}
-	return doctorCheck{name: "recovery compatibility", status: "OK", detail: fmt.Sprintf("MYMV v%d recovery-vault metadata matches current config", parsed.Version)}
+	detail := fmt.Sprintf("MYMV v%d recovery-vault metadata matches current config", parsed.Version)
+	if recoveryUsesMainVaultSalt(parsed.Salt) {
+		detail += "; legacy shared salt, refreshed on next recovery rewrite"
+	}
+	return doctorCheck{name: "recovery compatibility", status: "OK", detail: detail}
+}
+
+func recoveryUsesMainVaultSalt(recoverySalt []byte) bool {
+	mainParsed, err := container.ReadFile(vaultFile, saltSize)
+	if err != nil {
+		return false
+	}
+	if !mainParsed.Legacy && mainParsed.Kind != container.KindMainVault {
+		return false
+	}
+	return bytes.Equal(mainParsed.Salt, recoverySalt)
 }
 
 func checkSharedVaultFreshness() doctorCheck {
