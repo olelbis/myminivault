@@ -227,7 +227,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist/checksums
-          gh release download "$TAG_NAME" --pattern "*.sha256" --dir dist/checksums
+          gh release download "$TAG_NAME" --repo "$GITHUB_REPOSITORY" --pattern "*.sha256" --dir dist/checksums
           find dist/checksums -name "*.sha256" -print0 \
             | sort -z \
             | xargs -0 cat \
@@ -242,4 +242,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG_NAME: ${{ github.event.release.tag_name || inputs.tag }}
-        run: gh release upload "$TAG_NAME" dist/SHA256SUMS --clobber
+        run: gh release upload "$TAG_NAME" dist/SHA256SUMS --repo "$GITHUB_REPOSITORY" --clobber

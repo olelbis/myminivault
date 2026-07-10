@@ -2,6 +2,13 @@
 
 All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
 
+## [v0.12.3] - 2026-07-11
+
+### Fixed
+
+- Fixed the aggregate release `SHA256SUMS` workflow job to pass the repository explicitly when running without a checkout.
+- Updated the CLI-visible version to `0.12.3`.
+
 ## [v0.12.2] - 2026-07-11
 
 ### Changed
