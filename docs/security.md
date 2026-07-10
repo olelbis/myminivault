@@ -211,6 +211,7 @@ Primary risks:
 Current mitigations:
 
 - recovery key uses 32 random bytes encoded as grouped base32
+- new recovery snapshots use a dedicated random salt separate from the main vault salt
 - recovery file is written atomically with restrictive permissions
 - verifier metadata confirms that the recovery key belongs to the snapshot
 - `vault doctor` reports stale, missing, or container-incompatible recovery snapshots without decrypting them

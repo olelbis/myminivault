@@ -502,8 +502,11 @@ func TestSaveWritesRecoverySnapshotWhenConfigured(t *testing.T) {
 		t.Fatalf("Save: %v", err)
 	}
 
-	if !bytes.Equal(recoverySalt, salt) {
-		t.Fatalf("recovery salt = %q, want %q", recoverySalt, salt)
+	if len(recoverySalt) != opts.SaltSize {
+		t.Fatalf("recovery salt length = %d, want %d", len(recoverySalt), opts.SaltSize)
+	}
+	if bytes.Equal(recoverySalt, salt) {
+		t.Fatalf("recovery salt should be dedicated, got main vault salt %q", recoverySalt)
 	}
 	if len(recoveryCiphertext) == 0 {
 		t.Fatal("expected recovery ciphertext to be saved")
