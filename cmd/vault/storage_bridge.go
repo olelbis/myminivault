@@ -7,11 +7,21 @@ import (
 )
 
 func loadAndDecryptExtendedVault(password string) (*ExtendedVault, []byte, error) {
-	return vaultstorage.Load(password, storageOptions())
+	passwordBytes := []byte(password)
+	defer wipeBytes(passwordBytes)
+	return vaultstorage.LoadBytes(passwordBytes, storageOptions())
 }
 
 func saveExtendedVault(vault *ExtendedVault, password string, salt []byte) error {
-	return vaultstorage.Save(vault, password, salt, storageOptions())
+	passwordBytes := []byte(password)
+	defer wipeBytes(passwordBytes)
+	return vaultstorage.SaveBytes(vault, passwordBytes, salt, storageOptions())
+}
+
+func wipeBytes(data []byte) {
+	for i := range data {
+		data[i] = 0
+	}
 }
 
 func tryLoad(file string) ([]byte, []byte, error) {

@@ -610,12 +610,12 @@ Future token sync simplification:
 
 Priority: low-medium.
 
-The project now disables core dumps on supported Unix-like systems as a best-effort mitigation. It still cannot fully prevent memory dumps or same-user process inspection on a normal desktop, especially in Go. The goal is mitigation rather than a hard guarantee.
+The project now disables core dumps on supported Unix-like systems as a best-effort mitigation. Core storage APIs also support byte-slice master passwords so callers can wipe local password buffers after use. It still cannot fully prevent memory dumps or same-user process inspection on a normal desktop, especially in Go. The goal is mitigation rather than a hard guarantee.
 
 Ideas to revisit:
 
 - reduce plaintext lifetime in memory where practical
-- prefer `[]byte` over `string` for password/secret handling where the code can zero buffers afterward
+- continue moving password/secret handling toward `[]byte` where the code can zero buffers afterward
 - add best-effort zeroing for derived keys and password buffers where Go semantics make that meaningful
 - evaluate macOS Keychain for protecting `vault-token.key` or a future local wrapping key at rest
 
