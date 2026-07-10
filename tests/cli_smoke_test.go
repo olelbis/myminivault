@@ -30,7 +30,7 @@ const (
 	sharedTokenVault = "shared-token-vault.json"
 	tokenRegistry    = "vault-tokens.json"
 	saltSize         = 16
-	vaultVersion     = "0.12.3"
+	vaultVersion     = "0.12.4"
 	vaultHomeEnv     = "MYMINIVAULT_HOME"
 )
 
@@ -184,10 +184,7 @@ func TestCLISmokeWrongPasswordRejected(t *testing.T) {
 	requireOK(t, runVault(t, bin, dir, "correct\n", "set", "API_KEY", "hello"))
 
 	result := runVault(t, bin, dir, "wrong\n", "get", "API_KEY", "--show")
-	if result.err != nil {
-		t.Fatalf("vault prints load errors but exits zero; got err %v\n%s", result.err, result.output)
-	}
-	requireContains(t, result.output, "error loading vault")
+	requireFailedContains(t, result, "error loading vault")
 }
 
 func TestCLISmokeChangePassword(t *testing.T) {
@@ -198,10 +195,7 @@ func TestCLISmokeChangePassword(t *testing.T) {
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "oldpass\nnewpass\nnewpass\n", "change-password")), "Password changed successfully")
 
 	oldPasswordResult := runVault(t, bin, dir, "oldpass\n", "get", "API_KEY", "--show")
-	if oldPasswordResult.err != nil {
-		t.Fatalf("vault prints load errors but exits zero; got err %v\n%s", oldPasswordResult.err, oldPasswordResult.output)
-	}
-	requireContains(t, oldPasswordResult.output, "error loading vault")
+	requireFailedContains(t, oldPasswordResult, "error loading vault")
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "newpass\n", "get", "API_KEY", "--show")), "hello")
 }
 

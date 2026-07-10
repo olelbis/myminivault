@@ -23,7 +23,7 @@ const (
 	sharedTokenVaultName = "shared-token-vault.json"
 	lockFileName         = ".myminivault.lock"
 	saltSize             = 16
-	vaultVersion         = "0.12.3"
+	vaultVersion         = "0.12.4"
 )
 
 var (
@@ -90,11 +90,12 @@ func initRuntimePaths() error {
 
 func hardenRuntimeFilePermissions() error {
 	critical := map[string]bool{
-		vaultFile:               true,
-		vaultFile + ".bak":      true,
-		vaultFile + ".recovery": true,
-		tokenKeyFile:            true,
-		sharedTokenVault:        true,
+		vaultFile:                 true,
+		vaultFile + ".bak":        true,
+		vaultFile + ".recovery":   true,
+		tokenKeyFile:              true,
+		sharedTokenVault:          true,
+		sharedTokenVault + ".bak": true,
 	}
 	files := []string{
 		vaultFile,
@@ -105,6 +106,7 @@ func hardenRuntimeFilePermissions() error {
 		tokenRegistry,
 		tokenKeyFile,
 		sharedTokenVault,
+		sharedTokenVault + ".bak",
 		vaultLockFile,
 	}
 	if backups, err := filepath.Glob(vaultFile + ".*.bak"); err == nil {

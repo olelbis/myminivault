@@ -200,14 +200,49 @@ func SaveVaultFileAtomic(tokenVaultPath string, salt, data []byte, metadata ...c
 		return fmt.Errorf("failed to sync file: %w", err)
 	}
 
-	f.Close()
+	if err := f.Close(); err != nil {
+		os.Remove(tempFile)
+		return fmt.Errorf("failed to close temp file: %w", err)
+	}
+
+	hadPrimary := false
+	backupFile := tokenVaultPath + ".bak"
+	if info, err := os.Stat(tokenVaultPath); err == nil {
+		if info.IsDir() {
+			os.Remove(tempFile)
+			return errors.New("existing token vault path is a directory")
+		}
+		hadPrimary = true
+		if err := os.Rename(tokenVaultPath, backupFile); err != nil {
+			os.Remove(tempFile)
+			return fmt.Errorf("failed to preserve existing token vault: %w", err)
+		}
+		if err := os.Chmod(backupFile, 0600); err != nil {
+			_ = os.Rename(backupFile, tokenVaultPath)
+			os.Remove(tempFile)
+			return fmt.Errorf("failed to secure token vault backup: %w", err)
+		}
+	} else if !os.IsNotExist(err) {
+		os.Remove(tempFile)
+		return fmt.Errorf("failed to inspect existing token vault: %w", err)
+	}
 
 	if err := os.Rename(tempFile, tokenVaultPath); err != nil {
+		if hadPrimary {
+			_ = os.Rename(backupFile, tokenVaultPath)
+		}
 		os.Remove(tempFile)
 		return fmt.Errorf("failed to finalize save: %w", err)
 	}
 
-	return os.Chmod(tokenVaultPath, 0600)
+	if err := os.Chmod(tokenVaultPath, 0600); err != nil {
+		if hadPrimary {
+			_ = os.Remove(tokenVaultPath)
+			_ = os.Rename(backupFile, tokenVaultPath)
+		}
+		return fmt.Errorf("failed to secure token vault: %w", err)
+	}
+	return nil
 }
 
 func containerMetadata(opts Options) container.Metadata {
@@ -223,6 +258,8 @@ func containerMetadata(opts Options) container.Metadata {
 func GetOrCreateMasterKey(opts Options) ([]byte, error) {
 	if key, err := LoadMasterKey(opts.TokenKeyFile); err == nil {
 		return key, nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("failed to load token master key: %w", err)
 	}
 
 	key := vaultcrypto.Random(32)

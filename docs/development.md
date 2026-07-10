@@ -261,6 +261,7 @@ Runtime files are ignored by Git and should not be committed:
 - `vault.db.recovery`
 - `vault-token.key` when file-backed token key storage is used
 - `shared-token-vault.json`
+- `shared-token-vault.json.bak`
 - `vault-tokens.json`
 - `vault.log`
 - `vault-config.json`
