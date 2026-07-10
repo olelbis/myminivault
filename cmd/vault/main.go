@@ -13,7 +13,9 @@ import (
 func main() {
 	disableCoreDumps()
 	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		if !tokenJSONRequested(os.Args) {
+			fmt.Fprintln(os.Stderr, err)
+		}
 		os.Exit(1)
 	}
 }
@@ -265,7 +267,7 @@ func showUsage() {
 }
 
 func showHelp() {
-	fmt.Println(`🔐 myminivault CLI v0.12.4
+	fmt.Println(`🔐 myminivault CLI v0.12.5
 Author: olelbis
 
 BASIC COMMANDS:
