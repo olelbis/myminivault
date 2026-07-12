@@ -32,9 +32,7 @@ func handleSetupRecovery(vault *ExtendedVault) {
 		return
 	}
 	fmt.Printf("\n🔑 Your Recovery Key (SAVE THIS SAFELY!):\n")
-	fmt.Printf("┌─────────────────────────────────────────────┐\n")
-	fmt.Printf("│ %s │\n", recoveryKey)
-	fmt.Printf("└─────────────────────────────────────────────┘\n")
+	printBoxedValue(recoveryKey)
 
 	fmt.Print("\n📝 Type the recovery key to confirm you saved it: ")
 	reader := bufio.NewReader(os.Stdin)

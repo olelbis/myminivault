@@ -167,9 +167,7 @@ func handleCreateToken(vault *ExtendedVault) {
 	fmt.Printf("🔑 Permissions: %s\n", strings.Join(perms, ", "))
 	fmt.Printf("📊 Max Uses: %d\n", maxUses)
 	fmt.Printf("\n🎟️  Compact Token (use this with 'vault use-token'):\n")
-	fmt.Printf("┌─────────────────────────────────────────────┐\n")
-	fmt.Printf("│ %s │\n", signedToken)
-	fmt.Printf("└─────────────────────────────────────────────┘\n")
+	printBoxedValue(signedToken)
 	fmt.Printf("\n🔄 Token writes are stored in the shared token vault and imported by master commands.\n")
 }
 

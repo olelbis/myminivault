@@ -724,13 +724,13 @@ func seedRecoverableVault(t *testing.T, dir, password string) string {
 func extractCompactToken(t *testing.T, output string) string {
 	t.Helper()
 
-	re := regexp.MustCompile(`│\s*([A-Za-z0-9_-]+)\s*│`)
-	matches := re.FindStringSubmatch(output)
-	if len(matches) != 2 {
+	re := regexp.MustCompile(`[A-Za-z0-9_-]{40,}`)
+	matches := re.FindAllString(output, -1)
+	if len(matches) == 0 {
 		t.Fatalf("could not extract compact token from output:\n%s", output)
 	}
 
-	return matches[1]
+	return matches[len(matches)-1]
 }
 
 func parseJSONMap(t *testing.T, output string) map[string]any {
