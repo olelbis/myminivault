@@ -321,6 +321,9 @@ func TestSaveFileAtomicCreatesBackupAndReplacesPrimary(t *testing.T) {
 	if _, err := os.Stat(vaultFile + ".tmp"); !os.IsNotExist(err) {
 		t.Fatalf("temp file should not remain, stat err = %v", err)
 	}
+	if _, err := os.Stat(vaultFile + ".transaction"); !os.IsNotExist(err) {
+		t.Fatalf("transaction marker should not remain, stat err = %v", err)
+	}
 }
 
 func TestSaveFileAtomicReportsCreateError(t *testing.T) {
@@ -470,10 +473,91 @@ func TestSaveFileAtomicCreatesNewFileWithoutBackup(t *testing.T) {
 	if _, err := os.Stat(vaultFile + ".bak"); !os.IsNotExist(err) {
 		t.Fatalf("backup file should not exist, stat err = %v", err)
 	}
+	if _, err := os.Stat(vaultFile + ".transaction"); !os.IsNotExist(err) {
+		t.Fatalf("transaction marker should not remain, stat err = %v", err)
+	}
 	if info, err := os.Stat(vaultFile); err != nil {
 		t.Fatalf("stat current: %v", err)
 	} else if info.Mode().Perm() != 0600 {
 		t.Fatalf("current mode = %04o, want 0600", info.Mode().Perm())
+	}
+}
+
+func TestLoadRestoresBackupAfterInterruptedSave(t *testing.T) {
+	dir := t.TempDir()
+	opts := storageTestOptions(dir)
+	salt := []byte("1234567890123456")
+	writeVault(t, opts.VaultFile+".bak", "password", salt, &model.ExtendedVault{
+		Data:     map[string]string{"SOURCE": "backup"},
+		Metadata: model.VaultMetadata{Version: opts.Version, CreatedAt: time.Now()},
+	})
+	if err := os.WriteFile(opts.VaultFile, []byte("partial-primary"), 0600); err != nil {
+		t.Fatalf("write partial primary: %v", err)
+	}
+	if err := os.WriteFile(opts.VaultFile+".tmp", []byte("partial-temp"), 0600); err != nil {
+		t.Fatalf("write partial temp: %v", err)
+	}
+	if err := os.WriteFile(opts.VaultFile+".transaction", []byte("started\n"), 0600); err != nil {
+		t.Fatalf("write transaction marker: %v", err)
+	}
+
+	loaded, _, err := Load("password", opts)
+	if err != nil {
+		t.Fatalf("Load interrupted save: %v", err)
+	}
+	if loaded.Data["SOURCE"] != "backup" {
+		t.Fatalf("source = %q, want backup", loaded.Data["SOURCE"])
+	}
+	if _, err := os.Stat(opts.VaultFile + ".bak"); !os.IsNotExist(err) {
+		t.Fatalf("backup should be restored into primary, stat err = %v", err)
+	}
+	if _, err := os.Stat(opts.VaultFile + ".tmp"); !os.IsNotExist(err) {
+		t.Fatalf("temp file should be cleaned, stat err = %v", err)
+	}
+	if _, err := os.Stat(opts.VaultFile + ".transaction"); !os.IsNotExist(err) {
+		t.Fatalf("transaction marker should be cleaned, stat err = %v", err)
+	}
+}
+
+func TestLoadCleansInterruptedInitialSaveWithoutPrimary(t *testing.T) {
+	opts := storageTestOptions(t.TempDir())
+	if err := os.WriteFile(opts.VaultFile+".tmp", []byte("partial-temp"), 0600); err != nil {
+		t.Fatalf("write partial temp: %v", err)
+	}
+	if err := os.WriteFile(opts.VaultFile+".transaction", []byte("started\n"), 0600); err != nil {
+		t.Fatalf("write transaction marker: %v", err)
+	}
+
+	loaded, salt, err := Load("password", opts)
+	if err != nil {
+		t.Fatalf("Load interrupted initial save: %v", err)
+	}
+	if len(loaded.Data) != 0 {
+		t.Fatalf("loaded data = %+v, want empty", loaded.Data)
+	}
+	if len(salt) != opts.SaltSize {
+		t.Fatalf("salt length = %d, want %d", len(salt), opts.SaltSize)
+	}
+	if _, err := os.Stat(opts.VaultFile + ".tmp"); !os.IsNotExist(err) {
+		t.Fatalf("temp file should be cleaned, stat err = %v", err)
+	}
+	if _, err := os.Stat(opts.VaultFile + ".transaction"); !os.IsNotExist(err) {
+		t.Fatalf("transaction marker should be cleaned, stat err = %v", err)
+	}
+}
+
+func TestLoadReportsInterruptedSaveWithoutValidBackup(t *testing.T) {
+	opts := storageTestOptions(t.TempDir())
+	if err := os.WriteFile(opts.VaultFile, []byte("partial-primary"), 0600); err != nil {
+		t.Fatalf("write partial primary: %v", err)
+	}
+	if err := os.WriteFile(opts.VaultFile+".transaction", []byte("started\n"), 0600); err != nil {
+		t.Fatalf("write transaction marker: %v", err)
+	}
+
+	_, _, err := Load("password", opts)
+	if err == nil || !strings.Contains(err.Error(), "vault save appears to have been interrupted") {
+		t.Fatalf("error = %v, want interrupted save message", err)
 	}
 }
 

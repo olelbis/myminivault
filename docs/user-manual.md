@@ -575,6 +575,7 @@ Important behavior:
 | --- | --- |
 | `vault.db` | Main encrypted vault |
 | `vault.db.bak` | Backup of previous main vault version |
+| `vault.db.transaction` | Temporary marker used to detect and recover interrupted main-vault saves |
 | `vault.db.recovery` | Recovery-encrypted vault copy |
 | `vault-token.key` | Local token master key when file-backed token key storage is used |
 | `shared-token-vault.json` | Encrypted shared vault used by token access |

@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"time"
 
@@ -49,7 +50,12 @@ func Load(password string, opts Options) (*model.ExtendedVault, []byte, error) {
 func LoadBytes(password []byte, opts Options) (*model.ExtendedVault, []byte, error) {
 	vault, salt, err := LoadFileBytes(opts.VaultFile, password, opts)
 	if err == nil {
+		cleanupInterruptedSaveMarker(opts.VaultFile)
 		return vault, salt, nil
+	}
+
+	if recovered, recoveredSalt, recoveredErr, ok := recoverInterruptedSave(password, opts, err); ok {
+		return recovered, recoveredSalt, recoveredErr
 	}
 
 	// Only use the .bak fallback when the primary vault is missing. A bad
@@ -227,6 +233,17 @@ func wipeBytes(data []byte) {
 // vault data is moved to .bak before the final rename.
 func SaveFileAtomic(vaultFile string, salt, data []byte, metadata ...container.Metadata) error {
 	tempFile := vaultFile + ".tmp"
+	transactionFile := vaultFile + ".transaction"
+	if err := os.WriteFile(transactionFile, []byte(time.Now().UTC().Format(time.RFC3339Nano)+"\n"), 0600); err != nil {
+		return fmt.Errorf("create vault transaction marker: %w", err)
+	}
+	transactionActive := true
+	defer func() {
+		if transactionActive {
+			fileOps.remove(transactionFile)
+		}
+	}()
+
 	f, err := fileOps.openFile(tempFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
@@ -280,7 +297,48 @@ func SaveFileAtomic(vaultFile string, salt, data []byte, metadata ...container.M
 		fileOps.remove(tempFile)
 		return err
 	}
-	return fileOps.chmod(vaultFile, 0600)
+	if err := fileOps.chmod(vaultFile, 0600); err != nil {
+		return err
+	}
+	transactionActive = false
+	return fileOps.remove(transactionFile)
+}
+
+func recoverInterruptedSave(password []byte, opts Options, primaryErr error) (*model.ExtendedVault, []byte, error, bool) {
+	transactionFile := opts.VaultFile + ".transaction"
+	if _, err := fileOps.stat(transactionFile); os.IsNotExist(err) {
+		return nil, nil, nil, false
+	} else if err != nil {
+		return nil, nil, fmt.Errorf("inspect vault transaction marker: %w", err), true
+	}
+
+	backupFile := opts.VaultFile + ".bak"
+	if backupVault, backupSalt, err := LoadFileBytes(backupFile, password, opts); err == nil {
+		if renameErr := fileOps.rename(backupFile, opts.VaultFile); renameErr != nil {
+			return nil, nil, fmt.Errorf("restore interrupted vault backup: %w", renameErr), true
+		}
+		_ = fileOps.chmod(opts.VaultFile, 0600)
+		cleanupInterruptedSaveMarker(opts.VaultFile)
+		return backupVault, backupSalt, nil, true
+	}
+
+	if os.IsNotExist(primaryErr) {
+		cleanupInterruptedSaveMarker(opts.VaultFile)
+		return &model.ExtendedVault{
+			Data: make(map[string]string),
+			Metadata: model.VaultMetadata{
+				Version:   opts.Version,
+				CreatedAt: time.Now(),
+			},
+		}, vaultcrypto.Random(opts.SaltSize), nil, true
+	}
+
+	return nil, nil, fmt.Errorf("vault save appears to have been interrupted; primary vault could not be opened and no valid backup could be restored: %w", primaryErr), true
+}
+
+func cleanupInterruptedSaveMarker(vaultFile string) {
+	_ = fileOps.remove(vaultFile + ".transaction")
+	_ = fileOps.remove(vaultFile + ".tmp")
 }
 
 func containerMetadata(opts Options) container.Metadata {

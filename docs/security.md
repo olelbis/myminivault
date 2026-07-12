@@ -160,6 +160,7 @@ Security notes for `MYMINIVAULT_HOME`:
 | --- | --- | --- | --- |
 | `vault.db` | High | Offline password guessing, copied encrypted secrets | AES-GCM encryption, scrypt, restrictive writes |
 | `vault.db.bak` | High | Historical encrypted secrets | Same encrypted format, restrictive writes |
+| `vault.db.transaction` | Low | Interrupted-save state confusion | Temporary marker; used only to restore a valid backup or report a clear startup error |
 | `vault.db.recovery` | High | Recovery-encrypted snapshot exposure | High-entropy recovery key, restrictive writes |
 | `vault-token.key` | Critical | Token system compromise | Restrictive writes, `regenerate-token-key`, macOS Keychain support with file fallback |
 | `shared-token-vault.json` and `.bak` | High | Token-access vault exposure | Encrypted current and previous shared vault, token master key |
