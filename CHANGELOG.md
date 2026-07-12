@@ -1,5 +1,33 @@
 # Changelog
 
+## [v0.12.8] - 2026-07-12
+
+### Fixed
+
+- Made the CLI-visible version injectable at release build time with `-X main.vaultVersion=<version>`.
+- Updated release packaging to inject the Git tag version into Linux and macOS binaries.
+- Changed local development builds to report `vdev` instead of a stale release number.
+- Added regression coverage so `vault help` uses the injected version value.
+- Updated release documentation and version references for the new version-injection workflow.
+
+## [v0.12.7] - 2026-07-12
+
+### Fixed
+
+- Printed long recovery keys and compact tokens on a single plain line for safer copy/paste.
+- Kept the boxed display only for short values that fit without wrapping.
+- Updated CLI smoke tests for the single-line token output.
+
+## [v0.12.6] - 2026-07-12
+
+### Fixed
+
+- Added a main-vault transaction marker to detect interrupted saves.
+- Restored a valid `vault.db.bak` only when an interrupted-save marker proves recovery is appropriate.
+- Cleaned interrupted first-run temp state so a cancelled initial save can start cleanly.
+- Reported a clear interrupted-save error when no valid backup can be restored.
+- Documented the temporary `vault.db.transaction` runtime marker.
+
 ## [v0.12.5] - 2026-07-11
 
 ### Changed
@@ -16,7 +44,7 @@
 - Added regression coverage for token-key preservation, token-vault backups, audit sanitization, and CLI failure exit codes.
 - Kept token JSON failures machine-readable while returning a non-zero process status.
 
-All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and the CLI-visible version is kept in sync with the current release tag.
+All notable project changes are recorded here. Application releases use Git tags such as `v0.3.0`, and release package builds inject the tag-derived CLI-visible version with `-X main.vaultVersion=<version>`.
 
 ## [v0.12.3] - 2026-07-11
 

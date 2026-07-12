@@ -267,7 +267,7 @@ func showUsage() {
 }
 
 func showHelp() {
-	fmt.Println(`🔐 myminivault CLI v0.12.5
+	fmt.Printf(`🔐 myminivault CLI v%s
 Author: olelbis
 
 BASIC COMMANDS:
@@ -325,5 +325,5 @@ ENTERPRISE FEATURES:
   ⏰ Automatic cleanup of expired tokens
   🔐 Unique token master key per vault
   📝 Minimal configurable audit logging
-  ✅ Data integrity verification`)
+  ✅ Data integrity verification`, vaultVersion)
 }

@@ -166,6 +166,12 @@ Build the vault command:
 go build -o bin/vault ./cmd/vault
 ```
 
+Local builds show `vdev` in `vault help`. To emulate a release build locally, inject the version with ldflags:
+
+```bash
+go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.8" -o bin/vault ./cmd/vault
+```
+
 Suggested manual smoke-test pattern in an isolated temporary directory:
 
 ```bash
@@ -202,19 +208,18 @@ Create a normal task branch and release tag when a change affects executable beh
 
 For each completed branch:
 
-1. Update the CLI-visible version in `cmd/vault/config_cli.go`.
-2. Update the help banner in `cmd/vault/main.go`.
-3. Update `CHANGELOG.md`.
-4. Update `BACKLOG.md` when project state or priorities change.
-5. Run `go test -count=1 ./...` when behavior or smoke-test expectations changed; use the normal cached command for quick iteration.
-6. Commit the branch.
-7. Push the branch.
-8. Merge to `main` with an explicit merge commit (`git merge --no-ff <branch>`).
-9. Run `go test ./...` again on `main`.
-10. Create and push the release tag.
-11. Create the GitHub release.
-12. Wait for the release package workflow to upload archives, `.deb`, `.rpm`, `.pkg`, per-target checksums, the aggregate `SHA256SUMS` manifest, and artifact attestations.
-13. Delete the completed branch locally and remotely.
+1. Update `CHANGELOG.md`.
+2. Update `BACKLOG.md` when project state or priorities change.
+3. Run `go test -count=1 ./...` when behavior or smoke-test expectations changed; use the normal cached command for quick iteration.
+4. Commit the branch.
+5. Push the branch.
+6. Merge to `main` with an explicit merge commit (`git merge --no-ff <branch>`).
+7. Run `go test ./...` again on `main`.
+8. Create and push the release tag.
+9. Create the GitHub release with a title matching only the tag, such as `v0.12.8`.
+10. Wait for the release package workflow to upload archives, `.deb`, `.rpm`, `.pkg`, per-target checksums, the aggregate `SHA256SUMS` manifest, and artifact attestations.
+11. Verify one packaged binary or release build with `vault help`; it should show the tag version injected by `-X main.vaultVersion=<version>`.
+12. Delete the completed branch locally and remotely.
 
 Current versioning style:
 

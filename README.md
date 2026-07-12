@@ -52,6 +52,12 @@ Build the CLI from the repository root:
 go build -o bin/vault ./cmd/vault
 ```
 
+Local builds display the CLI version as `dev`. Release assets inject the Git tag version during packaging with Go ldflags, for example:
+
+```bash
+go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.8" -o bin/vault ./cmd/vault
+```
+
 Run it:
 
 ```bash
@@ -213,7 +219,7 @@ On normal startup, commands tighten existing runtime file permissions to `0600` 
 
 Each release is published as a Git tag and a GitHub Release, with notes recorded in `CHANGELOG.md`. Release assets currently include Linux and macOS archives, Linux `.deb`/`.rpm` packages, macOS `.pkg` packages, SHA-256 checksum files, and GitHub artifact attestations.
 
-The CLI-visible version is kept in sync with the current release tag. Patch releases are used for documentation, tests, packaging, fixes, and small refactors. Minor releases are reserved for user-facing behavior changes or larger security/compatibility work.
+The CLI-visible version is injected from the release tag when GitHub release assets are built. Local development builds use `dev` unless `main.vaultVersion` is set with Go ldflags. Patch releases are used for documentation, tests, packaging, fixes, and small refactors. Minor releases are reserved for user-facing behavior changes or larger security/compatibility work.
 
 If the vault file format changes, the release notes should include migration guidance and any compatibility limits.
 

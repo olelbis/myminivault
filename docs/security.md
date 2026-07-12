@@ -104,7 +104,7 @@ The CLI process is trusted while it runs. Plaintext secrets, passwords, derived 
 
 The CLI disables core dumps on supported Unix-like systems as a best-effort mitigation, but this is not a sandbox and not a defense against same-user process inspection. Core storage APIs accept byte-slice passwords so callers can wipe their local password buffers after use; this reduces avoidable immutable string copies in the storage layer but does not guarantee full memory erasure in Go.
 
-Secret values passed to `vault set` and compact tokens passed to `vault use-token` are currently command-line arguments. Depending on the operating system and execution environment, process arguments may be visible to process inspection, monitoring, shell history, wrappers, or crash diagnostics. Avoid placing commands containing real secrets in persistent scripts or recorded shells. A stdin/file-descriptor input path is planned but not implemented in `v0.12.5`.
+Secret values passed to `vault set` and compact tokens passed to `vault use-token` are currently command-line arguments. Depending on the operating system and execution environment, process arguments may be visible to process inspection, monitoring, shell history, wrappers, or crash diagnostics. Avoid placing commands containing real secrets in persistent scripts or recorded shells. A stdin/file-descriptor input path is planned but not implemented yet.
 
 ### Runtime File Boundary
 

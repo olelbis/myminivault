@@ -23,10 +23,10 @@ const (
 	sharedTokenVaultName = "shared-token-vault.json"
 	lockFileName         = ".myminivault.lock"
 	saltSize             = 16
-	vaultVersion         = "0.12.5"
 )
 
 var (
+	vaultVersion            = "dev"
 	runtimeHome             string
 	vaultFile               = vaultFileName
 	configFile              = configFileName

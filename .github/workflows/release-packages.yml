@@ -61,7 +61,7 @@ jobs:
           PACKAGE="myminivault"
 
           mkdir -p dist/package
-          go build -trimpath -ldflags="-s -w" -o dist/package/vault ./cmd/vault
+          go build -trimpath -ldflags="-s -w -X main.vaultVersion=${VERSION}" -o dist/package/vault ./cmd/vault
           cp README.md LICENSE docs/man/vault.1 dist/package/
           tar -C dist/package -czf "dist/${PACKAGE}_${TAG_NAME}_${TARGET}.tar.gz" vault vault.1 README.md LICENSE
 
@@ -175,7 +175,7 @@ jobs:
           PACKAGE="myminivault"
 
           mkdir -p dist/package
-          go build -trimpath -ldflags="-s -w" -o dist/package/vault ./cmd/vault
+          go build -trimpath -ldflags="-s -w -X main.vaultVersion=${VERSION}" -o dist/package/vault ./cmd/vault
           cp README.md LICENSE docs/man/vault.1 dist/package/
           tar -C dist/package -czf "dist/${PACKAGE}_${TAG_NAME}_${TARGET}.tar.gz" vault vault.1 README.md LICENSE
 
