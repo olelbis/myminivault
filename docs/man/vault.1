@@ -1,4 +1,4 @@
-.TH VAULT 1 "July 12, 2026" "myminivault 0.12.8" "User Commands"
+.TH VAULT 1 "July 13, 2026" "myminivault 0.12.9" "User Commands"
 .SH NAME
 vault \- local encrypted command-line key/value vault
 .SH SYNOPSIS
@@ -18,6 +18,9 @@ and should not be treated as a production password manager.
 .TP
 .B set <key> <value>
 Store or update a secret value.
+.TP
+.B set <key> --stdin
+Store or update a secret value read from standard input.
 .TP
 .B get <key> --show
 Print a stored value to the terminal by explicit request.

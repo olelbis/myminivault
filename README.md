@@ -101,6 +101,7 @@ Create a backup:
 | Command | Purpose |
 | --- | --- |
 | `set <key> <value>` | Store or update a value |
+| `set <key> --stdin` | Store a value read from stdin instead of process arguments |
 | `get <key> --show` | Print a stored value intentionally |
 | `copy <key>` | Copy a value to the clipboard without printing it |
 | `delete <key>` | Delete a key |

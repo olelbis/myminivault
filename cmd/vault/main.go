@@ -147,9 +147,10 @@ func runPasswordCommandBytes(command string, password []byte) error {
 
 	switch command {
 	case "set":
-		handleSetCommand(extendedVault.Data)
-		if len(os.Args) == 4 {
-			markKeyUpdated(extendedVault, os.Args[2])
+		if updatedKey, ok := handleSetCommand(extendedVault.Data); ok {
+			markKeyUpdated(extendedVault, updatedKey)
+		} else {
+			return saveImportedTokenChanges()
 		}
 	case "get":
 		handleGetCommand(extendedVault.Data)
@@ -272,6 +273,7 @@ Author: olelbis
 
 BASIC COMMANDS:
   set <key> <value>     Set a key-value pair
+  set <key> --stdin     Read the value from stdin
   get <key> --show      Print plaintext value for a key
   copy <key> [--ttl=30s] Copy value to clipboard and clear it when supported
   delete <key>          Delete a key

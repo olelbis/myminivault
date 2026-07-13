@@ -23,22 +23,47 @@ import (
 )
 
 // Command handlers (unchanged)
-func handleSetCommand(vault map[string]string) {
+func handleSetCommand(vault map[string]string) (string, bool) {
 	if vault == nil {
 		fmt.Println("❌ Vault data not initialized")
-		return
+		return "", false
 	}
 
 	if len(os.Args) != 4 {
 		fmt.Println("Usage: vault set <key> <value>")
-		return
+		fmt.Println("       vault set <key> --stdin")
+		return "", false
 	}
 	if err := validateKey(os.Args[2]); err != nil {
 		fmt.Printf("Invalid key: %v\n", err)
-		return
+		return "", false
 	}
-	vault[os.Args[2]] = os.Args[3]
-	fmt.Printf("✅ Key '%s' set\n", os.Args[2])
+
+	value := os.Args[3]
+	if value == "--stdin" {
+		stdinValue, err := readValueFromStdin(os.Stdin)
+		if err != nil {
+			fmt.Printf("❌ Failed to read value from stdin: %v\n", err)
+			return "", false
+		}
+		value = stdinValue
+	}
+
+	key := os.Args[2]
+	vault[key] = value
+	fmt.Printf("✅ Key '%s' set\n", key)
+	return key, true
+}
+
+func readValueFromStdin(reader io.Reader) (string, error) {
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return "", err
+	}
+	value := string(data)
+	value = strings.TrimSuffix(value, "\n")
+	value = strings.TrimSuffix(value, "\r")
+	return value, nil
 }
 
 func handleGetCommand(vault map[string]string) {

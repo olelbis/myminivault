@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestShellQuote(t *testing.T) {
 	tests := map[string]string{
@@ -30,6 +33,26 @@ func TestRenderExportSortsAndQuotes(t *testing.T) {
 	want := "export A_KEY='apostrophe'\\''s'\nexport Z_KEY='last'\n"
 	if got != want {
 		t.Fatalf("renderExport = %q, want %q", got, want)
+	}
+}
+
+func TestReadValueFromStdinTrimsOneTrailingNewline(t *testing.T) {
+	got, err := readValueFromStdin(strings.NewReader("secret\n"))
+	if err != nil {
+		t.Fatalf("readValueFromStdin: %v", err)
+	}
+	if got != "secret" {
+		t.Fatalf("value = %q, want secret", got)
+	}
+}
+
+func TestReadValueFromStdinPreservesEmbeddedNewlines(t *testing.T) {
+	got, err := readValueFromStdin(strings.NewReader("line one\nline two\n"))
+	if err != nil {
+		t.Fatalf("readValueFromStdin: %v", err)
+	}
+	if got != "line one\nline two" {
+		t.Fatalf("value = %q, want embedded newline preserved", got)
 	}
 }
 

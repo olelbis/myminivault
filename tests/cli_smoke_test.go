@@ -143,6 +143,14 @@ func TestCLISmokeBasicVaultCommands(t *testing.T) {
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY", "--show")), "not found")
 }
 
+func TestCLISmokeSetValueFromStdin(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\nsecret-from-stdin\n", "set", "API_KEY", "--stdin")), "Key 'API_KEY' set")
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY", "--show")), "secret-from-stdin")
+}
+
 func TestCLISmokeRuntimeHomeKeepsVaultOutOfWorkingDirectory(t *testing.T) {
 	bin := buildVaultBinary(t)
 	workDir := t.TempDir()

@@ -22,6 +22,7 @@ Keep these rules in mind:
 | Goal | Command |
 | --- | --- |
 | Add or update a secret | `vault set KEY value` |
+| Add or update a secret from stdin | `printf '%s' "$SECRET" \| vault set KEY --stdin` |
 | Print one secret intentionally | `vault get KEY --show` |
 | Copy one secret without terminal output | `vault copy KEY --ttl=30s` |
 | Export secrets to a restrictive file | `vault export --output secrets.env` |
@@ -75,6 +76,14 @@ The master password is never stored directly. It derives the encryption key used
 ./bin/vault set API_KEY secret-value
 ```
 
+Prefer stdin when the value should not appear directly in process arguments or shell history:
+
+```bash
+printf '%s' "$API_KEY_VALUE" | ./bin/vault set API_KEY --stdin
+```
+
+`set --stdin` reads the remaining standard input after the master password prompt. One trailing newline is removed so `echo secret | vault set KEY --stdin` stores `secret`, while embedded newlines are preserved.
+
 Keys must:
 
 - not be empty
@@ -89,7 +98,7 @@ Keys must:
 
 `get --show` prints plaintext to the terminal by explicit request. Use `copy` when terminal scrollback is a concern.
 
-Values passed directly to `vault set` and compact tokens passed to `vault use-token` are process arguments. They may be visible to process inspection, shell history, wrappers, monitoring, or crash diagnostics depending on the platform. Avoid recording these commands in persistent scripts or shared shell sessions. A stdin/file-descriptor alternative is planned but is not implemented yet.
+Values passed directly to `vault set KEY value` and compact tokens passed to `vault use-token` are process arguments. They may be visible to process inspection, shell history, wrappers, monitoring, or crash diagnostics depending on the platform. Prefer `vault set KEY --stdin` for real secrets, and avoid recording commands containing secrets or compact tokens in persistent scripts or shared shell sessions.
 
 ### Delete A Secret
 

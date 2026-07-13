@@ -182,6 +182,12 @@ printf 'oldpass\n' | ./vault set TEST_KEY hello
 printf 'oldpass\n' | ./vault get TEST_KEY --show
 ```
 
+For secret-input smoke testing without placing the value in process arguments:
+
+```bash
+printf 'oldpass\nsecret-from-stdin\n' | ./vault set TEST_KEY --stdin
+```
+
 The automated CLI smoke tests live in `./tests`, create temporary directories, and use fake data. Do not run manual smoke commands in a directory that contains real vault files unless that is intentional.
 
 Current automated checks cover CLI smoke flows, token lifecycle behavior, token JSON output, config error handling, `vault doctor`, `vault inspect-runtime`, shell-safe import/export round trips, export-to-file behavior, clipboard clear behavior, audit-log redaction, disabled audit logging, token sync metadata decisions, token master-key and compact-token helper behavior, core unit behavior, and package-level coverage for `internal/storage`, `internal/token`, `internal/recovery`, `internal/lock`, `internal/audit`, `internal/sync`, `internal/commands`, `internal/clipboard`, `internal/export`, `internal/container`, `internal/paths`, `internal/config`, and `internal/keychain`. CI enforces `80.0%` minimum coverage for `./internal/...`.
@@ -216,7 +222,7 @@ For each completed branch:
 6. Merge to `main` with an explicit merge commit (`git merge --no-ff <branch>`).
 7. Run `go test ./...` again on `main`.
 8. Create and push the release tag.
-9. Create the GitHub release with a title matching only the tag, such as `v0.12.8`.
+9. Create the GitHub release with a title matching only the tag, such as `v0.12.9`.
 10. Wait for the release package workflow to upload archives, `.deb`, `.rpm`, `.pkg`, per-target checksums, the aggregate `SHA256SUMS` manifest, and artifact attestations.
 11. Verify one packaged binary or release build with `vault help`; it should show the tag version injected by `-X main.vaultVersion=<version>`.
 12. Delete the completed branch locally and remotely.

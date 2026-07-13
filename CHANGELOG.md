@@ -1,5 +1,16 @@
 # Changelog
 
+## [v0.12.9] - 2026-07-13
+
+### Added
+
+- Added `vault set <key> --stdin` so secret values can be read from standard input instead of process arguments.
+- Added CLI smoke coverage for stdin-based secret writes.
+
+### Changed
+
+- Updated help, manual, man page, security notes, README, and backlog to document stdin secret input and the remaining process-argument risk for compact tokens.
+
 ## [v0.12.8] - 2026-07-12
 
 ### Fixed

@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: clone or open the repository root, for example `/tmp/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.12.8`
+- Current baseline release: `v0.12.9`
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -15,7 +15,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `9.9 / 10` under the ordinary project model and `8.8 / 10` under the expanded paranoid review model after `v0.12.8`.
+Current assessment score: `9.9 / 10` under the ordinary project model and `8.9 / 10` under the expanded paranoid review model after `v0.12.9`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, macOS Keychain support for token master-key material, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -47,7 +47,7 @@ Main risks:
 - package-level unit coverage is strong across the core internal packages, while `cmd/vault` remains intentionally measured through both focused tests and end-to-end CLI smoke tests
 - `cmd/vault` still contains orchestration that may deserve future extraction when it produces a clearer command boundary
 - the security model is clearer, but it is still self-reviewed and not an external audit
-- secret values and compact tokens can still be exposed through process arguments when passed directly on the command line
+- compact tokens can still be exposed through process arguments, and direct `vault set KEY value` remains available for non-sensitive/demo use
 - runtime file operations do not yet reject symlinks defensively
 - authenticated containers detect tampering but do not prevent replacement with an older valid vault
 
@@ -65,8 +65,8 @@ Use this section first when resuming work. The detailed backlog below explains e
 ### Immediate Next Work
 
 1. **Secret Input And Runtime Path Hardening**
-   - Status: highest-priority follow-up from the paranoid review after `v0.12.8`.
-   - Goal: add stdin/file-descriptor secret input, reduce direct secret/token exposure in process arguments, reject sensitive runtime symlinks, and use no-follow file opens where supported.
+   - Status: partial progress in `v0.12.9` with `vault set KEY --stdin`; remaining work covers token stdin/file-descriptor input and runtime path hardening.
+   - Goal: reduce direct secret/token exposure in process arguments, reject sensitive runtime symlinks, and use no-follow file opens where supported.
    - Suggested branch: `secret-input-path-hardening`.
 
 ### Near-Term Hardening
@@ -408,7 +408,7 @@ These items are the most direct path beyond the current `9.9 / 10` ordinary asse
 
 Recommended order:
 
-1. add stdin/file-descriptor secret input and explicit process-argument warnings
+1. add stdin/file-descriptor input for compact tokens and keep explicit process-argument warnings current
 2. reject symlinks for sensitive runtime paths and use no-follow opens where supported
 3. bind KDF loading policy to authenticated container metadata with anti-DoS limits
 4. add directory sync after atomic renames and document crash-consistency guarantees
