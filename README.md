@@ -55,7 +55,7 @@ go build -o bin/vault ./cmd/vault
 Local builds display the CLI version as `dev`. Release assets inject the Git tag version during packaging with Go ldflags, for example:
 
 ```bash
-go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.8" -o bin/vault ./cmd/vault
+go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.10" -o bin/vault ./cmd/vault
 ```
 
 Run it:
@@ -123,6 +123,7 @@ Token commands can emit JSON for third-party integrations:
 
 ```bash
 vault use-token "$MYMV_TOKEN" get API_KEY --json
+printf '%s' "$MYMV_TOKEN" | vault use-token --stdin get API_KEY --json
 ```
 
 ```json

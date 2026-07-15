@@ -85,6 +85,19 @@ func TestTokenJSONFlagParsing(t *testing.T) {
 	}
 }
 
+func TestTokenJSONFlagParsingWithStdinToken(t *testing.T) {
+	args := []string{"vault", "use-token", "--stdin", "get", "API_KEY", "--json"}
+	if !tokenJSONRequested(args) {
+		t.Fatal("expected --json to be detected with --stdin token input")
+	}
+
+	filtered := tokenCommandArgs(args)
+	want := []string{"vault", "use-token", "--stdin", "get", "API_KEY"}
+	if strings.Join(filtered, "\x00") != strings.Join(want, "\x00") {
+		t.Fatalf("tokenCommandArgs = %#v, want %#v", filtered, want)
+	}
+}
+
 func TestExecuteTokenGetJSON(t *testing.T) {
 	vault := &ExtendedVault{Data: map[string]string{"API_KEY": "hello"}}
 	token := AccessToken{TokenID: "token-id", KeyPattern: "API_*", Permissions: []string{"read"}, MaxUses: 3, ExpiresAt: time.Now().Add(time.Hour)}

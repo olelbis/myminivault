@@ -300,6 +300,7 @@ SYNCHRONIZED TOKEN SYSTEM:
   list-tokens           Show all tokens with status
   revoke-token <id>     Revoke token 
   use-token <token> <cmd>  Execute commands with token
+  use-token --stdin <cmd>  Read token from stdin and execute command
     get <key> --show    Print key value
     get <key> --json    Print key value as JSON for subprocess callers
     set <key> <value>   Set key value (synced to all tokens)

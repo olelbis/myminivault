@@ -1,5 +1,16 @@
 # Changelog
 
+## [v0.12.10] - 2026-07-15
+
+### Added
+
+- Added `vault use-token --stdin` so compact tokens can be read from standard input instead of process arguments.
+- Added CLI smoke coverage for stdin-based token use.
+
+### Changed
+
+- Updated help, README, user manual, security notes, man page, backlog, and development docs to document stdin token input and keep version examples current.
+
 ## [v0.12.9] - 2026-07-13
 
 ### Added

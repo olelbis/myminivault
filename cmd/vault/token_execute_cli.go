@@ -17,11 +17,12 @@ func executeWithToken() error {
 	args := tokenCommandArgs(os.Args)
 	if len(args) < 4 {
 		if tokenJSONRequested(os.Args) {
-			return writeJSONError("usage: vault use-token <token> <command> [args...]")
+			return writeJSONError("usage: vault use-token (<token>|--stdin) <command> [args...]")
 		}
-		fmt.Println("Usage: vault use-token <token> <command> [args...]")
+		fmt.Println("Usage: vault use-token (<token>|--stdin) <command> [args...]")
 		fmt.Println("Examples:")
 		fmt.Println("  vault use-token <token> get API_KEY --show")
+		fmt.Println("  vault use-token --stdin get API_KEY --show")
 		fmt.Println("  vault use-token <token> get API_KEY --json")
 		fmt.Println("  vault use-token <token> set API_KEY value")
 		fmt.Println("  vault use-token <token> list")
@@ -31,6 +32,16 @@ func executeWithToken() error {
 	jsonOutput := tokenJSONRequested(os.Args)
 	showOutput := tokenShowRequested(os.Args)
 	tokenStr := args[2]
+	if tokenStr == "--stdin" {
+		stdinToken, err := readValueFromStdin(os.Stdin)
+		if err != nil {
+			return tokenCommandError(jsonOutput, "failed to read token from stdin: "+err.Error())
+		}
+		if stdinToken == "" {
+			return tokenCommandError(jsonOutput, "token read from stdin is empty")
+		}
+		tokenStr = stdinToken
+	}
 	command := args[3]
 
 	token, vault, err := parseAndValidateProductionToken(tokenStr)
@@ -46,13 +57,13 @@ func executeWithToken() error {
 	switch command {
 	case "get":
 		if len(args) < 5 {
-			return tokenCommandError(jsonOutput, "usage: vault use-token <token> get <key> (--show|--json)")
+			return tokenCommandError(jsonOutput, "usage: vault use-token (<token>|--stdin) get <key> (--show|--json)")
 		}
 		return executeTokenGet(vault, token, args[4], jsonOutput, showOutput)
 
 	case "set":
 		if len(args) < 6 {
-			return tokenCommandError(jsonOutput, "usage: vault use-token <token> set <key> <value>")
+			return tokenCommandError(jsonOutput, "usage: vault use-token (<token>|--stdin) set <key> <value>")
 		}
 		return executeTokenSet(vault, token, args[4], args[5], jsonOutput)
 
@@ -61,7 +72,7 @@ func executeWithToken() error {
 
 	case "search":
 		if len(args) < 5 {
-			return tokenCommandError(jsonOutput, "usage: vault use-token <token> search <pattern> (--show|--json)")
+			return tokenCommandError(jsonOutput, "usage: vault use-token (<token>|--stdin) search <pattern> (--show|--json)")
 		}
 		return executeTokenSearch(vault, token, args[4], jsonOutput, showOutput)
 

@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: clone or open the repository root, for example `/tmp/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.12.9`
+- Current baseline release: `v0.12.10`
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -15,7 +15,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `9.9 / 10` under the ordinary project model and `8.9 / 10` under the expanded paranoid review model after `v0.12.9`.
+Current assessment score: `9.9 / 10` under the ordinary project model and `9.0 / 10` under the expanded paranoid review model after `v0.12.10`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, macOS Keychain support for token master-key material, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -47,7 +47,7 @@ Main risks:
 - package-level unit coverage is strong across the core internal packages, while `cmd/vault` remains intentionally measured through both focused tests and end-to-end CLI smoke tests
 - `cmd/vault` still contains orchestration that may deserve future extraction when it produces a clearer command boundary
 - the security model is clearer, but it is still self-reviewed and not an external audit
-- compact tokens can still be exposed through process arguments, and direct `vault set KEY value` remains available for non-sensitive/demo use
+- direct `vault set KEY value` and `vault use-token <token>` remain available for non-sensitive/demo use, but stdin alternatives now exist for both secret values and compact tokens
 - runtime file operations do not yet reject symlinks defensively
 - authenticated containers detect tampering but do not prevent replacement with an older valid vault
 
@@ -65,7 +65,7 @@ Use this section first when resuming work. The detailed backlog below explains e
 ### Immediate Next Work
 
 1. **Secret Input And Runtime Path Hardening**
-   - Status: partial progress in `v0.12.9` with `vault set KEY --stdin`; remaining work covers token stdin/file-descriptor input and runtime path hardening.
+   - Status: partial progress in `v0.12.10` with `vault set KEY --stdin` and `vault use-token --stdin`; remaining work covers runtime path hardening and optional file-descriptor/token-file input.
    - Goal: reduce direct secret/token exposure in process arguments, reject sensitive runtime symlinks, and use no-follow file opens where supported.
    - Suggested branch: `secret-input-path-hardening`.
 
@@ -404,11 +404,11 @@ git switch -c token-sync-next
 
 Priority: medium-high.
 
-These items are the most direct path beyond the current `9.9 / 10` ordinary assessment and `8.8 / 10` paranoid assessment. Prefer them before adding new product features.
+These items are the most direct path beyond the current `9.9 / 10` ordinary assessment and `9.0 / 10` paranoid assessment. Prefer them before adding new product features.
 
 Recommended order:
 
-1. add stdin/file-descriptor input for compact tokens and keep explicit process-argument warnings current
+1. consider file-descriptor or token-file input for compact tokens and keep explicit process-argument warnings current
 2. reject symlinks for sensitive runtime paths and use no-follow opens where supported
 3. bind KDF loading policy to authenticated container metadata with anti-DoS limits
 4. add directory sync after atomic renames and document crash-consistency guarantees

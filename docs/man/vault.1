@@ -1,4 +1,4 @@
-.TH VAULT 1 "July 13, 2026" "myminivault 0.12.9" "User Commands"
+.TH VAULT 1 "July 15, 2026" "myminivault 0.12.10" "User Commands"
 .SH NAME
 vault \- local encrypted command-line key/value vault
 .SH SYNOPSIS
@@ -79,6 +79,9 @@ Run a permitted token command such as
 .BR list ,
 or
 .BR search .
+.TP
+.B use-token --stdin <cmd> [args...]
+Read the compact token from standard input, then run the permitted token command.
 Pass
 .B --json
 to token commands for machine-readable success and error output.

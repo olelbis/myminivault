@@ -98,7 +98,7 @@ Keys must:
 
 `get --show` prints plaintext to the terminal by explicit request. Use `copy` when terminal scrollback is a concern.
 
-Values passed directly to `vault set KEY value` and compact tokens passed to `vault use-token` are process arguments. They may be visible to process inspection, shell history, wrappers, monitoring, or crash diagnostics depending on the platform. Prefer `vault set KEY --stdin` for real secrets, and avoid recording commands containing secrets or compact tokens in persistent scripts or shared shell sessions.
+Values passed directly to `vault set KEY value` and compact tokens passed directly to `vault use-token <token>` are process arguments. They may be visible to process inspection, shell history, wrappers, monitoring, or crash diagnostics depending on the platform. Prefer `vault set KEY --stdin` for real secrets and `vault use-token --stdin ...` for compact tokens. Avoid recording commands containing secrets or compact tokens in persistent scripts or shared shell sessions.
 
 ### Delete A Secret
 
@@ -338,6 +338,7 @@ Read a key:
 
 ```bash
 ./bin/vault use-token <token> get API_KEY --show
+printf '%s' "$MYMV_TOKEN" | ./bin/vault use-token --stdin get API_KEY --show
 ```
 
 Write a key:
@@ -362,6 +363,7 @@ Machine-readable token output for third-party programs:
 
 ```bash
 ./bin/vault use-token <token> get API_KEY --json
+printf '%s' "$MYMV_TOKEN" | ./bin/vault use-token --stdin get API_KEY --json
 ./bin/vault use-token <token> list --json
 ./bin/vault use-token <token> search API --json
 ```
@@ -378,7 +380,7 @@ Example error payload:
 {"error":"token has expired"}
 ```
 
-When `--json` is used, token command errors are printed as JSON and the process exits non-zero, so subprocess callers can parse stdout and still rely on exit status. Successful authorized token commands consume one token use; failed validation, permission, or key-pattern checks do not. The compact token is still a bearer secret: pass it through a secret store or environment variable, avoid committing it, and avoid logging command lines that contain it.
+When `--json` is used, token command errors are printed as JSON and the process exits non-zero, so subprocess callers can parse stdout and still rely on exit status. Successful authorized token commands consume one token use; failed validation, permission, or key-pattern checks do not. The compact token is still a bearer secret: pass it through a secret store or environment variable, avoid committing it, and prefer `use-token --stdin` so the token is not placed directly in the command line.
 
 Python:
 
@@ -388,7 +390,8 @@ import os
 import subprocess
 
 payload = subprocess.check_output(
-    ["vault", "use-token", os.environ["MYMV_TOKEN"], "get", "API_KEY", "--json"],
+    ["vault", "use-token", "--stdin", "get", "API_KEY", "--json"],
+    input=os.environ["MYMV_TOKEN"],
     text=True,
 )
 secret = json.loads(payload)["value"]
@@ -397,7 +400,9 @@ secret = json.loads(payload)["value"]
 Go:
 
 ```go
-out, err := exec.Command("vault", "use-token", os.Getenv("MYMV_TOKEN"), "get", "API_KEY", "--json").Output()
+cmd := exec.Command("vault", "use-token", "--stdin", "get", "API_KEY", "--json")
+cmd.Stdin = strings.NewReader(os.Getenv("MYMV_TOKEN"))
+out, err := cmd.Output()
 if err != nil {
     panic(err)
 }
@@ -414,7 +419,9 @@ secret := payload.Value
 Java:
 
 ```java
-Process p = new ProcessBuilder("vault", "use-token", System.getenv("MYMV_TOKEN"), "get", "API_KEY", "--json").start();
+Process p = new ProcessBuilder("vault", "use-token", "--stdin", "get", "API_KEY", "--json").start();
+p.getOutputStream().write(System.getenv("MYMV_TOKEN").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+p.getOutputStream().close();
 String payload = new String(p.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
 if (p.waitFor() != 0) {
     throw new IllegalStateException(payload);

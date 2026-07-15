@@ -255,6 +255,18 @@ func TestCLISmokeTokenReadAndWrite(t *testing.T) {
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY", "--show")), "updated")
 }
 
+func TestCLISmokeUseTokenFromStdin(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "API_KEY", "hello"))
+
+	createOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=API_*", "--duration=1h", "--permissions=read", "--max-uses=2"))
+	token := extractCompactToken(t, createOutput)
+
+	requireContains(t, requireOK(t, runVault(t, bin, dir, token+"\n", "use-token", "--stdin", "get", "API_KEY", "--show")), "hello")
+}
+
 func TestCLISmokeTokenJSONOutput(t *testing.T) {
 	bin := buildVaultBinary(t)
 	dir := t.TempDir()
