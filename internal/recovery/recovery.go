@@ -13,6 +13,7 @@ import (
 	"github.com/olelbis/myminivault/internal/container"
 	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
 	"github.com/olelbis/myminivault/internal/model"
+	vaultpaths "github.com/olelbis/myminivault/internal/paths"
 )
 
 // KeyBytes is the amount of random entropy used to generate recovery keys.
@@ -127,7 +128,12 @@ func SaveFile(vaultFile string, salt, recoveryCiphertext []byte, metadata ...con
 	// not leave a partially-written recovery file behind.
 	recoveryFile := vaultFile + ".recovery"
 	tempFile := recoveryFile + ".tmp"
-	f, err := os.OpenFile(tempFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
+	for _, path := range []string{recoveryFile, tempFile} {
+		if err := vaultpaths.RejectSymlink(path); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+	f, err := vaultpaths.OpenFileChecked(tempFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to create recovery file: %w", err)
 	}

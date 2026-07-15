@@ -175,6 +175,21 @@ func writeDoctorRuntimeFile(t *testing.T, path string, data []byte) {
 	}
 }
 
+func TestCheckFileModeFailsForSymlink(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target")
+	link := filepath.Join(dir, "vault.db")
+	writeDoctorRuntimeFile(t, target, []byte("target"))
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+
+	check := checkFileMode(link, 0600, false)
+	if check.status != "FAIL" || !strings.Contains(check.detail, "symlink") {
+		t.Fatalf("check = %#v, want symlink failure", check)
+	}
+}
+
 func writeDoctorContainer(t *testing.T, path string, kind byte, meta container.Metadata) {
 	t.Helper()
 

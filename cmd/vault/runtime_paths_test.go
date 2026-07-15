@@ -191,6 +191,26 @@ func TestHardenRuntimeFilePermissionsFailsForCriticalDirectory(t *testing.T) {
 	}
 }
 
+func TestHardenRuntimeFilePermissionsFailsForCriticalSymlink(t *testing.T) {
+	dir := t.TempDir()
+	originalVaultFile := vaultFile
+	t.Cleanup(func() { vaultFile = originalVaultFile })
+
+	target := filepath.Join(dir, "target")
+	vaultFile = filepath.Join(dir, vaultFileName)
+	if err := os.WriteFile(target, []byte("target"), 0600); err != nil {
+		t.Fatalf("write target: %v", err)
+	}
+	if err := os.Symlink(target, vaultFile); err != nil {
+		t.Fatalf("symlink vault file: %v", err)
+	}
+
+	err := hardenRuntimeFilePermission(vaultFile, true)
+	if err == nil || !strings.Contains(err.Error(), "sensitive runtime path must not be a symlink") {
+		t.Fatalf("error = %v, want critical symlink error", err)
+	}
+}
+
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 

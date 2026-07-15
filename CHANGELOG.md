@@ -1,5 +1,17 @@
 # Changelog
 
+## [v0.12.11] - 2026-07-15
+
+### Added
+
+- Added portable symlink rejection for sensitive runtime paths before startup permission hardening, legacy migration, and critical runtime writes.
+- Added `doctor` failures for symlinked sensitive runtime files.
+- Added tests for runtime-home, main vault, recovery snapshot, token key, shared token vault, and doctor symlink handling.
+
+### Changed
+
+- Updated runtime security documentation and backlog to distinguish current symlink rejection from future OS-specific no-follow open hardening.
+
 ## [v0.12.10] - 2026-07-15
 
 ### Added

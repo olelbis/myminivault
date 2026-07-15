@@ -108,6 +108,23 @@ func TestEnsureRuntimeHomeRejectsFilePath(t *testing.T) {
 	}
 }
 
+func TestEnsureRuntimeHomeRejectsSymlink(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target")
+	link := filepath.Join(dir, "runtime-link")
+	if err := os.Mkdir(target, 0700); err != nil {
+		t.Fatalf("mkdir target: %v", err)
+	}
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatalf("symlink runtime home: %v", err)
+	}
+	t.Setenv(HomeEnv, link)
+
+	if _, err := EnsureRuntimeHome(); err == nil {
+		t.Fatal("expected symlink runtime home to be rejected")
+	}
+}
+
 func TestFileReturnsPathInsideRuntimeHome(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv(HomeEnv, dir)
@@ -120,6 +137,25 @@ func TestFileReturnsPathInsideRuntimeHome(t *testing.T) {
 	want := filepath.Join(dir, "vault.db")
 	if got != want {
 		t.Fatalf("File = %q, want %q", got, want)
+	}
+}
+
+func TestRejectSymlink(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target")
+	link := filepath.Join(dir, "link")
+	if err := os.WriteFile(target, []byte("target"), 0600); err != nil {
+		t.Fatalf("write target: %v", err)
+	}
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+
+	if err := RejectSymlink(link); err == nil {
+		t.Fatal("expected symlink to be rejected")
+	}
+	if err := RejectSymlink(target); err != nil {
+		t.Fatalf("regular file rejected: %v", err)
 	}
 }
 

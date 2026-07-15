@@ -483,6 +483,22 @@ func TestSaveFileAtomicCreatesNewFileWithoutBackup(t *testing.T) {
 	}
 }
 
+func TestSaveFileAtomicRejectsPrimarySymlink(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target")
+	vaultFile := filepath.Join(dir, "vault.db")
+	if err := os.WriteFile(target, []byte("target"), 0600); err != nil {
+		t.Fatalf("write target: %v", err)
+	}
+	if err := os.Symlink(target, vaultFile); err != nil {
+		t.Fatalf("symlink vault: %v", err)
+	}
+
+	if err := SaveFileAtomic(vaultFile, []byte("new-salt"), []byte("new-data")); err == nil {
+		t.Fatal("expected symlink primary to be rejected")
+	}
+}
+
 func TestLoadRestoresBackupAfterInterruptedSave(t *testing.T) {
 	dir := t.TempDir()
 	opts := storageTestOptions(dir)

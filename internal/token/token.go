@@ -16,6 +16,7 @@ import (
 	"github.com/olelbis/myminivault/internal/container"
 	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
 	"github.com/olelbis/myminivault/internal/model"
+	vaultpaths "github.com/olelbis/myminivault/internal/paths"
 )
 
 // Options groups the files, crypto parameters, and optional key provider used
@@ -29,6 +30,9 @@ type Options struct {
 
 // LoadMasterKey reads the local token master key and validates its size.
 func LoadMasterKey(tokenKeyFile string) ([]byte, error) {
+	if err := vaultpaths.RejectSymlink(tokenKeyFile); err != nil {
+		return nil, err
+	}
 	if _, err := os.Stat(tokenKeyFile); err != nil {
 		return nil, err
 	}
@@ -47,7 +51,7 @@ func LoadMasterKey(tokenKeyFile string) ([]byte, error) {
 
 // SaveMasterKey writes the local token master key with owner-only permissions.
 func SaveMasterKey(tokenKeyFile string, key []byte) error {
-	if err := os.WriteFile(tokenKeyFile, key, 0600); err != nil {
+	if err := vaultpaths.WriteFileChecked(tokenKeyFile, key, 0600); err != nil {
 		return err
 	}
 	return os.Chmod(tokenKeyFile, 0600)
@@ -56,6 +60,9 @@ func SaveMasterKey(tokenKeyFile string, key []byte) error {
 // LoadRegistry reads token registry metadata or returns an empty registry when
 // the registry file has not been created yet.
 func LoadRegistry(tokenRegistry, vaultFile, sharedTokenVault string) (*model.TokenRegistry, error) {
+	if err := vaultpaths.RejectSymlink(tokenRegistry); err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
 	if _, err := os.Stat(tokenRegistry); err != nil {
 		return &model.TokenRegistry{
 			VaultPath:       vaultFile,
@@ -84,7 +91,7 @@ func SaveRegistry(tokenRegistry string, registry *model.TokenRegistry) error {
 		return err
 	}
 
-	if err := os.WriteFile(tokenRegistry, data, 0600); err != nil {
+	if err := vaultpaths.WriteFileChecked(tokenRegistry, data, 0600); err != nil {
 		return err
 	}
 	return os.Chmod(tokenRegistry, 0600)
@@ -129,6 +136,9 @@ func SaveEncryptedVault(vault *model.ExtendedVault, tokenVaultPath string, opts 
 
 // LoadEncryptedVault decrypts and parses the shared token vault.
 func LoadEncryptedVault(tokenFilePath string, opts Options) (*model.ExtendedVault, error) {
+	if err := vaultpaths.RejectSymlink(tokenFilePath); err != nil {
+		return nil, err
+	}
 	data, err := os.ReadFile(tokenFilePath)
 	if err != nil {
 		return nil, err
@@ -176,7 +186,13 @@ func LoadEncryptedVault(tokenFilePath string, opts Options) (*model.ExtendedVaul
 // renames it into place.
 func SaveVaultFileAtomic(tokenVaultPath string, salt, data []byte, metadata ...container.Metadata) error {
 	tempFile := tokenVaultPath + ".tmp"
-	f, err := os.OpenFile(tempFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
+	backupFile := tokenVaultPath + ".bak"
+	for _, path := range []string{tokenVaultPath, backupFile, tempFile} {
+		if err := vaultpaths.RejectSymlink(path); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+	f, err := vaultpaths.OpenFileChecked(tempFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %w", err)
 	}
@@ -206,7 +222,6 @@ func SaveVaultFileAtomic(tokenVaultPath string, salt, data []byte, metadata ...c
 	}
 
 	hadPrimary := false
-	backupFile := tokenVaultPath + ".bak"
 	if info, err := os.Stat(tokenVaultPath); err == nil {
 		if info.IsDir() {
 			os.Remove(tempFile)

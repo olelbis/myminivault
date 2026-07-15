@@ -44,6 +44,14 @@ go install github.com/olelbis/myminivault/cmd/vault@latest
 
 GitHub Releases also provide `.tar.gz`, `.deb`, `.rpm`, and macOS `.pkg` assets. Release workflow assets include SHA-256 checksum manifests and GitHub artifact attestations.
 
+For a macOS `.tar.gz` binary unpacked locally, make it executable and remove the downloaded-file quarantine only if Gatekeeper blocks the unsigned local binary:
+
+```bash
+chmod +x ./vault
+xattr -dr com.apple.quarantine ./vault
+./vault help
+```
+
 Build the CLI from the repository root:
 
 ```bash
@@ -214,7 +222,7 @@ The normal save path also keeps `vault.db.bak` as the previous version of the va
 
 Checks local runtime health without asking for the master password. It reports config validity, runtime file permissions, timestamped backup presence, lock-file presence, recovery freshness and compatibility, token files, and log file status.
 
-Sensitive runtime files should normally be readable only by the local user. `vault doctor` warns when files such as `vault.db`, backups, recovery snapshots, token files, or logs are group/world-readable. It also warns when `vault.db.recovery` appears older than the main vault, has an unexpected container kind, or was written with crypto parameters that differ from the current config.
+Sensitive runtime files should normally be readable only by the local user. Startup rejects symlinked sensitive runtime paths and tightens file permissions when possible. `vault doctor` warns when files such as `vault.db`, backups, recovery snapshots, token files, or logs are group/world-readable, and reports symlinked sensitive files as failures. It also warns when `vault.db.recovery` appears older than the main vault, has an unexpected container kind, or was written with crypto parameters that differ from the current config.
 
 ## Runtime Inspection
 
@@ -607,7 +615,7 @@ Current encrypted runtime files include a small cleartext `MYMV v2` container he
 
 These files are ignored by Git because they may contain encrypted secrets, keys, logs, or local runtime state.
 
-If older runtime files are found in the current working directory and the runtime directory does not already contain matching files, the CLI migrates them into `~/.myminivault/` on startup.
+If older runtime files are found in the current working directory and the runtime directory does not already contain matching files, the CLI migrates them into `~/.myminivault/` on startup. Symlinked legacy runtime files are skipped instead of being followed.
 
 ## Troubleshooting
 

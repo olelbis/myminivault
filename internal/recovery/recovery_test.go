@@ -239,6 +239,23 @@ func TestSaveFileReportsFinalizeError(t *testing.T) {
 	}
 }
 
+func TestSaveFileRejectsRecoverySymlink(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target")
+	vaultFile := filepath.Join(dir, "vault.db")
+	recoveryFile := vaultFile + ".recovery"
+	if err := os.WriteFile(target, []byte("target"), 0600); err != nil {
+		t.Fatalf("write target: %v", err)
+	}
+	if err := os.Symlink(target, recoveryFile); err != nil {
+		t.Fatalf("symlink recovery file: %v", err)
+	}
+
+	if err := SaveFile(vaultFile, []byte("1234567890123456"), []byte("encrypted")); err == nil {
+		t.Fatal("expected recovery symlink to be rejected")
+	}
+}
+
 func TestStripChecksumRejectsShortData(t *testing.T) {
 	if _, err := stripChecksum([]byte("short")); err == nil {
 		t.Fatal("expected short recovery data to fail")

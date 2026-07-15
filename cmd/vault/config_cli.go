@@ -90,17 +90,19 @@ func initRuntimePaths() error {
 
 func hardenRuntimeFilePermissions() error {
 	critical := map[string]bool{
-		vaultFile:                 true,
-		vaultFile + ".bak":        true,
-		vaultFile + ".recovery":   true,
-		tokenKeyFile:              true,
-		sharedTokenVault:          true,
-		sharedTokenVault + ".bak": true,
+		vaultFile:                  true,
+		vaultFile + ".bak":         true,
+		vaultFile + ".recovery":    true,
+		vaultFile + ".transaction": true,
+		tokenKeyFile:               true,
+		sharedTokenVault:           true,
+		sharedTokenVault + ".bak":  true,
 	}
 	files := []string{
 		vaultFile,
 		vaultFile + ".bak",
 		vaultFile + ".recovery",
+		vaultFile + ".transaction",
 		configFile,
 		logFile,
 		tokenRegistry,
@@ -122,7 +124,7 @@ func hardenRuntimeFilePermissions() error {
 }
 
 func hardenRuntimeFilePermission(path string, critical bool) error {
-	info, err := os.Stat(path)
+	info, err := os.Lstat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -131,6 +133,13 @@ func hardenRuntimeFilePermission(path string, critical bool) error {
 			return fmt.Errorf("check runtime file permissions for %s: %w", path, err)
 		}
 		warnRuntimePermission(path, fmt.Sprintf("could not check permissions: %v", err))
+		return nil
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		if critical {
+			return fmt.Errorf("sensitive runtime path must not be a symlink: %s", path)
+		}
+		warnRuntimePermission(path, "is a symlink")
 		return nil
 	}
 	if info.IsDir() {
@@ -191,12 +200,14 @@ func migrateLegacyRuntimeFiles(home string) error {
 	for _, name := range names {
 		legacyPath := filepath.Join(cwd, name)
 		targetPath := filepath.Join(home, name)
-		if _, err := os.Stat(legacyPath); err != nil {
+		if err := vaultpaths.RejectSymlink(legacyPath); err != nil {
 			continue
 		}
-		if _, err := os.Stat(targetPath); err == nil {
+		if err := vaultpaths.RejectSymlink(targetPath); err == nil {
 			warnLegacyRuntimeConflict(name, legacyPath, targetPath)
 			continue
+		} else if !os.IsNotExist(err) {
+			return fmt.Errorf("inspect runtime target %s: %w", targetPath, err)
 		}
 		if err := moveRuntimeFile(legacyPath, targetPath); err != nil {
 			return fmt.Errorf("migrate %s to runtime home: %w", name, err)
@@ -246,17 +257,23 @@ func printRuntimeFileDetails(label, path string) {
 }
 
 func moveRuntimeFile(src, dst string) error {
+	if err := vaultpaths.RejectSymlink(src); err != nil {
+		return err
+	}
+	if err := vaultpaths.RejectSymlink(dst); err != nil && !os.IsNotExist(err) {
+		return err
+	}
 	if err := os.Rename(src, dst); err == nil {
 		return nil
 	}
 
-	input, err := os.Open(src)
+	input, err := vaultpaths.OpenFileChecked(src, os.O_RDONLY, 0)
 	if err != nil {
 		return err
 	}
 	defer input.Close()
 
-	output, err := os.OpenFile(dst, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	output, err := vaultpaths.OpenFileChecked(dst, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}

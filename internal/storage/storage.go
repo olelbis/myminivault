@@ -11,6 +11,7 @@ import (
 	"github.com/olelbis/myminivault/internal/container"
 	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
 	"github.com/olelbis/myminivault/internal/model"
+	vaultpaths "github.com/olelbis/myminivault/internal/paths"
 )
 
 // Options groups the storage paths, crypto parameters, and optional recovery
@@ -89,6 +90,9 @@ func LoadFile(file, password string, opts Options) (*model.ExtendedVault, []byte
 // LoadFileBytes decrypts a specific vault file using a byte-slice password and
 // returns both the vault payload and the salt needed to save it again.
 func LoadFileBytes(file string, password []byte, opts Options) (*model.ExtendedVault, []byte, error) {
+	if err := vaultpaths.RejectSymlink(file); err != nil {
+		return nil, nil, err
+	}
 	parsed, err := tryLoadContainer(file, opts.SaltSize)
 	if err != nil {
 		return nil, nil, err
@@ -234,7 +238,12 @@ func wipeBytes(data []byte) {
 func SaveFileAtomic(vaultFile string, salt, data []byte, metadata ...container.Metadata) error {
 	tempFile := vaultFile + ".tmp"
 	transactionFile := vaultFile + ".transaction"
-	if err := os.WriteFile(transactionFile, []byte(time.Now().UTC().Format(time.RFC3339Nano)+"\n"), 0600); err != nil {
+	for _, path := range []string{vaultFile, vaultFile + ".bak", tempFile, transactionFile} {
+		if err := vaultpaths.RejectSymlink(path); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+	if err := vaultpaths.WriteFileChecked(transactionFile, []byte(time.Now().UTC().Format(time.RFC3339Nano)+"\n"), 0600); err != nil {
 		return fmt.Errorf("create vault transaction marker: %w", err)
 	}
 	transactionActive := true

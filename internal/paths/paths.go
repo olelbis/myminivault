@@ -32,6 +32,9 @@ func EnsureRuntimeHome() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if err := RejectSymlink(home); err != nil && !os.IsNotExist(err) {
+		return "", fmt.Errorf("secure runtime directory %s: %w", home, err)
+	}
 	if err := os.MkdirAll(home, 0700); err != nil {
 		return "", fmt.Errorf("create runtime directory %s: %w", home, err)
 	}
@@ -48,4 +51,36 @@ func File(name string) (string, error) {
 		return "", err
 	}
 	return filepath.Join(home, name), nil
+}
+
+// RejectSymlink fails when path exists and is a symbolic link. Missing paths
+// are allowed so callers can use it before creating sensitive runtime files.
+func RejectSymlink(path string) error {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return err
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("sensitive runtime path must not be a symlink: %s", path)
+	}
+	return nil
+}
+
+// OpenFileChecked rejects an existing symlink before opening a sensitive
+// runtime file. This is a portable best-effort guard; OS-specific no-follow
+// opens can be layered on top later where supported.
+func OpenFileChecked(path string, flag int, perm os.FileMode) (*os.File, error) {
+	if err := RejectSymlink(path); err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+	return os.OpenFile(path, flag, perm)
+}
+
+// WriteFileChecked rejects an existing symlink before writing a sensitive
+// runtime file.
+func WriteFileChecked(path string, data []byte, perm os.FileMode) error {
+	if err := RejectSymlink(path); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return os.WriteFile(path, data, perm)
 }

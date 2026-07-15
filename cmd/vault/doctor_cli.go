@@ -13,6 +13,7 @@ import (
 	"github.com/olelbis/myminivault/internal/container"
 	"github.com/olelbis/myminivault/internal/health"
 	"github.com/olelbis/myminivault/internal/keychain"
+	vaultpaths "github.com/olelbis/myminivault/internal/paths"
 )
 
 type doctorCheck struct {
@@ -137,12 +138,15 @@ func checkRuntimeFileHealth() []doctorCheck {
 }
 
 func checkFileMode(path string, want os.FileMode, required bool) doctorCheck {
-	info, err := os.Stat(path)
+	info, err := os.Lstat(path)
 	if err != nil {
 		if os.IsNotExist(err) && !required {
 			return doctorCheck{status: "OK", detail: "not present"}
 		}
 		return doctorCheck{status: "FAIL", detail: err.Error()}
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return doctorCheck{status: "FAIL", detail: "is a symlink"}
 	}
 	if info.IsDir() {
 		return doctorCheck{status: "FAIL", detail: "is a directory"}
@@ -156,12 +160,15 @@ func checkFileMode(path string, want os.FileMode, required bool) doctorCheck {
 }
 
 func checkLockFileHealth() doctorCheck {
-	info, err := os.Stat(vaultLockFile)
+	info, err := os.Lstat(vaultLockFile)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return doctorCheck{name: "lock file", status: "OK", detail: "not present"}
 		}
 		return doctorCheck{name: "lock file", status: "FAIL", detail: err.Error()}
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return doctorCheck{name: "lock file", status: "FAIL", detail: "is a symlink"}
 	}
 	if info.IsDir() {
 		return doctorCheck{name: "lock file", status: "FAIL", detail: "is a directory"}
@@ -184,9 +191,12 @@ func checkBackupHealth() doctorCheck {
 	sort.Strings(backups)
 	insecure := make([]string, 0)
 	for _, backup := range backups {
-		info, err := os.Stat(backup)
+		info, err := os.Lstat(backup)
 		if err != nil {
 			return doctorCheck{name: "timestamped backups", status: "FAIL", detail: err.Error()}
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return doctorCheck{name: "timestamped backups", status: "FAIL", detail: "symlink backup: " + backup}
 		}
 		if info.Mode().Perm()&0077 != 0 {
 			insecure = append(insecure, fmt.Sprintf("%s (%04o)", backup, info.Mode().Perm()))
@@ -199,6 +209,12 @@ func checkBackupHealth() doctorCheck {
 }
 
 func checkRecoveryFreshness() doctorCheck {
+	if err := vaultpaths.RejectSymlink(vaultFile); err != nil && !os.IsNotExist(err) {
+		return doctorCheck{name: "recovery freshness", status: "FAIL", detail: err.Error()}
+	}
+	if err := vaultpaths.RejectSymlink(vaultFile + ".recovery"); err != nil && !os.IsNotExist(err) {
+		return doctorCheck{name: "recovery freshness", status: "FAIL", detail: err.Error()}
+	}
 	mainInfo, mainErr := os.Stat(vaultFile)
 	recoveryInfo, recoveryErr := os.Stat(vaultFile + ".recovery")
 	if os.IsNotExist(mainErr) && os.IsNotExist(recoveryErr) {
@@ -270,6 +286,12 @@ func recoveryUsesMainVaultSalt(recoverySalt []byte) bool {
 }
 
 func checkSharedVaultFreshness() doctorCheck {
+	if err := vaultpaths.RejectSymlink(vaultFile); err != nil && !os.IsNotExist(err) {
+		return doctorCheck{name: "token sync freshness", status: "FAIL", detail: err.Error()}
+	}
+	if err := vaultpaths.RejectSymlink(sharedTokenVault); err != nil && !os.IsNotExist(err) {
+		return doctorCheck{name: "token sync freshness", status: "FAIL", detail: err.Error()}
+	}
 	mainInfo, mainErr := os.Stat(vaultFile)
 	sharedInfo, sharedErr := os.Stat(sharedTokenVault)
 	if os.IsNotExist(sharedErr) {

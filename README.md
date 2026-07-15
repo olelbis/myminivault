@@ -44,6 +44,14 @@ GitHub Releases also publish installable packages:
 
 Release assets include per-target SHA-256 checksum files, an aggregate `SHA256SUMS` manifest, and GitHub artifact attestations when built by the release workflow.
 
+For a macOS `.tar.gz` binary unpacked locally, make it executable and remove the downloaded-file quarantine only when Gatekeeper blocks the unsigned local binary:
+
+```bash
+chmod +x ./vault
+xattr -dr com.apple.quarantine ./vault
+./vault help
+```
+
 Token keychain support is intentionally platform-specific. On macOS, `token_key_storage=auto` prefers macOS Keychain for token master-key material when available. On Linux, token key storage is file-based by design for now; `vault doctor` can report Secret Service readiness when both a DBus session and `secret-tool` are present, but the supported Linux storage path remains the portable `vault-token.key` fallback.
 
 Build the CLI from the repository root:
@@ -55,7 +63,7 @@ go build -o bin/vault ./cmd/vault
 Local builds display the CLI version as `dev`. Release assets inject the Git tag version during packaging with Go ldflags, for example:
 
 ```bash
-go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.10" -o bin/vault ./cmd/vault
+go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.11" -o bin/vault ./cmd/vault
 ```
 
 Run it:
@@ -199,7 +207,7 @@ The command prints active runtime files, legacy current-directory files, modifie
 
 Encrypted runtime files saved by current releases start with a small cleartext `MYMV` container header. Current saves write container format `v2`, which identifies the file kind and records non-sensitive crypto metadata such as algorithm, KDF, scrypt parameters, salt size, nonce size, and payload layout. The `MYMV v2` header, metadata, and salt are authenticated with AES-GCM AAD, so tampering with that cleartext context makes decryption fail. It does not expose stored keys, values, recovery metadata, token contents, or encrypted vault metadata. Older `MYMV v1` and salt-plus-ciphertext files remain readable and are reported as older formats until they are rewritten by a save operation.
 
-On normal startup, commands tighten existing runtime file permissions to `0600` when possible. `doctor` and `inspect-runtime` remain non-mutating inspection commands, so they report the current state without auto-fixing it. `vault doctor` also checks recovery snapshot freshness and non-decrypting recovery container compatibility so stale or mismatched recovery files are easier to spot before an emergency.
+On normal startup, commands tighten existing runtime file permissions to `0600` when possible and reject symlinked sensitive runtime paths. `doctor` and `inspect-runtime` remain non-mutating inspection commands, so they report the current state without auto-fixing it. `vault doctor` also reports symlinked sensitive files, recovery snapshot freshness, and non-decrypting recovery container compatibility so stale or mismatched recovery files are easier to spot before an emergency.
 
 | File | Purpose |
 | --- | --- |

@@ -55,6 +55,22 @@ func TestLoadSaveMasterKey(t *testing.T) {
 	}
 }
 
+func TestSaveMasterKeyRejectsSymlink(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target")
+	keyFile := filepath.Join(dir, "vault-token.key")
+	if err := os.WriteFile(target, bytesOf(0x11, 32), 0600); err != nil {
+		t.Fatalf("write target: %v", err)
+	}
+	if err := os.Symlink(target, keyFile); err != nil {
+		t.Fatalf("symlink token key: %v", err)
+	}
+
+	if err := SaveMasterKey(keyFile, bytesOf(0x42, 32)); err == nil {
+		t.Fatal("expected symlink token key to be rejected")
+	}
+}
+
 func TestLoadMasterKeyRejectsInvalidLength(t *testing.T) {
 	keyFile := filepath.Join(t.TempDir(), "vault-token.key")
 	if err := os.WriteFile(keyFile, []byte("too-short"), 0600); err != nil {
