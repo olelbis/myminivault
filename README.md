@@ -63,7 +63,7 @@ go build -o bin/vault ./cmd/vault
 Local builds display the CLI version as `dev`. Release assets inject the Git tag version during packaging with Go ldflags, for example:
 
 ```bash
-go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.11" -o bin/vault ./cmd/vault
+go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.12" -o bin/vault ./cmd/vault
 ```
 
 Run it:

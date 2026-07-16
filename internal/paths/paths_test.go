@@ -159,6 +159,29 @@ func TestRejectSymlink(t *testing.T) {
 	}
 }
 
+func TestWriteFileCheckedRejectsSymlink(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target")
+	link := filepath.Join(dir, "link")
+	if err := os.WriteFile(target, []byte("target"), 0600); err != nil {
+		t.Fatalf("write target: %v", err)
+	}
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+
+	if err := WriteFileChecked(link, []byte("new"), 0600); err == nil {
+		t.Fatal("expected symlink write to be rejected")
+	}
+	data, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatalf("read target: %v", err)
+	}
+	if string(data) != "target" {
+		t.Fatalf("target was modified: %q", data)
+	}
+}
+
 func TestFileCreatesRuntimeHome(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "runtime")
 	t.Setenv(HomeEnv, dir)

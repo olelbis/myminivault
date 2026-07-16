@@ -1,5 +1,17 @@
 # Changelog
 
+## [v0.12.12] - 2026-07-16
+
+### Added
+
+- Added OS-specific no-follow opens for checked sensitive runtime file opens on Unix-like systems.
+- Added fallback checked opens for non-Unix platforms.
+- Added regression coverage for checked writes refusing symlink targets without modifying the symlink target.
+
+### Changed
+
+- Updated security notes and backlog to mark no-follow runtime opens as implemented for checked runtime helpers, while keeping broader file-replacement race and crash-consistency work tracked.
+
 ## [v0.12.11] - 2026-07-15
 
 ### Added

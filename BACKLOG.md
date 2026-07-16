@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: clone or open the repository root, for example `/tmp/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.12.11`
+- Current baseline release: `v0.12.12`
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -15,7 +15,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `9.9 / 10` under the ordinary project model and `9.1 / 10` under the expanded paranoid review model after `v0.12.11`.
+Current assessment score: `9.9 / 10` under the ordinary project model and `9.2 / 10` under the expanded paranoid review model after `v0.12.12`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, macOS Keychain support for token master-key material, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -48,7 +48,7 @@ Main risks:
 - `cmd/vault` still contains orchestration that may deserve future extraction when it produces a clearer command boundary
 - the security model is clearer, but it is still self-reviewed and not an external audit
 - direct `vault set KEY value` and `vault use-token <token>` remain available for non-sensitive/demo use, but stdin alternatives now exist for both secret values and compact tokens
-- sensitive runtime paths now reject symlinks defensively, while OS-specific no-follow opens and broader file-replacement race hardening remain future work
+- sensitive runtime helpers now reject symlinks and use OS-specific no-follow opens on Unix-like systems, while broader file-replacement race and crash-consistency hardening remain future work
 - authenticated containers detect tampering but do not prevent replacement with an older valid vault
 
 Strategic guidance:
@@ -65,8 +65,8 @@ Use this section first when resuming work. The detailed backlog below explains e
 ### Immediate Next Work
 
 1. **Secret Input And Runtime Path Hardening**
-   - Status: partial progress in `v0.12.11` with `vault set KEY --stdin`, `vault use-token --stdin`, and portable symlink rejection for sensitive runtime paths; remaining work covers OS-specific no-follow opens and optional file-descriptor/token-file input.
-   - Goal: reduce direct secret/token exposure in process arguments, keep sensitive runtime symlinks rejected, and add no-follow file opens where supported.
+   - Status: partial progress in `v0.12.12` with `vault set KEY --stdin`, `vault use-token --stdin`, portable symlink rejection, and Unix no-follow opens for checked sensitive runtime helpers; remaining work covers broader file-replacement race hardening and optional file-descriptor/token-file input.
+   - Goal: reduce direct secret/token exposure in process arguments, keep sensitive runtime symlinks rejected, and keep reducing runtime file race windows.
    - Suggested branch: `secret-input-path-hardening`.
 
 ### Near-Term Hardening
@@ -404,16 +404,15 @@ git switch -c token-sync-next
 
 Priority: medium-high.
 
-These items are the most direct path beyond the current `9.9 / 10` ordinary assessment and `9.1 / 10` paranoid assessment. Prefer them before adding new product features.
+These items are the most direct path beyond the current `9.9 / 10` ordinary assessment and `9.2 / 10` paranoid assessment. Prefer them before adding new product features.
 
 Recommended order:
 
 1. consider file-descriptor or token-file input for compact tokens and keep explicit process-argument warnings current
-2. add OS-specific no-follow opens where supported and keep file-replacement race hardening moving
+2. add directory fsync after atomic renames and keep file-replacement race hardening moving
 3. bind KDF loading policy to authenticated container metadata with anti-DoS limits
-4. add directory sync after atomic renames and document crash-consistency guarantees
-5. generate SBOMs and pin third-party Actions to immutable commit SHAs
-6. design rollback detection around recovery and backup compatibility before implementation
+4. generate SBOMs and pin third-party Actions to immutable commit SHAs
+5. design rollback detection around recovery and backup compatibility before implementation
 7. keep Linux token key storage file-backed until a reliable desktop/headless Secret Service strategy emerges
 8. keep the internal coverage floor healthy and reduce `cmd/vault` orchestration only when tests protect the boundary
 

@@ -66,21 +66,26 @@ func RejectSymlink(path string) error {
 	return nil
 }
 
-// OpenFileChecked rejects an existing symlink before opening a sensitive
-// runtime file. This is a portable best-effort guard; OS-specific no-follow
-// opens can be layered on top later where supported.
+// OpenFileChecked rejects symlinks before opening a sensitive runtime file and
+// uses an OS-specific no-follow open where supported.
 func OpenFileChecked(path string, flag int, perm os.FileMode) (*os.File, error) {
 	if err := RejectSymlink(path); err != nil && !os.IsNotExist(err) {
 		return nil, err
 	}
-	return os.OpenFile(path, flag, perm)
+	return openFileNoFollow(path, flag, perm)
 }
 
 // WriteFileChecked rejects an existing symlink before writing a sensitive
 // runtime file.
 func WriteFileChecked(path string, data []byte, perm os.FileMode) error {
-	if err := RejectSymlink(path); err != nil && !os.IsNotExist(err) {
+	file, err := OpenFileChecked(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)
+	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, perm)
+	_, writeErr := file.Write(data)
+	closeErr := file.Close()
+	if writeErr != nil {
+		return writeErr
+	}
+	return closeErr
 }
