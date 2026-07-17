@@ -72,7 +72,8 @@ Use this section first when resuming work. The detailed backlog below explains e
 ### Near-Term Hardening
 
 2. **Container KDF And Crash Consistency**
-   - Goal: define a safe policy for authenticated container KDF parameters, bounded compatibility, directory sync after atomic renames, and migration tests.
+   - Goal: complete directory sync after atomic renames and migration tests.
+   - KDF status: bounded MYMV v2 KDF metadata loading policy implemented; main vault, shared-token vault, and recovery decrypt paths validate supported algorithm/KDF/layout and cap scrypt parameters before deriving keys.
    - Suggested branch: `container-runtime-hardening`.
 
 3. **Supply-Chain Hardening**

@@ -158,7 +158,12 @@ func LoadEncryptedVault(tokenFilePath string, opts Options) (*model.ExtendedVaul
 	}
 	defer wipeBytes(tokenKey)
 
-	key, err := vaultcrypto.DeriveKey(tokenKey, parsed.Salt, opts.Scrypt)
+	scryptConfig, err := vaultcrypto.ScryptConfigForContainer(parsed, opts.Scrypt)
+	if err != nil {
+		return nil, err
+	}
+
+	key, err := vaultcrypto.DeriveKey(tokenKey, parsed.Salt, scryptConfig)
 	if err != nil {
 		return nil, err
 	}

@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Added bounded container KDF loading policy for MYMV v2 metadata before deriving keys.
+- Added tests for metadata-selected scrypt parameters, unsupported KDF rejection, and excessive scrypt parameter rejection.
+
+### Changed
+
+- Main vault, shared-token vault, and recovery decrypt paths now use allowed MYMV v2 scrypt metadata when present, while legacy and MYMV v1 files keep the runtime fallback config.
+
 ## [v0.12.12] - 2026-07-16
 
 ### Added

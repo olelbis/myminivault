@@ -82,9 +82,26 @@ func DecryptVault(salt, encryptedData []byte, recoveryKey string, opts Options, 
 
 // DecryptVaultBytes decrypts a recovery snapshot using a byte-slice recovery key.
 func DecryptVaultBytes(salt, encryptedData []byte, recoveryKey []byte, opts Options, aad ...[]byte) (*model.ExtendedVault, error) {
+	return decryptVaultBytes(salt, encryptedData, recoveryKey, opts.Scrypt, aad...)
+}
+
+// DecryptParsedVault decrypts a parsed recovery container using the container
+// KDF metadata when present and allowed by the loading policy.
+func DecryptParsedVault(parsed container.Parsed, recoveryKey []byte, opts Options) (*model.ExtendedVault, error) {
+	if !parsed.Legacy && parsed.Kind != container.KindRecoveryVault {
+		return nil, errors.New("unexpected container kind for recovery vault")
+	}
+	scryptConfig, err := vaultcrypto.ScryptConfigForContainer(parsed, opts.Scrypt)
+	if err != nil {
+		return nil, err
+	}
+	return decryptVaultBytes(parsed.Salt, parsed.Ciphertext, recoveryKey, scryptConfig, parsed.AssociatedData)
+}
+
+func decryptVaultBytes(salt, encryptedData []byte, recoveryKey []byte, scryptConfig vaultcrypto.ScryptConfig, aad ...[]byte) (*model.ExtendedVault, error) {
 	// The recovery key decrypts a recovery-encrypted vault snapshot, then the
 	// embedded recovery verifier proves the key belongs to this vault.
-	key, err := vaultcrypto.DeriveKey(recoveryKey, salt, opts.Scrypt)
+	key, err := vaultcrypto.DeriveKey(recoveryKey, salt, scryptConfig)
 	if err != nil {
 		return nil, fmt.Errorf("key derivation failed: %w", err)
 	}

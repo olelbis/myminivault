@@ -101,7 +101,12 @@ func LoadFileBytes(file string, password []byte, opts Options) (*model.ExtendedV
 		return nil, nil, errors.New("unexpected container kind for main vault")
 	}
 
-	key, err := vaultcrypto.DeriveKey(password, parsed.Salt, opts.Scrypt)
+	scryptConfig, err := vaultcrypto.ScryptConfigForContainer(parsed, opts.Scrypt)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	key, err := vaultcrypto.DeriveKey(password, parsed.Salt, scryptConfig)
 	if err != nil {
 		return nil, nil, err
 	}

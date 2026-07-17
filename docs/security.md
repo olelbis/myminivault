@@ -114,7 +114,7 @@ File permissions are an important local mitigation, not a complete security boun
 
 Sensitive runtime paths are checked with portable symlink rejection before important reads and writes, and checked opens use OS-level no-follow flags where supported. A runtime directory controlled by another process under the same account, or an intentionally unsafe `MYMINIVAULT_HOME`, may still expose file-replacement races outside those checked opens. Use a private local runtime directory and do not treat `0700`/`0600` modes as protection from the same OS user.
 
-Newly saved encrypted runtime files include a small cleartext `MYMV` container header with a container format version, file kind, and non-sensitive crypto metadata. Current `MYMV v2` saves record details such as `AES-256-GCM`, `scrypt`, scrypt parameters, salt size, nonce size, and payload layout. The `MYMV v2` header, metadata, and salt are authenticated as AES-GCM additional authenticated data, so tampering with that cleartext context makes decryption fail. This supports safer inspection and future migrations without decrypting secrets. The header reveals that a file is a myminivault encrypted container and whether it is a main, recovery, or shared-token vault file; it does not reveal key names, values, recovery metadata, token contents, or encrypted vault metadata.
+Newly saved encrypted runtime files include a small cleartext `MYMV` container header with a container format version, file kind, and non-sensitive crypto metadata. Current `MYMV v2` saves record details such as `AES-256-GCM`, `scrypt`, scrypt parameters, salt size, nonce size, and payload layout. The `MYMV v2` header, metadata, and salt are authenticated as AES-GCM additional authenticated data, so tampering with that cleartext context makes decryption fail. Load paths validate supported algorithm, KDF, payload, ciphertext layout, nonce size, and bounded scrypt parameters before deriving keys from MYMV v2 metadata; legacy and MYMV v1 files keep using the runtime fallback configuration. This supports safer inspection and future migrations without decrypting secrets. The header reveals that a file is a myminivault encrypted container and whether it is a main, recovery, or shared-token vault file; it does not reveal key names, values, recovery metadata, token contents, or encrypted vault metadata.
 
 ### Terminal Boundary
 
@@ -358,7 +358,7 @@ Recommended next steps:
 - consider log rotation or retention controls if logs become more detailed
 - consider file-descriptor or token-file input for compact tokens and continue reducing direct process-argument exposure
 - add directory sync after atomic renames and keep reducing file-replacement race windows
-- define how authenticated KDF metadata controls loading, with strict anti-DoS bounds and legacy compatibility tests
+- keep extending migration coverage around bounded KDF metadata loading and legacy compatibility
 - sync runtime directories after atomic renames where supported and document the remaining crash-consistency limits
 - design rollback detection without undermining intentional backup and recovery restores
 - keep macOS Keychain support current and reconsider Linux Secret Service storage only with a reliable desktop/headless policy

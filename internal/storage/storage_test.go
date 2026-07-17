@@ -113,6 +113,53 @@ func TestLoadRejectsTamperedContainerMetadata(t *testing.T) {
 	}
 }
 
+func TestLoadUsesContainerScryptMetadata(t *testing.T) {
+	opts := storageTestOptions(t.TempDir())
+	payload := []byte(`{"data":{"API_KEY":"secret"},"metadata":{"version":"test"}}`)
+	checksum := sha256.Sum256(payload)
+	writeEncryptedPlaintext(t, opts, []byte("password"), []byte("1234567890123456"), append(checksum[:], payload...))
+
+	loadOpts := opts
+	loadOpts.Scrypt = vaultcrypto.ScryptConfig{N: 4, R: 1, P: 1, KeySize: 32}
+	loaded, _, err := LoadFile(loadOpts.VaultFile, "password", loadOpts)
+	if err != nil {
+		t.Fatalf("LoadFile with container KDF metadata: %v", err)
+	}
+	if loaded.Data["API_KEY"] != "secret" {
+		t.Fatalf("secret = %q, want secret", loaded.Data["API_KEY"])
+	}
+}
+
+func TestLoadRejectsUnsupportedContainerKDF(t *testing.T) {
+	opts := storageTestOptions(t.TempDir())
+	payload := []byte(`{"data":{"API_KEY":"secret"},"metadata":{"version":"test"}}`)
+	checksum := sha256.Sum256(payload)
+	plaintext := append(checksum[:], payload...)
+	salt := []byte("1234567890123456")
+	key, err := vaultcrypto.DeriveKey([]byte("password"), salt, opts.Scrypt)
+	if err != nil {
+		t.Fatalf("DeriveKey: %v", err)
+	}
+	meta := containerMetadata(opts)
+	meta.KDF = "argon2id"
+	aad, err := container.AssociatedData(container.KindMainVault, salt, meta)
+	if err != nil {
+		t.Fatalf("AssociatedData: %v", err)
+	}
+	ciphertext, err := vaultcrypto.EncryptWithAAD(plaintext, key, aad)
+	if err != nil {
+		t.Fatalf("EncryptWithAAD: %v", err)
+	}
+	if err := SaveFileAtomic(opts.VaultFile, salt, ciphertext, meta); err != nil {
+		t.Fatalf("SaveFileAtomic: %v", err)
+	}
+
+	_, _, err = LoadFile(opts.VaultFile, "password", opts)
+	if err == nil || !strings.Contains(err.Error(), "unsupported container KDF") {
+		t.Fatalf("error = %v, want unsupported container KDF", err)
+	}
+}
+
 func TestLoadFileRejectsInvalidJSON(t *testing.T) {
 	opts := storageTestOptions(t.TempDir())
 	payload := []byte("{not-json")

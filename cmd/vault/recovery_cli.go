@@ -95,7 +95,7 @@ func recoverMasterPassword() error {
 
 	setCurrentRecoveryKeyBytes(recoveryKey)
 
-	vault, err := vaultrecovery.DecryptVaultBytes(parsed.Salt, parsed.Ciphertext, recoveryKey, recoveryOptions(), parsed.AssociatedData)
+	vault, err := vaultrecovery.DecryptParsedVault(parsed, recoveryKey, recoveryOptions())
 	if err != nil {
 		return err
 	}
