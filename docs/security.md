@@ -357,7 +357,7 @@ Recommended next steps:
 - decide whether revision counters, merge-base metadata, or fuller delete tombstones are needed
 - consider log rotation or retention controls if logs become more detailed
 - consider file-descriptor or token-file input for compact tokens and continue reducing direct process-argument exposure
-- add directory sync after atomic renames and keep reducing file-replacement race windows
+- keep expanding crash-consistency tests around directory sync and interrupted writes
 - keep extending migration coverage around bounded KDF metadata loading and legacy compatibility
 - sync runtime directories after atomic renames where supported and document the remaining crash-consistency limits
 - design rollback detection without undermining intentional backup and recovery restores

@@ -183,6 +183,10 @@ func SaveFile(vaultFile string, salt, recoveryCiphertext []byte, metadata ...con
 		os.Remove(tempFile)
 		return fmt.Errorf("failed to finalize recovery file: %w", err)
 	}
+	if err := vaultpaths.SyncParentDir(recoveryFile); err != nil {
+		os.Remove(tempFile)
+		return fmt.Errorf("failed to sync recovery directory: %w", err)
+	}
 
 	return os.Chmod(recoveryFile, 0600)
 }

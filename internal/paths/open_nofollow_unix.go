@@ -15,3 +15,12 @@ func openFileNoFollow(path string, flag int, perm os.FileMode) (*os.File, error)
 	}
 	return os.NewFile(uintptr(fd), path), nil
 }
+
+func syncParentDir(dir string) error {
+	f, err := os.Open(dir)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return f.Sync()
+}

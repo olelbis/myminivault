@@ -1,15 +1,17 @@
 # Changelog
 
-## Unreleased
+## [v0.12.13] - 2026-07-17
 
 ### Added
 
 - Added bounded container KDF loading policy for MYMV v2 metadata before deriving keys.
 - Added tests for metadata-selected scrypt parameters, unsupported KDF rejection, and excessive scrypt parameter rejection.
+- Added parent-directory sync after atomic runtime-file renames and legacy runtime migration moves.
 
 ### Changed
 
 - Main vault, shared-token vault, and recovery decrypt paths now use allowed MYMV v2 scrypt metadata when present, while legacy and MYMV v1 files keep the runtime fallback config.
+- Main vault, recovery snapshot, shared-token vault, transaction marker, backup restore, and legacy migration writes now sync parent directories where supported for stronger crash consistency.
 
 ## [v0.12.12] - 2026-07-16
 

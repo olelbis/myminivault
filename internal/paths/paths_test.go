@@ -182,6 +182,17 @@ func TestWriteFileCheckedRejectsSymlink(t *testing.T) {
 	}
 }
 
+func TestSyncParentDir(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "vault.db")
+	if err := os.WriteFile(path, []byte("data"), 0600); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+
+	if err := SyncParentDir(path); err != nil {
+		t.Fatalf("SyncParentDir: %v", err)
+	}
+}
+
 func TestFileCreatesRuntimeHome(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "runtime")
 	t.Setenv(HomeEnv, dir)

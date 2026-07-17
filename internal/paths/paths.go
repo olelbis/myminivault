@@ -89,3 +89,10 @@ func WriteFileChecked(path string, data []byte, perm os.FileMode) error {
 	}
 	return closeErr
 }
+
+// SyncParentDir asks the OS to persist directory-entry changes such as atomic
+// renames. Some platforms cannot fsync directories directly and provide a
+// best-effort no-op implementation.
+func SyncParentDir(path string) error {
+	return syncParentDir(filepath.Dir(path))
+}

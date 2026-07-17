@@ -237,6 +237,11 @@ func SaveVaultFileAtomic(tokenVaultPath string, salt, data []byte, metadata ...c
 			os.Remove(tempFile)
 			return fmt.Errorf("failed to preserve existing token vault: %w", err)
 		}
+		if err := vaultpaths.SyncParentDir(tokenVaultPath); err != nil {
+			_ = os.Rename(backupFile, tokenVaultPath)
+			os.Remove(tempFile)
+			return fmt.Errorf("failed to sync token vault backup directory: %w", err)
+		}
 		if err := os.Chmod(backupFile, 0600); err != nil {
 			_ = os.Rename(backupFile, tokenVaultPath)
 			os.Remove(tempFile)
@@ -253,6 +258,13 @@ func SaveVaultFileAtomic(tokenVaultPath string, salt, data []byte, metadata ...c
 		}
 		os.Remove(tempFile)
 		return fmt.Errorf("failed to finalize save: %w", err)
+	}
+	if err := vaultpaths.SyncParentDir(tokenVaultPath); err != nil {
+		if hadPrimary {
+			_ = os.Rename(backupFile, tokenVaultPath)
+		}
+		os.Remove(tempFile)
+		return fmt.Errorf("failed to sync token vault directory: %w", err)
 	}
 
 	if err := os.Chmod(tokenVaultPath, 0600); err != nil {

@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: clone or open the repository root, for example `/tmp/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.12.12`
+- Current baseline release: `v0.12.13`
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -15,7 +15,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `9.9 / 10` under the ordinary project model and `9.2 / 10` under the expanded paranoid review model after `v0.12.12`.
+Current assessment score: `9.9 / 10` under the ordinary project model and `9.3 / 10` under the expanded paranoid review model after `v0.12.13`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, macOS Keychain support for token master-key material, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -72,8 +72,9 @@ Use this section first when resuming work. The detailed backlog below explains e
 ### Near-Term Hardening
 
 2. **Container KDF And Crash Consistency**
-   - Goal: complete directory sync after atomic renames and migration tests.
+   - Goal: continue migration tests and broader file-replacement race hardening after the first crash-consistency pass.
    - KDF status: bounded MYMV v2 KDF metadata loading policy implemented; main vault, shared-token vault, and recovery decrypt paths validate supported algorithm/KDF/layout and cap scrypt parameters before deriving keys.
+   - Crash-consistency status: parent directories are synced after atomic runtime-file renames and legacy runtime migration moves where supported.
    - Suggested branch: `container-runtime-hardening`.
 
 3. **Supply-Chain Hardening**
@@ -411,7 +412,7 @@ Recommended order:
 
 1. consider file-descriptor or token-file input for compact tokens and keep explicit process-argument warnings current
 2. add directory fsync after atomic renames and keep file-replacement race hardening moving
-3. bind KDF loading policy to authenticated container metadata with anti-DoS limits
+3. continue migration coverage around authenticated KDF metadata and crash-consistency behavior
 4. generate SBOMs and pin third-party Actions to immutable commit SHAs
 5. design rollback detection around recovery and backup compatibility before implementation
 7. keep Linux token key storage file-backed until a reliable desktop/headless Secret Service strategy emerges

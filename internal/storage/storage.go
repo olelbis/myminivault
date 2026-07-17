@@ -251,10 +251,15 @@ func SaveFileAtomic(vaultFile string, salt, data []byte, metadata ...container.M
 	if err := vaultpaths.WriteFileChecked(transactionFile, []byte(time.Now().UTC().Format(time.RFC3339Nano)+"\n"), 0600); err != nil {
 		return fmt.Errorf("create vault transaction marker: %w", err)
 	}
+	if err := vaultpaths.SyncParentDir(transactionFile); err != nil {
+		fileOps.remove(transactionFile)
+		return fmt.Errorf("sync vault transaction marker directory: %w", err)
+	}
 	transactionActive := true
 	defer func() {
 		if transactionActive {
 			fileOps.remove(transactionFile)
+			_ = vaultpaths.SyncParentDir(transactionFile)
 		}
 	}()
 
@@ -294,6 +299,11 @@ func SaveFileAtomic(vaultFile string, salt, data []byte, metadata ...container.M
 			fileOps.remove(tempFile)
 			return err
 		}
+		if err := vaultpaths.SyncParentDir(vaultFile); err != nil {
+			_ = fileOps.rename(vaultFile+".bak", vaultFile)
+			fileOps.remove(tempFile)
+			return fmt.Errorf("sync vault backup directory: %w", err)
+		}
 		if err := fileOps.chmod(vaultFile+".bak", 0600); err != nil {
 			_ = fileOps.rename(vaultFile+".bak", vaultFile)
 			fileOps.remove(tempFile)
@@ -311,11 +321,21 @@ func SaveFileAtomic(vaultFile string, salt, data []byte, metadata ...container.M
 		fileOps.remove(tempFile)
 		return err
 	}
+	if err := vaultpaths.SyncParentDir(vaultFile); err != nil {
+		if hadPrimary {
+			_ = fileOps.rename(vaultFile+".bak", vaultFile)
+		}
+		fileOps.remove(tempFile)
+		return fmt.Errorf("sync vault directory: %w", err)
+	}
 	if err := fileOps.chmod(vaultFile, 0600); err != nil {
 		return err
 	}
 	transactionActive = false
-	return fileOps.remove(transactionFile)
+	if err := fileOps.remove(transactionFile); err != nil {
+		return err
+	}
+	return vaultpaths.SyncParentDir(transactionFile)
 }
 
 func recoverInterruptedSave(password []byte, opts Options, primaryErr error) (*model.ExtendedVault, []byte, error, bool) {
@@ -330,6 +350,9 @@ func recoverInterruptedSave(password []byte, opts Options, primaryErr error) (*m
 	if backupVault, backupSalt, err := LoadFileBytes(backupFile, password, opts); err == nil {
 		if renameErr := fileOps.rename(backupFile, opts.VaultFile); renameErr != nil {
 			return nil, nil, fmt.Errorf("restore interrupted vault backup: %w", renameErr), true
+		}
+		if err := vaultpaths.SyncParentDir(opts.VaultFile); err != nil {
+			return nil, nil, fmt.Errorf("sync restored vault backup directory: %w", err), true
 		}
 		_ = fileOps.chmod(opts.VaultFile, 0600)
 		cleanupInterruptedSaveMarker(opts.VaultFile)

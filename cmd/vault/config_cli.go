@@ -264,7 +264,10 @@ func moveRuntimeFile(src, dst string) error {
 		return err
 	}
 	if err := os.Rename(src, dst); err == nil {
-		return nil
+		if err := vaultpaths.SyncParentDir(dst); err != nil {
+			return err
+		}
+		return vaultpaths.SyncParentDir(src)
 	}
 
 	input, err := vaultpaths.OpenFileChecked(src, os.O_RDONLY, 0)
@@ -288,7 +291,13 @@ func moveRuntimeFile(src, dst string) error {
 	if err := output.Close(); err != nil {
 		return err
 	}
-	return os.Remove(src)
+	if err := vaultpaths.SyncParentDir(dst); err != nil {
+		return err
+	}
+	if err := os.Remove(src); err != nil {
+		return err
+	}
+	return vaultpaths.SyncParentDir(src)
 }
 
 func loadConfig() error {
