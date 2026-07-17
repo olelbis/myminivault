@@ -1,5 +1,17 @@
 # Changelog
 
+## [v0.12.14] - 2026-07-17
+
+### Added
+
+- Added an SPDX 2.3 JSON SBOM generator based on `go list -m -json all`.
+- Release packages now upload per-target `.spdx.json` SBOM assets and include them in per-target SHA-256 manifests.
+
+### Changed
+
+- Pinned GitHub Actions workflow dependencies to immutable commit SHAs while retaining version comments for maintenance.
+- Release artifact attestations now include generated SBOM assets.
+
 ## [v0.12.13] - 2026-07-17
 
 ### Added

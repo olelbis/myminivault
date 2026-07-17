@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: clone or open the repository root, for example `/tmp/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.12.13`
+- Current baseline release: `v0.12.14`
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -15,7 +15,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `9.9 / 10` under the ordinary project model and `9.3 / 10` under the expanded paranoid review model after `v0.12.13`.
+Current assessment score: `9.9 / 10` under the ordinary project model and `9.4 / 10` under the expanded paranoid review model after `v0.12.14`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, macOS Keychain support for token master-key material, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -78,7 +78,8 @@ Use this section first when resuming work. The detailed backlog below explains e
    - Suggested branch: `container-runtime-hardening`.
 
 3. **Supply-Chain Hardening**
-   - Goal: generate an SBOM, pin third-party Actions to immutable commit SHAs, and evaluate signed tags/checksums and platform signing.
+   - Goal: evaluate signed tags/checksums and platform signing after SBOM generation and immutable Action pinning.
+   - Status: release packages upload per-target SPDX JSON SBOM files, include them in checksum manifests, attest them, and workflows pin GitHub Actions to commit SHAs.
    - Suggested branch: `supply-chain-hardening`.
 
 4. **Rollback Policy**
@@ -413,7 +414,7 @@ Recommended order:
 1. consider file-descriptor or token-file input for compact tokens and keep explicit process-argument warnings current
 2. add directory fsync after atomic renames and keep file-replacement race hardening moving
 3. continue migration coverage around authenticated KDF metadata and crash-consistency behavior
-4. generate SBOMs and pin third-party Actions to immutable commit SHAs
+4. evaluate signed tags/checksums and platform signing after SBOM and immutable Action pinning
 5. design rollback detection around recovery and backup compatibility before implementation
 7. keep Linux token key storage file-backed until a reliable desktop/headless Secret Service strategy emerges
 8. keep the internal coverage floor healthy and reduce `cmd/vault` orchestration only when tests protect the boundary
@@ -457,7 +458,7 @@ Recommended progression:
 - decide whether Linux/macOS amd64 and arm64 are enough for the first public phase
 - consider Homebrew only after release binaries and public positioning are more mature
 - keep checksums and attestations in release assets/workflow outputs if binaries are published
-- consider SBOM generation and signed checksum files before treating release distribution as hardened
+- consider signed checksum files and platform signing before treating release distribution as hardened
 
 Suggested branch:
 

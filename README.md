@@ -42,7 +42,7 @@ GitHub Releases also publish installable packages:
 - `.pkg` for macOS arm64
 - `.tar.gz` archives for direct unpacking
 
-Release assets include per-target SHA-256 checksum files, an aggregate `SHA256SUMS` manifest, and GitHub artifact attestations when built by the release workflow.
+Release assets include per-target SHA-256 checksum files, SPDX JSON SBOMs, an aggregate `SHA256SUMS` manifest, and GitHub artifact attestations when built by the release workflow.
 
 For a macOS `.tar.gz` binary unpacked locally, make it executable and remove the downloaded-file quarantine only when Gatekeeper blocks the unsigned local binary:
 
@@ -63,7 +63,7 @@ go build -o bin/vault ./cmd/vault
 Local builds display the CLI version as `dev`. Release assets inject the Git tag version during packaging with Go ldflags, for example:
 
 ```bash
-go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.13" -o bin/vault ./cmd/vault
+go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.14" -o bin/vault ./cmd/vault
 ```
 
 Run it:
@@ -227,7 +227,7 @@ On normal startup, commands tighten existing runtime file permissions to `0600` 
 
 `myminivault` uses `v0.x.y` releases while the CLI is still evolving.
 
-Each release is published as a Git tag and a GitHub Release, with notes recorded in `CHANGELOG.md`. Release assets currently include Linux and macOS archives, Linux `.deb`/`.rpm` packages, macOS `.pkg` packages, SHA-256 checksum files, and GitHub artifact attestations.
+Each release is published as a Git tag and a GitHub Release, with notes recorded in `CHANGELOG.md`. Release assets currently include Linux and macOS archives, Linux `.deb`/`.rpm` packages, macOS `.pkg` packages, SPDX JSON SBOMs, SHA-256 checksum files, and GitHub artifact attestations.
 
 The CLI-visible version is injected from the release tag when GitHub release assets are built. Local development builds use `dev` unless `main.vaultVersion` is set with Go ldflags. Patch releases are used for documentation, tests, packaging, fixes, and small refactors. Minor releases are reserved for user-facing behavior changes or larger security/compatibility work.
 

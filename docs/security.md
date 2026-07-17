@@ -138,11 +138,11 @@ This is a local convenience model, not distributed synchronization. Per-key time
 
 ### Release Boundary
 
-GitHub Releases publish source tags, binary archives, and installable packages. Per-target checksum files and the aggregate `SHA256SUMS` manifest help detect accidental corruption or mismatched downloads. Release workflow artifacts also receive GitHub artifact attestations, which provide signed build provenance for assets produced by GitHub Actions.
+GitHub Releases publish source tags, binary archives, and installable packages. Per-target SPDX JSON SBOMs document Go module dependencies for each release target. Per-target checksum files and the aggregate `SHA256SUMS` manifest help detect accidental corruption or mismatched downloads. Release workflow artifacts also receive GitHub artifact attestations, which provide signed build provenance for assets produced by GitHub Actions. GitHub Actions are pinned to immutable commit SHAs in workflows to reduce tag-retargeting risk.
 
 The project does not currently require manually signed commits or tags, and release packages are not notarized or signed with platform-specific installer certificates.
 
-Third-party Actions currently use version tags rather than immutable commit SHAs, and releases do not yet include an SBOM.
+Workflows pin GitHub Actions to immutable commit SHAs. Release assets include per-target SPDX JSON SBOMs, but platform signing and independent security review are still out of scope.
 
 ## Runtime Files
 
@@ -286,7 +286,7 @@ Current mitigations:
 | Clipboard capture | Partially mitigated by TTL clearing, but not prevented |
 | Runtime file tampering | Partially mitigated by authenticated encryption and checksums |
 | Replacement with an older valid vault | Not detected; authenticated encryption does not provide freshness or rollback protection |
-| Supply-chain compromise | Partially mitigated by CI, checksums, and GitHub artifact attestations; still not a full external audit or platform signing process |
+| Supply-chain compromise | Partially mitigated by CI, pinned Actions, SBOMs, checksums, and GitHub artifact attestations; still not a full external audit or platform signing process |
 
 ## Operational Guidance
 
@@ -362,6 +362,6 @@ Recommended next steps:
 - sync runtime directories after atomic renames where supported and document the remaining crash-consistency limits
 - design rollback detection without undermining intentional backup and recovery restores
 - keep macOS Keychain support current and reconsider Linux Secret Service storage only with a reliable desktop/headless policy
-- pin third-party Actions to immutable commit SHAs and add SBOMs before stronger supply-chain claims
+- evaluate signed tags/checksums and platform signing before stronger supply-chain claims
 - consider signed tags, signed checksum manifests, or platform-specific package signing later in the release process
 - avoid claiming production security without an external audit

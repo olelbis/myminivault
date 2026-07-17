@@ -42,7 +42,7 @@ Install the latest tagged release with Go:
 go install github.com/olelbis/myminivault/cmd/vault@latest
 ```
 
-GitHub Releases also provide `.tar.gz`, `.deb`, `.rpm`, and macOS `.pkg` assets. Release workflow assets include SHA-256 checksum manifests and GitHub artifact attestations.
+GitHub Releases also provide `.tar.gz`, `.deb`, `.rpm`, macOS `.pkg`, and SPDX JSON SBOM assets. Release workflow assets include SHA-256 checksum manifests and GitHub artifact attestations.
 
 For a macOS `.tar.gz` binary unpacked locally, make it executable and remove the downloaded-file quarantine only if Gatekeeper blocks the unsigned local binary:
 

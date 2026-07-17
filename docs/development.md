@@ -169,7 +169,7 @@ go build -o bin/vault ./cmd/vault
 Local builds show `vdev` in `vault help`. To emulate a release build locally, inject the version with ldflags:
 
 ```bash
-go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.13" -o bin/vault ./cmd/vault
+go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.14" -o bin/vault ./cmd/vault
 ```
 
 Suggested manual smoke-test pattern in an isolated temporary directory:
@@ -222,8 +222,8 @@ For each completed branch:
 6. Merge to `main` with an explicit merge commit (`git merge --no-ff <branch>`).
 7. Run `go test ./...` again on `main`.
 8. Create and push the release tag.
-9. Create the GitHub release with a title matching only the tag, such as `v0.12.13`.
-10. Wait for the release package workflow to upload archives, `.deb`, `.rpm`, `.pkg`, per-target checksums, the aggregate `SHA256SUMS` manifest, and artifact attestations.
+9. Create the GitHub release with a title matching only the tag, such as `v0.12.14`.
+10. Wait for the release package workflow to upload archives, `.deb`, `.rpm`, `.pkg`, per-target SPDX JSON SBOMs, per-target checksums, the aggregate `SHA256SUMS` manifest, and artifact attestations.
 11. Verify one packaged binary or release build with `vault help`; it should show the tag version injected by `-X main.vaultVersion=<version>`.
 12. Delete the completed branch locally and remotely.
 
@@ -240,7 +240,7 @@ Release packaging currently publishes:
 - `.rpm` packages for Linux x86_64 and Linux aarch64
 - `.pkg` packages for macOS arm64
 - SHA-256 checksum manifests for each target
-- an aggregate `SHA256SUMS` manifest and GitHub artifact attestations for workflow-built artifacts
+- per-target SPDX JSON SBOMs, an aggregate `SHA256SUMS` manifest, and GitHub artifact attestations for workflow-built artifacts
 
 ## Runtime Files
 

@@ -35,10 +35,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version: '1.26.x'
           cache: true
@@ -127,13 +127,24 @@ jobs:
             "dist/${PACKAGE}_${TAG_NAME}_${TARGET}.rpm" \
             > "dist/${PACKAGE}_${TAG_NAME}_${TARGET}.sha256"
 
+      - name: Generate Linux SBOM
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name || inputs.tag }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          SBOM="dist/myminivault_${TAG_NAME}_${TARGET}.spdx.json"
+          go run ./tools/sbom > "$SBOM"
+          shasum -a 256 "$SBOM" >> "dist/myminivault_${TAG_NAME}_${TARGET}.sha256"
+
       - name: Attest Linux artifacts
-        uses: actions/attest@v4
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
         with:
           subject-path: |
             dist/myminivault_${{ github.event.release.tag_name || inputs.tag }}_${{ matrix.target }}.tar.gz
             dist/myminivault_${{ github.event.release.tag_name || inputs.tag }}_${{ matrix.target }}.deb
             dist/myminivault_${{ github.event.release.tag_name || inputs.tag }}_${{ matrix.target }}.rpm
+            dist/myminivault_${{ github.event.release.tag_name || inputs.tag }}_${{ matrix.target }}.spdx.json
 
       - name: Upload Linux release assets
         env:
@@ -145,6 +156,7 @@ jobs:
             "dist/myminivault_${TAG_NAME}_${TARGET}.tar.gz" \
             "dist/myminivault_${TAG_NAME}_${TARGET}.deb" \
             "dist/myminivault_${TAG_NAME}_${TARGET}.rpm" \
+            "dist/myminivault_${TAG_NAME}_${TARGET}.spdx.json" \
             "dist/myminivault_${TAG_NAME}_${TARGET}.sha256" \
             --clobber
 
@@ -154,10 +166,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version: '1.26.x'
           cache: true
@@ -193,12 +205,23 @@ jobs:
             "dist/${PACKAGE}_${TAG_NAME}_${TARGET}.pkg" \
             > "dist/${PACKAGE}_${TAG_NAME}_${TARGET}.sha256"
 
+      - name: Generate macOS SBOM
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name || inputs.tag }}
+          TARGET: darwin-arm64
+        run: |
+          set -euo pipefail
+          SBOM="dist/myminivault_${TAG_NAME}_${TARGET}.spdx.json"
+          go run ./tools/sbom > "$SBOM"
+          shasum -a 256 "$SBOM" >> "dist/myminivault_${TAG_NAME}_${TARGET}.sha256"
+
       - name: Attest macOS artifacts
-        uses: actions/attest@v4
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
         with:
           subject-path: |
             dist/myminivault_${{ github.event.release.tag_name || inputs.tag }}_darwin-arm64.tar.gz
             dist/myminivault_${{ github.event.release.tag_name || inputs.tag }}_darwin-arm64.pkg
+            dist/myminivault_${{ github.event.release.tag_name || inputs.tag }}_darwin-arm64.spdx.json
 
       - name: Upload macOS release assets
         env:
@@ -209,6 +232,7 @@ jobs:
           gh release upload "$TAG_NAME" \
             "dist/myminivault_${TAG_NAME}_${TARGET}.tar.gz" \
             "dist/myminivault_${TAG_NAME}_${TARGET}.pkg" \
+            "dist/myminivault_${TAG_NAME}_${TARGET}.spdx.json" \
             "dist/myminivault_${TAG_NAME}_${TARGET}.sha256" \
             --clobber
 
@@ -234,7 +258,7 @@ jobs:
             > dist/SHA256SUMS
 
       - name: Attest checksum manifest
-        uses: actions/attest@v4
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
         with:
           subject-path: dist/SHA256SUMS
 
