@@ -104,7 +104,7 @@ The CLI process is trusted while it runs. Plaintext secrets, passwords, derived 
 
 The CLI disables core dumps on supported Unix-like systems as a best-effort mitigation, but this is not a sandbox and not a defense against same-user process inspection. Core storage APIs accept byte-slice passwords so callers can wipe their local password buffers after use; this reduces avoidable immutable string copies in the storage layer but does not guarantee full memory erasure in Go.
 
-Secret values passed directly to `vault set KEY value` and compact tokens passed directly to `vault use-token <token>` are command-line arguments. Depending on the operating system and execution environment, process arguments may be visible to process inspection, monitoring, shell history, wrappers, or crash diagnostics. Prefer `vault set KEY --stdin` for real secrets and `vault use-token --stdin ...` for compact tokens. Avoid placing commands containing secrets or compact tokens in persistent scripts or recorded shells.
+Secret values passed directly to `vault set KEY value` and compact tokens passed directly to `vault use-token <token>` are command-line arguments. Depending on the operating system and execution environment, process arguments may be visible to process inspection, monitoring, shell history, wrappers, or crash diagnostics. Prefer `vault set KEY --stdin` for real secrets and `vault use-token --stdin ...`, `vault use-token --token-file ...`, or `vault use-token --token-fd ...` for compact tokens. Token files must still be protected with restrictive permissions and removed when no longer needed. Avoid placing commands containing secrets or compact tokens in persistent scripts or recorded shells.
 
 ### Runtime File Boundary
 
@@ -356,7 +356,7 @@ Recommended next steps:
 - keep hardening token sync if it moves beyond local-file workflows
 - decide whether revision counters, merge-base metadata, or fuller delete tombstones are needed
 - consider log rotation or retention controls if logs become more detailed
-- consider file-descriptor or token-file input for compact tokens and continue reducing direct process-argument exposure
+- continue reducing direct process-argument exposure where practical
 - keep expanding crash-consistency tests around directory sync and interrupted writes
 - keep extending migration coverage around bounded KDF metadata loading and legacy compatibility
 - sync runtime directories after atomic renames where supported and document the remaining crash-consistency limits

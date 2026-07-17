@@ -106,7 +106,7 @@ Keys must:
 
 `get --show` prints plaintext to the terminal by explicit request. Use `copy` when terminal scrollback is a concern.
 
-Values passed directly to `vault set KEY value` and compact tokens passed directly to `vault use-token <token>` are process arguments. They may be visible to process inspection, shell history, wrappers, monitoring, or crash diagnostics depending on the platform. Prefer `vault set KEY --stdin` for real secrets and `vault use-token --stdin ...` for compact tokens. Avoid recording commands containing secrets or compact tokens in persistent scripts or shared shell sessions.
+Values passed directly to `vault set KEY value` and compact tokens passed directly to `vault use-token <token>` are process arguments. They may be visible to process inspection, shell history, wrappers, monitoring, or crash diagnostics depending on the platform. Prefer `vault set KEY --stdin` for real secrets and `vault use-token --stdin ...`, `vault use-token --token-file ...`, or `vault use-token --token-fd ...` for compact tokens. Avoid recording commands containing secrets or compact tokens in persistent scripts or shared shell sessions.
 
 ### Delete A Secret
 
@@ -347,6 +347,8 @@ Read a key:
 ```bash
 ./bin/vault use-token <token> get API_KEY --show
 printf '%s' "$MYMV_TOKEN" | ./bin/vault use-token --stdin get API_KEY --show
+./bin/vault use-token --token-file /run/secrets/myminivault-token get API_KEY --show
+./bin/vault use-token --token-fd 3 get API_KEY --show
 ```
 
 Write a key:
@@ -372,6 +374,7 @@ Machine-readable token output for third-party programs:
 ```bash
 ./bin/vault use-token <token> get API_KEY --json
 printf '%s' "$MYMV_TOKEN" | ./bin/vault use-token --stdin get API_KEY --json
+./bin/vault use-token --token-file /run/secrets/myminivault-token get API_KEY --json
 ./bin/vault use-token <token> list --json
 ./bin/vault use-token <token> search API --json
 ```
@@ -388,7 +391,7 @@ Example error payload:
 {"error":"token has expired"}
 ```
 
-When `--json` is used, token command errors are printed as JSON and the process exits non-zero, so subprocess callers can parse stdout and still rely on exit status. Successful authorized token commands consume one token use; failed validation, permission, or key-pattern checks do not. The compact token is still a bearer secret: pass it through a secret store or environment variable, avoid committing it, and prefer `use-token --stdin` so the token is not placed directly in the command line.
+When `--json` is used, token command errors are printed as JSON and the process exits non-zero, so subprocess callers can parse stdout and still rely on exit status. Successful authorized token commands consume one token use; failed validation, permission, or key-pattern checks do not. The compact token is still a bearer secret: pass it through a secret store, protected file, inherited file descriptor, or environment variable, avoid committing it, and prefer `use-token --stdin`, `use-token --token-file`, or `use-token --token-fd` so the token is not placed directly in the command line.
 
 Python:
 

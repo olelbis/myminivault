@@ -63,7 +63,7 @@ go build -o bin/vault ./cmd/vault
 Local builds display the CLI version as `dev`. Release assets inject the Git tag version during packaging with Go ldflags, for example:
 
 ```bash
-go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.14" -o bin/vault ./cmd/vault
+go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.15" -o bin/vault ./cmd/vault
 ```
 
 Run it:
@@ -122,7 +122,7 @@ Create a backup:
 | `refresh-recovery` | Rewrite the recovery snapshot |
 | `recover` | Reset the master password with the recovery key |
 | `create-token` | Create temporary token access |
-| `use-token` | Use a temporary token |
+| `use-token` | Use a temporary token from an argument, stdin, file, or inherited fd |
 | `security-audit` | Print local vault status |
 | `doctor` | Check runtime file permissions and local health |
 | `inspect-runtime` | List active and legacy runtime files without decrypting |
@@ -132,6 +132,8 @@ Token commands can emit JSON for third-party integrations:
 ```bash
 vault use-token "$MYMV_TOKEN" get API_KEY --json
 printf '%s' "$MYMV_TOKEN" | vault use-token --stdin get API_KEY --json
+vault use-token --token-file /run/secrets/myminivault-token get API_KEY --json
+vault use-token --token-fd 3 get API_KEY --json
 ```
 
 ```json

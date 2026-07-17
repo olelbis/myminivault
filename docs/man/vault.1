@@ -1,4 +1,4 @@
-.TH VAULT 1 "July 17, 2026" "myminivault 0.12.14" "User Commands"
+.TH VAULT 1 "July 17, 2026" "myminivault 0.12.15" "User Commands"
 .SH NAME
 vault \- local encrypted command-line key/value vault
 .SH SYNOPSIS
@@ -82,6 +82,12 @@ or
 .TP
 .B use-token --stdin <cmd> [args...]
 Read the compact token from standard input, then run the permitted token command.
+.TP
+.B use-token --token-file <path> <cmd> [args...]
+Read the compact token from a protected file, then run the permitted token command.
+.TP
+.B use-token --token-fd <fd> <cmd> [args...]
+Read the compact token from an inherited file descriptor, then run the permitted token command.
 Pass
 .B --json
 to token commands for machine-readable success and error output.

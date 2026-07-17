@@ -301,6 +301,10 @@ SYNCHRONIZED TOKEN SYSTEM:
   revoke-token <id>     Revoke token 
   use-token <token> <cmd>  Execute commands with token
   use-token --stdin <cmd>  Read token from stdin and execute command
+  use-token --token-file <path> <cmd>
+                        Read token from a file and execute command
+  use-token --token-fd <fd> <cmd>
+                        Read token from an inherited file descriptor
     get <key> --show    Print key value
     get <key> --json    Print key value as JSON for subprocess callers
     set <key> <value>   Set key value (synced to all tokens)

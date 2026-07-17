@@ -267,6 +267,51 @@ func TestCLISmokeUseTokenFromStdin(t *testing.T) {
 	requireContains(t, requireOK(t, runVault(t, bin, dir, token+"\n", "use-token", "--stdin", "get", "API_KEY", "--show")), "hello")
 }
 
+func TestCLISmokeUseTokenFromFile(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "API_KEY", "hello"))
+
+	createOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=API_*", "--duration=1h", "--permissions=read", "--max-uses=2"))
+	token := extractCompactToken(t, createOutput)
+	tokenFile := filepath.Join(dir, "token.txt")
+	if err := os.WriteFile(tokenFile, []byte(token+"\n"), 0600); err != nil {
+		t.Fatalf("write token file: %v", err)
+	}
+
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", "--token-file", tokenFile, "get", "API_KEY", "--json")), `"value":"hello"`)
+}
+
+func TestCLISmokeUseTokenFromFD(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "API_KEY", "hello"))
+
+	createOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=API_*", "--duration=1h", "--permissions=read", "--max-uses=2"))
+	token := extractCompactToken(t, createOutput)
+
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	defer reader.Close()
+	if _, err := writer.Write([]byte(token + "\n")); err != nil {
+		t.Fatalf("write token pipe: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close token pipe writer: %v", err)
+	}
+
+	cmd := exec.Command(bin, "use-token", "--token-fd", "3", "get", "API_KEY", "--show")
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), vaultHomeEnv+"="+dir, "PATH="+t.TempDir())
+	cmd.ExtraFiles = []*os.File{reader}
+	out, err := cmd.CombinedOutput()
+	requireContains(t, requireOK(t, cliResult{output: string(out), err: err}), "hello")
+}
+
 func TestCLISmokeTokenJSONOutput(t *testing.T) {
 	bin := buildVaultBinary(t)
 	dir := t.TempDir()

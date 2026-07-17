@@ -1,5 +1,16 @@
 # Changelog
 
+## [v0.12.15] - 2026-07-17
+
+### Added
+
+- Added optional compact-token input via `vault use-token --token-file <path>` and `vault use-token --token-fd <fd>`.
+- Added CLI smoke coverage for file-backed and file-descriptor token input.
+
+### Changed
+
+- Updated token usage documentation to recommend stdin, protected token files, or inherited file descriptors over direct process arguments.
+
 ## [v0.12.14] - 2026-07-17
 
 ### Added

@@ -98,6 +98,41 @@ func TestTokenJSONFlagParsingWithStdinToken(t *testing.T) {
 	}
 }
 
+func TestTokenJSONFlagParsingWithFileAndFDToken(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want []string
+	}{
+		{
+			name: "file json",
+			args: []string{"vault", "use-token", "--token-file", "token.txt", "get", "API_KEY", "--json"},
+			want: []string{"vault", "use-token", "--token-file", "token.txt", "get", "API_KEY"},
+		},
+		{
+			name: "fd show",
+			args: []string{"vault", "use-token", "--token-fd", "3", "get", "API_KEY", "--show"},
+			want: []string{"vault", "use-token", "--token-fd", "3", "get", "API_KEY"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.args[len(tt.args)-1] == "--json" && !tokenJSONRequested(tt.args) {
+				t.Fatal("expected --json to be detected")
+			}
+			if tt.args[len(tt.args)-1] == "--show" && !tokenShowRequested(tt.args) {
+				t.Fatal("expected --show to be detected")
+			}
+
+			filtered := tokenCommandArgs(tt.args)
+			if strings.Join(filtered, "\x00") != strings.Join(tt.want, "\x00") {
+				t.Fatalf("tokenCommandArgs = %#v, want %#v", filtered, tt.want)
+			}
+		})
+	}
+}
+
 func TestExecuteTokenGetJSON(t *testing.T) {
 	vault := &ExtendedVault{Data: map[string]string{"API_KEY": "hello"}}
 	token := AccessToken{TokenID: "token-id", KeyPattern: "API_*", Permissions: []string{"read"}, MaxUses: 3, ExpiresAt: time.Now().Add(time.Hour)}

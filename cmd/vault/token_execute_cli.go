@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 
 	vaultaudit "github.com/olelbis/myminivault/internal/audit"
@@ -17,12 +19,14 @@ func executeWithToken() error {
 	args := tokenCommandArgs(os.Args)
 	if len(args) < 4 {
 		if tokenJSONRequested(os.Args) {
-			return writeJSONError("usage: vault use-token (<token>|--stdin) <command> [args...]")
+			return writeJSONError("usage: vault use-token (<token>|--stdin|--token-file <path>|--token-fd <fd>) <command> [args...]")
 		}
-		fmt.Println("Usage: vault use-token (<token>|--stdin) <command> [args...]")
+		fmt.Println("Usage: vault use-token (<token>|--stdin|--token-file <path>|--token-fd <fd>) <command> [args...]")
 		fmt.Println("Examples:")
 		fmt.Println("  vault use-token <token> get API_KEY --show")
 		fmt.Println("  vault use-token --stdin get API_KEY --show")
+		fmt.Println("  vault use-token --token-file /run/secrets/myminivault-token get API_KEY --show")
+		fmt.Println("  vault use-token --token-fd 3 get API_KEY --show")
 		fmt.Println("  vault use-token <token> get API_KEY --json")
 		fmt.Println("  vault use-token <token> set API_KEY value")
 		fmt.Println("  vault use-token <token> list")
@@ -31,18 +35,14 @@ func executeWithToken() error {
 
 	jsonOutput := tokenJSONRequested(os.Args)
 	showOutput := tokenShowRequested(os.Args)
-	tokenStr := args[2]
-	if tokenStr == "--stdin" {
-		stdinToken, err := readValueFromStdin(os.Stdin)
-		if err != nil {
-			return tokenCommandError(jsonOutput, "failed to read token from stdin: "+err.Error())
-		}
-		if stdinToken == "" {
-			return tokenCommandError(jsonOutput, "token read from stdin is empty")
-		}
-		tokenStr = stdinToken
+	tokenStr, commandIndex, err := readTokenArgument(args)
+	if err != nil {
+		return tokenCommandError(jsonOutput, err.Error())
 	}
-	command := args[3]
+	if len(args) <= commandIndex {
+		return tokenCommandError(jsonOutput, "usage: vault use-token (<token>|--stdin|--token-file <path>|--token-fd <fd>) <command> [args...]")
+	}
+	command := args[commandIndex]
 
 	token, vault, err := parseAndValidateProductionToken(tokenStr)
 	if err != nil {
@@ -56,45 +56,96 @@ func executeWithToken() error {
 
 	switch command {
 	case "get":
-		if len(args) < 5 {
-			return tokenCommandError(jsonOutput, "usage: vault use-token (<token>|--stdin) get <key> (--show|--json)")
+		if len(args) <= commandIndex+1 {
+			return tokenCommandError(jsonOutput, "usage: vault use-token (<token>|--stdin|--token-file <path>|--token-fd <fd>) get <key> (--show|--json)")
 		}
-		return executeTokenGet(vault, token, args[4], jsonOutput, showOutput)
+		return executeTokenGet(vault, token, args[commandIndex+1], jsonOutput, showOutput)
 
 	case "set":
-		if len(args) < 6 {
-			return tokenCommandError(jsonOutput, "usage: vault use-token (<token>|--stdin) set <key> <value>")
+		if len(args) <= commandIndex+2 {
+			return tokenCommandError(jsonOutput, "usage: vault use-token (<token>|--stdin|--token-file <path>|--token-fd <fd>) set <key> <value>")
 		}
-		return executeTokenSet(vault, token, args[4], args[5], jsonOutput)
+		return executeTokenSet(vault, token, args[commandIndex+1], args[commandIndex+2], jsonOutput)
 
 	case "list":
 		return executeTokenList(vault, token, jsonOutput)
 
 	case "search":
-		if len(args) < 5 {
-			return tokenCommandError(jsonOutput, "usage: vault use-token (<token>|--stdin) search <pattern> (--show|--json)")
+		if len(args) <= commandIndex+1 {
+			return tokenCommandError(jsonOutput, "usage: vault use-token (<token>|--stdin|--token-file <path>|--token-fd <fd>) search <pattern> (--show|--json)")
 		}
-		return executeTokenSearch(vault, token, args[4], jsonOutput, showOutput)
+		return executeTokenSearch(vault, token, args[commandIndex+1], jsonOutput, showOutput)
 
 	default:
 		return tokenCommandError(jsonOutput, fmt.Sprintf("command '%s' not allowed with tokens (only: get, set, list, search)", command))
 	}
 }
 
+func readTokenArgument(args []string) (string, int, error) {
+	if len(args) < 3 {
+		return "", 0, errors.New("missing token")
+	}
+
+	switch args[2] {
+	case "--stdin":
+		token, err := readValueFromStdin(os.Stdin)
+		if err != nil {
+			return "", 0, fmt.Errorf("failed to read token from stdin: %w", err)
+		}
+		return requireTokenValue(token, "stdin", 3)
+	case "--token-file":
+		if len(args) < 5 {
+			return "", 0, errors.New("usage: vault use-token --token-file <path> <command> [args...]")
+		}
+		data, err := os.ReadFile(args[3])
+		if err != nil {
+			return "", 0, fmt.Errorf("failed to read token file: %w", err)
+		}
+		return requireTokenValue(strings.TrimSpace(string(data)), "token file", 4)
+	case "--token-fd":
+		if len(args) < 5 {
+			return "", 0, errors.New("usage: vault use-token --token-fd <fd> <command> [args...]")
+		}
+		fd, err := strconv.ParseUint(args[3], 10, 32)
+		if err != nil {
+			return "", 0, fmt.Errorf("invalid token fd: %w", err)
+		}
+		file := os.NewFile(uintptr(fd), "token-fd")
+		if file == nil {
+			return "", 0, errors.New("failed to open token fd")
+		}
+		data, err := io.ReadAll(file)
+		if err != nil {
+			return "", 0, fmt.Errorf("failed to read token fd: %w", err)
+		}
+		return requireTokenValue(strings.TrimSpace(string(data)), "token fd", 4)
+	default:
+		return requireTokenValue(args[2], "argument", 3)
+	}
+}
+
+func requireTokenValue(token, source string, commandIndex int) (string, int, error) {
+	if token == "" {
+		return "", 0, fmt.Errorf("token read from %s is empty", source)
+	}
+	return token, commandIndex, nil
+}
+
 func tokenJSONRequested(args []string) bool {
 	if len(args) == 0 || args[len(args)-1] != "--json" {
 		return false
 	}
-	if len(args) < 4 {
+	commandIndex := tokenCommandIndex(args)
+	if commandIndex < 0 || len(args) <= commandIndex {
 		return true
 	}
-	switch args[3] {
+	switch args[commandIndex] {
 	case "set":
-		return len(args) >= 7
+		return len(args) >= commandIndex+4
 	case "get", "search":
-		return len(args) >= 6
+		return len(args) >= commandIndex+3
 	case "list":
-		return len(args) >= 5
+		return len(args) >= commandIndex+2
 	default:
 		return true
 	}
@@ -104,14 +155,27 @@ func tokenShowRequested(args []string) bool {
 	if len(args) == 0 || args[len(args)-1] != "--show" {
 		return false
 	}
-	if len(args) < 5 {
+	commandIndex := tokenCommandIndex(args)
+	if commandIndex < 0 || len(args) <= commandIndex+1 {
 		return false
 	}
-	switch args[3] {
+	switch args[commandIndex] {
 	case "get", "search":
-		return len(args) >= 6
+		return len(args) >= commandIndex+3
 	default:
 		return false
+	}
+}
+
+func tokenCommandIndex(args []string) int {
+	if len(args) < 3 {
+		return -1
+	}
+	switch args[2] {
+	case "--token-file", "--token-fd":
+		return 4
+	default:
+		return 3
 	}
 }
 
