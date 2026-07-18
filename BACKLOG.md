@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: clone or open the repository root, for example `/tmp/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.12.15`
+- Current baseline release: `v0.12.16`
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -15,7 +15,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `9.9 / 10` under the ordinary project model and `9.45 / 10` under the expanded paranoid review model after `v0.12.15`.
+Current assessment score: `9.9 / 10` under the ordinary project model and `9.50 / 10` under the expanded paranoid review model after `v0.12.16`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, macOS Keychain support for token master-key material, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -48,7 +48,7 @@ Main risks:
 - `cmd/vault` still contains orchestration that may deserve future extraction when it produces a clearer command boundary
 - the security model is clearer, but it is still self-reviewed and not an external audit
 - direct `vault set KEY value` and `vault use-token <token>` remain available for non-sensitive/demo use, but stdin alternatives now exist for both secret values and compact tokens
-- sensitive runtime helpers now reject symlinks and use OS-specific no-follow opens on Unix-like systems, while broader file-replacement race and crash-consistency hardening remain future work
+- sensitive runtime helpers now reject symlinks, use OS-specific no-follow opens on Unix-like systems, and create key temp/transaction files exclusively; broader rollback and same-user replacement threats remain future work
 - authenticated containers detect tampering but do not prevent replacement with an older valid vault
 
 Strategic guidance:
@@ -65,14 +65,14 @@ Use this section first when resuming work. The detailed backlog below explains e
 ### Immediate Next Work
 
 1. **Secret Input And Runtime Path Hardening**
-   - Status: partial progress through `v0.12.15` with `vault set KEY --stdin`, `vault use-token --stdin`, `vault use-token --token-file`, `vault use-token --token-fd`, portable symlink rejection, and Unix no-follow opens for checked sensitive runtime helpers; remaining work covers broader file-replacement race hardening.
+   - Status: partial progress through `v0.12.16` with `vault set KEY --stdin`, `vault use-token --stdin`, `vault use-token --token-file`, `vault use-token --token-fd`, portable symlink rejection, Unix no-follow opens for checked sensitive runtime helpers, and exclusive creation for main-vault transaction markers plus main/recovery/shared-token temp files; remaining work covers broader rollback and same-user replacement hardening.
    - Goal: reduce direct secret/token exposure in process arguments, keep sensitive runtime symlinks rejected, and keep reducing runtime file race windows.
    - Suggested branch: `secret-input-path-hardening`.
 
 ### Near-Term Hardening
 
 2. **Container KDF And Crash Consistency**
-   - Goal: continue migration tests and broader file-replacement race hardening after the first crash-consistency pass.
+   - Goal: continue migration tests and broader rollback/file-replacement race hardening after the first crash-consistency and exclusive-create passes.
    - KDF status: bounded MYMV v2 KDF metadata loading policy implemented; main vault, shared-token vault, and recovery decrypt paths validate supported algorithm/KDF/layout and cap scrypt parameters before deriving keys.
    - Crash-consistency status: parent directories are synced after atomic runtime-file renames and legacy runtime migration moves where supported.
    - Suggested branch: `container-runtime-hardening`.
@@ -412,7 +412,7 @@ These items are the most direct path beyond the current `9.9 / 10` ordinary asse
 Recommended order:
 
 1. keep explicit process-argument warnings current and continue reducing argument exposure where practical
-2. add directory fsync after atomic renames and keep file-replacement race hardening moving
+2. keep rollback and broader same-user file-replacement race hardening moving after no-follow opens, directory fsync, and exclusive temp/marker creation
 3. continue migration coverage around authenticated KDF metadata and crash-consistency behavior
 4. evaluate signed tags/checksums and platform signing after SBOM and immutable Action pinning
 5. design rollback detection around recovery and backup compatibility before implementation

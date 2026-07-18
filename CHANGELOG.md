@@ -1,5 +1,18 @@
 # Changelog
 
+## [v0.12.16] - 2026-07-18
+
+### Added
+
+- Added exclusive-create helpers for sensitive runtime files.
+- Added regression coverage for pre-existing main-vault transaction markers, main-vault temp files, recovery temp files, and shared-token-vault temp files.
+
+### Changed
+
+- Main vault transaction markers now fail if a pre-existing marker is present instead of truncating it.
+- Main vault, recovery snapshot, and shared-token-vault temp files now fail if a pre-existing temp path is present instead of reusing it.
+- Updated runtime security notes and backlog status for file-replacement race hardening.
+
 ## [v0.12.15] - 2026-07-17
 
 ### Added

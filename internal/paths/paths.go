@@ -75,10 +75,31 @@ func OpenFileChecked(path string, flag int, perm os.FileMode) (*os.File, error) 
 	return openFileNoFollow(path, flag, perm)
 }
 
+// OpenFileCreateExclusiveChecked creates a new sensitive runtime file and
+// fails if any filesystem entry already exists at that path.
+func OpenFileCreateExclusiveChecked(path string, perm os.FileMode) (*os.File, error) {
+	return OpenFileChecked(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, perm)
+}
+
 // WriteFileChecked rejects an existing symlink before writing a sensitive
 // runtime file.
 func WriteFileChecked(path string, data []byte, perm os.FileMode) error {
 	file, err := OpenFileChecked(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)
+	if err != nil {
+		return err
+	}
+	_, writeErr := file.Write(data)
+	closeErr := file.Close()
+	if writeErr != nil {
+		return writeErr
+	}
+	return closeErr
+}
+
+// WriteFileCreateExclusiveChecked writes a new sensitive runtime file and
+// fails instead of truncating when a pre-existing path is present.
+func WriteFileCreateExclusiveChecked(path string, data []byte, perm os.FileMode) error {
+	file, err := OpenFileCreateExclusiveChecked(path, perm)
 	if err != nil {
 		return err
 	}

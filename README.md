@@ -63,7 +63,7 @@ go build -o bin/vault ./cmd/vault
 Local builds display the CLI version as `dev`. Release assets inject the Git tag version during packaging with Go ldflags, for example:
 
 ```bash
-go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.15" -o bin/vault ./cmd/vault
+go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.16" -o bin/vault ./cmd/vault
 ```
 
 Run it:
@@ -209,7 +209,7 @@ The command prints active runtime files, legacy current-directory files, modifie
 
 Encrypted runtime files saved by current releases start with a small cleartext `MYMV` container header. Current saves write container format `v2`, which identifies the file kind and records non-sensitive crypto metadata such as algorithm, KDF, scrypt parameters, salt size, nonce size, and payload layout. The `MYMV v2` header, metadata, and salt are authenticated with AES-GCM AAD, so tampering with that cleartext context makes decryption fail. Load paths validate supported KDF metadata and bounded scrypt parameters before deriving keys. It does not expose stored keys, values, recovery metadata, token contents, or encrypted vault metadata. Older `MYMV v1` and salt-plus-ciphertext files remain readable and are reported as older formats until they are rewritten by a save operation.
 
-On normal startup, commands tighten existing runtime file permissions to `0600` when possible and reject symlinked sensitive runtime paths. `doctor` and `inspect-runtime` remain non-mutating inspection commands, so they report the current state without auto-fixing it. `vault doctor` also reports symlinked sensitive files, recovery snapshot freshness, and non-decrypting recovery container compatibility so stale or mismatched recovery files are easier to spot before an emergency.
+On normal startup, commands tighten existing runtime file permissions to `0600` when possible and reject symlinked sensitive runtime paths. Checked runtime opens use no-follow semantics where supported, and sensitive temp/transaction files are created exclusively so pre-existing paths fail instead of being reused. `doctor` and `inspect-runtime` remain non-mutating inspection commands, so they report the current state without auto-fixing it. `vault doctor` also reports symlinked sensitive files, recovery snapshot freshness, and non-decrypting recovery container compatibility so stale or mismatched recovery files are easier to spot before an emergency.
 
 | File | Purpose |
 | --- | --- |

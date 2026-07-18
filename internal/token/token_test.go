@@ -452,6 +452,25 @@ func TestSaveVaultFileAtomicPreservesPreviousVersionAsBackup(t *testing.T) {
 	}
 }
 
+func TestSaveVaultFileAtomicRejectsPreexistingTempFile(t *testing.T) {
+	sharedVault := filepath.Join(t.TempDir(), "shared-token-vault.json")
+	tempFile := sharedVault + ".tmp"
+	if err := os.WriteFile(tempFile, []byte("existing temp"), 0600); err != nil {
+		t.Fatalf("write temp file: %v", err)
+	}
+
+	if err := SaveVaultFileAtomic(sharedVault, []byte("1234567890123456"), []byte("new")); err == nil {
+		t.Fatal("expected preexisting temp file to be rejected")
+	}
+	data, err := os.ReadFile(tempFile)
+	if err != nil {
+		t.Fatalf("read temp file: %v", err)
+	}
+	if string(data) != "existing temp" {
+		t.Fatalf("temp file was modified: %q", data)
+	}
+}
+
 func TestParseAndValidateProductionTokenRejectsForgeryWithoutPersistingUsage(t *testing.T) {
 	dir := t.TempDir()
 	sharedVault := filepath.Join(dir, "shared-token-vault.json")

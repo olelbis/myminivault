@@ -34,7 +34,7 @@ var fileOps = struct {
 	remove   func(string) error
 }{
 	stat:     os.Stat,
-	openFile: os.OpenFile,
+	openFile: vaultpaths.OpenFileChecked,
 	rename:   os.Rename,
 	chmod:    os.Chmod,
 	remove:   os.Remove,
@@ -248,7 +248,7 @@ func SaveFileAtomic(vaultFile string, salt, data []byte, metadata ...container.M
 			return err
 		}
 	}
-	if err := vaultpaths.WriteFileChecked(transactionFile, []byte(time.Now().UTC().Format(time.RFC3339Nano)+"\n"), 0600); err != nil {
+	if err := vaultpaths.WriteFileCreateExclusiveChecked(transactionFile, []byte(time.Now().UTC().Format(time.RFC3339Nano)+"\n"), 0600); err != nil {
 		return fmt.Errorf("create vault transaction marker: %w", err)
 	}
 	if err := vaultpaths.SyncParentDir(transactionFile); err != nil {
@@ -263,7 +263,7 @@ func SaveFileAtomic(vaultFile string, salt, data []byte, metadata ...container.M
 		}
 	}()
 
-	f, err := fileOps.openFile(tempFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
+	f, err := fileOps.openFile(tempFile, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}

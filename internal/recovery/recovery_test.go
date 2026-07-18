@@ -204,6 +204,26 @@ func TestSaveFileReplacesExistingRecoveryFile(t *testing.T) {
 	}
 }
 
+func TestSaveFileRejectsPreexistingRecoveryTempFile(t *testing.T) {
+	vaultFile := filepath.Join(t.TempDir(), "vault.db")
+	tempFile := vaultFile + ".recovery.tmp"
+	if err := os.WriteFile(tempFile, []byte("existing temp"), 0600); err != nil {
+		t.Fatalf("write temp file: %v", err)
+	}
+
+	err := SaveFile(vaultFile, []byte("1234567890123456"), []byte("encrypted"))
+	if err == nil {
+		t.Fatal("expected preexisting temp file to be rejected")
+	}
+	data, readErr := os.ReadFile(tempFile)
+	if readErr != nil {
+		t.Fatalf("read temp file: %v", readErr)
+	}
+	if string(data) != "existing temp" {
+		t.Fatalf("temp file was modified: %q", data)
+	}
+}
+
 func TestSaveFileReportsCreateError(t *testing.T) {
 	vaultFile := filepath.Join(t.TempDir(), "missing", "vault.db")
 

@@ -182,6 +182,24 @@ func TestWriteFileCheckedRejectsSymlink(t *testing.T) {
 	}
 }
 
+func TestWriteFileCreateExclusiveCheckedRejectsExistingFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "marker")
+	if err := os.WriteFile(path, []byte("existing"), 0600); err != nil {
+		t.Fatalf("write existing: %v", err)
+	}
+
+	if err := WriteFileCreateExclusiveChecked(path, []byte("new"), 0600); err == nil {
+		t.Fatal("expected existing file to be rejected")
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read existing: %v", err)
+	}
+	if string(data) != "existing" {
+		t.Fatalf("existing file was modified: %q", data)
+	}
+}
+
 func TestSyncParentDir(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vault.db")
 	if err := os.WriteFile(path, []byte("data"), 0600); err != nil {

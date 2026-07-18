@@ -150,7 +150,7 @@ func SaveFile(vaultFile string, salt, recoveryCiphertext []byte, metadata ...con
 			return err
 		}
 	}
-	f, err := vaultpaths.OpenFileChecked(tempFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
+	f, err := vaultpaths.OpenFileCreateExclusiveChecked(tempFile, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to create recovery file: %w", err)
 	}

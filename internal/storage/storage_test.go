@@ -381,6 +381,44 @@ func TestSaveFileAtomicReportsCreateError(t *testing.T) {
 	}
 }
 
+func TestSaveFileAtomicRejectsPreexistingTransactionMarker(t *testing.T) {
+	vaultFile := filepath.Join(t.TempDir(), "vault.db")
+	transactionFile := vaultFile + ".transaction"
+	if err := os.WriteFile(transactionFile, []byte("existing marker"), 0600); err != nil {
+		t.Fatalf("write transaction marker: %v", err)
+	}
+
+	if err := SaveFileAtomic(vaultFile, []byte("salt"), []byte("data")); err == nil {
+		t.Fatal("expected preexisting transaction marker to be rejected")
+	}
+	data, err := os.ReadFile(transactionFile)
+	if err != nil {
+		t.Fatalf("read transaction marker: %v", err)
+	}
+	if string(data) != "existing marker" {
+		t.Fatalf("transaction marker was modified: %q", data)
+	}
+}
+
+func TestSaveFileAtomicRejectsPreexistingTempFile(t *testing.T) {
+	vaultFile := filepath.Join(t.TempDir(), "vault.db")
+	tempFile := vaultFile + ".tmp"
+	if err := os.WriteFile(tempFile, []byte("existing temp"), 0600); err != nil {
+		t.Fatalf("write temp file: %v", err)
+	}
+
+	if err := SaveFileAtomic(vaultFile, []byte("salt"), []byte("data")); err == nil {
+		t.Fatal("expected preexisting temp file to be rejected")
+	}
+	data, err := os.ReadFile(tempFile)
+	if err != nil {
+		t.Fatalf("read temp file: %v", err)
+	}
+	if string(data) != "existing temp" {
+		t.Fatalf("temp file was modified: %q", data)
+	}
+}
+
 func TestSaveFileAtomicReportsBackupRenameError(t *testing.T) {
 	dir := t.TempDir()
 	vaultFile := filepath.Join(dir, "vault.db")
