@@ -9,6 +9,8 @@ import (
 
 	vaultconfig "github.com/olelbis/myminivault/internal/config"
 	"github.com/olelbis/myminivault/internal/container"
+	"github.com/olelbis/myminivault/internal/model"
+	vaultrollback "github.com/olelbis/myminivault/internal/rollback"
 )
 
 func TestCheckRecoveryFreshnessExplainsOlderSnapshot(t *testing.T) {
@@ -143,6 +145,46 @@ func TestCheckSharedVaultFreshnessExplainsNewerSharedVault(t *testing.T) {
 	}
 }
 
+func TestCheckRollbackStateHealthReportsValidState(t *testing.T) {
+	dir := t.TempDir()
+	restore := useDoctorTestRuntime(t, dir)
+	defer restore()
+
+	if err := vaultrollback.SaveState(rollbackStateFile, model.VaultMetadata{VaultID: "vault-a", Revision: 7}); err != nil {
+		t.Fatalf("save rollback state: %v", err)
+	}
+
+	check := checkRollbackStateHealth()
+	if check.status != "OK" {
+		t.Fatalf("status = %s, want OK", check.status)
+	}
+	if !strings.Contains(check.detail, "highest_revision=7") {
+		t.Fatalf("detail = %q, want revision", check.detail)
+	}
+}
+
+func TestPrintRollbackInspectionSummaryIncludesState(t *testing.T) {
+	dir := t.TempDir()
+	restore := useDoctorTestRuntime(t, dir)
+	defer restore()
+
+	if err := vaultrollback.SaveState(rollbackStateFile, model.VaultMetadata{VaultID: "vault-a", Revision: 3}); err != nil {
+		t.Fatalf("save rollback state: %v", err)
+	}
+
+	output := captureStdout(t, printRollbackInspectionSummary)
+	for _, want := range []string{
+		"Rollback state:",
+		"status: ok",
+		"vault_id: vault-a",
+		"highest_revision: 3",
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("output missing %q:\n%s", want, output)
+		}
+	}
+}
+
 func useDoctorTestRuntime(t *testing.T, dir string) func() {
 	t.Helper()
 
@@ -150,12 +192,14 @@ func useDoctorTestRuntime(t *testing.T, dir string) func() {
 	originalVaultFile := vaultFile
 	originalConfigFile := configFile
 	originalSharedTokenVault := sharedTokenVault
+	originalRollbackStateFile := rollbackStateFile
 	originalConfig := config
 
 	runtimeHome = dir
 	vaultFile = filepath.Join(dir, vaultFileName)
 	configFile = filepath.Join(dir, configFileName)
 	sharedTokenVault = filepath.Join(dir, sharedTokenVaultName)
+	rollbackStateFile = filepath.Join(dir, rollbackStateName)
 	config = vaultconfig.Default
 
 	return func() {
@@ -163,6 +207,7 @@ func useDoctorTestRuntime(t *testing.T, dir string) func() {
 		vaultFile = originalVaultFile
 		configFile = originalConfigFile
 		sharedTokenVault = originalSharedTokenVault
+		rollbackStateFile = originalRollbackStateFile
 		config = originalConfig
 	}
 }

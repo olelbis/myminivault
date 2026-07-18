@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	vaultrollback "github.com/olelbis/myminivault/internal/rollback"
 )
 
 func main() {
@@ -120,6 +122,10 @@ func runPasswordCommandBytes(command string, password []byte) error {
 	extendedVault, salt, err := loadAndDecryptExtendedVaultBytes(password)
 	if err != nil {
 		return fmt.Errorf("error loading vault: %w", err)
+	}
+	rollbackCheck := vaultrollback.Check(rollbackStateFile, extendedVault.Metadata)
+	if rollbackCheck.Status == "WARN" && !suppressRuntimeWarnings {
+		fmt.Fprintf(os.Stderr, "⚠️  Rollback warning: %s\n", rollbackCheck.Detail)
 	}
 
 	tokenImportResult, err := importSharedVaultToMainVault(extendedVault)

@@ -12,6 +12,7 @@ import (
 	"github.com/olelbis/myminivault/internal/container"
 	"github.com/olelbis/myminivault/internal/keychain"
 	vaultpaths "github.com/olelbis/myminivault/internal/paths"
+	vaultrollback "github.com/olelbis/myminivault/internal/rollback"
 )
 
 type runtimeFileSpec struct {
@@ -33,6 +34,7 @@ func handleInspectRuntimeCommand() {
 	}
 
 	printRecoveryInspectionSummary()
+	printRollbackInspectionSummary()
 
 	legacy := legacyRuntimeFiles()
 	fmt.Println("\nLegacy current-directory files:")
@@ -101,8 +103,26 @@ func runtimeFileSpecs() []runtimeFileSpec {
 		{name: tokenRegistryName, path: tokenRegistry},
 		{name: tokenKeyFileName, path: tokenKeyFile},
 		{name: sharedTokenVaultName, path: sharedTokenVault},
+		{name: rollbackStateName, path: rollbackStateFile},
 		{name: lockFileName, path: vaultLockFile},
 	}
+}
+
+func printRollbackInspectionSummary() {
+	state, err := vaultrollback.LoadState(rollbackStateFile)
+	fmt.Println("\nRollback state:")
+	if err != nil {
+		if os.IsNotExist(err) {
+			fmt.Println("  status: warn - not initialized; next successful vault save will create it")
+			return
+		}
+		fmt.Printf("  status: warn - unreadable: %v\n", err)
+		return
+	}
+	fmt.Println("  status: ok")
+	fmt.Printf("  vault_id: %s\n", state.VaultID)
+	fmt.Printf("  highest_revision: %d\n", state.HighestRevision)
+	fmt.Printf("  updated: %s\n", state.UpdatedAt.Format(time.RFC3339))
 }
 
 func legacyRuntimeFiles() []runtimeFileSpec {

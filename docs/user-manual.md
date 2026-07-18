@@ -611,11 +611,12 @@ Important behavior:
 | `shared-token-vault.json` | Encrypted shared vault used by token access |
 | `shared-token-vault.json.bak` | Previous encrypted shared vault retained during atomic replacement |
 | `vault-tokens.json` | Token registry metadata |
+| `rollback-state.json` | Local trusted high-water revision used for rollback warnings |
 | `vault.log` | Audit log |
 | `vault-config.json` | Optional config override |
 | `.myminivault.lock` | Inter-process lock file |
 
-Current encrypted runtime files include a small cleartext `MYMV v2` container header with the container format version, file kind, and non-sensitive crypto metadata. This helps `vault doctor` and `vault inspect-runtime` identify file format information without decrypting secrets. The v2 cleartext context is authenticated with AES-GCM AAD, so header or metadata tampering makes decryption fail. Older `MYMV v1` and salt-plus-ciphertext files remain readable and are upgraded to the current container format when rewritten.
+Current encrypted runtime files include a small cleartext `MYMV v2` container header with the container format version, file kind, and non-sensitive crypto metadata. This helps `vault doctor` and `vault inspect-runtime` identify file format information without decrypting secrets. The v2 cleartext context is authenticated with AES-GCM AAD, so header or metadata tampering makes decryption fail. Mutating password-based saves also keep encrypted vault rollback metadata and update `rollback-state.json`; if a later command sees an older valid vault revision, it warns instead of silently lowering trusted local state. Older `MYMV v1` and salt-plus-ciphertext files remain readable and are upgraded to the current container format when rewritten.
 
 These files are ignored by Git because they may contain encrypted secrets, keys, logs, or local runtime state.
 

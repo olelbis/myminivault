@@ -48,6 +48,8 @@ internal/
     audit.go            redacted audit log formatting and writes
   sync/
     sync.go             sync metadata and shared-vault import policy helpers
+  rollback/
+    rollback.go         local trusted rollback-state checks and revision helpers
   commands/
     commands.go         export/import/key validation helpers
   clipboard/
@@ -65,6 +67,7 @@ docs/
   development.md        architecture, test, and release workflow notes
   security.md           security model, assumptions, limits, and compromise guidance
   recovery-policy.md    recovery snapshot, verifier, divergence, and rotation policy
+  rollback-policy.md    rollback detection behavior and future strict-mode design
   token-sync-policy.md  main/shared token vault sync policy and deferred decisions
 ```
 
@@ -84,6 +87,7 @@ docs/
 - `internal/lock`: advisory file locking with timeout support for cooperating local CLI processes
 - `internal/audit`: redacted audit log formatting and writes
 - `internal/sync`: sync metadata and shared-vault import policy helpers
+- `internal/rollback`: local trusted rollback-state checks and revision helpers
 - `internal/commands`: export/import/key validation helpers
 - `internal/clipboard`: clipboard backend detection and best-effort clearing
 - `internal/export`: shell export rendering and restrictive export-file writes
@@ -169,7 +173,7 @@ go build -o bin/vault ./cmd/vault
 Local builds show `vdev` in `vault help`. To emulate a release build locally, inject the version with ldflags:
 
 ```bash
-go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.16" -o bin/vault ./cmd/vault
+go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.17" -o bin/vault ./cmd/vault
 ```
 
 Suggested manual smoke-test pattern in an isolated temporary directory:
@@ -190,7 +194,7 @@ printf 'oldpass\nsecret-from-stdin\n' | ./vault set TEST_KEY --stdin
 
 The automated CLI smoke tests live in `./tests`, create temporary directories, and use fake data. Do not run manual smoke commands in a directory that contains real vault files unless that is intentional.
 
-Current automated checks cover CLI smoke flows, token lifecycle behavior, token JSON output, config error handling, `vault doctor`, `vault inspect-runtime`, shell-safe import/export round trips, export-to-file behavior, clipboard clear behavior, audit-log redaction, disabled audit logging, token sync metadata decisions, token master-key and compact-token helper behavior, core unit behavior, and package-level coverage for `internal/storage`, `internal/token`, `internal/recovery`, `internal/lock`, `internal/audit`, `internal/sync`, `internal/commands`, `internal/clipboard`, `internal/export`, `internal/container`, `internal/paths`, `internal/config`, and `internal/keychain`. CI enforces `80.0%` minimum coverage for `./internal/...`.
+Current automated checks cover CLI smoke flows, token lifecycle behavior, token JSON output, config error handling, `vault doctor`, `vault inspect-runtime`, shell-safe import/export round trips, export-to-file behavior, clipboard clear behavior, audit-log redaction, disabled audit logging, token sync metadata decisions, token master-key and compact-token helper behavior, core unit behavior, and package-level coverage for `internal/storage`, `internal/token`, `internal/recovery`, `internal/lock`, `internal/audit`, `internal/sync`, `internal/rollback`, `internal/commands`, `internal/clipboard`, `internal/export`, `internal/container`, `internal/paths`, `internal/config`, and `internal/keychain`. CI enforces `80.0%` minimum coverage for `./internal/...`.
 
 ## Branch Workflow
 
@@ -222,7 +226,7 @@ For each completed branch:
 6. Merge to `main` with an explicit merge commit (`git merge --no-ff <branch>`).
 7. Run `go test ./...` again on `main`.
 8. Create and push the release tag.
-9. Create the GitHub release with a title matching only the tag, such as `v0.12.16`.
+9. Create the GitHub release with a title matching only the tag, such as `v0.12.17`.
 10. Wait for the release package workflow to upload archives, `.deb`, `.rpm`, `.pkg`, per-target SPDX JSON SBOMs, per-target checksums, the aggregate `SHA256SUMS` manifest, and artifact attestations.
 11. Verify one packaged binary or release build with `vault help`; it should show the tag version injected by `-X main.vaultVersion=<version>`.
 12. Delete the completed branch locally and remotely.

@@ -14,6 +14,7 @@ import (
 	"github.com/olelbis/myminivault/internal/health"
 	"github.com/olelbis/myminivault/internal/keychain"
 	vaultpaths "github.com/olelbis/myminivault/internal/paths"
+	vaultrollback "github.com/olelbis/myminivault/internal/rollback"
 )
 
 type doctorCheck struct {
@@ -35,6 +36,7 @@ func handleDoctorCommand() {
 		checkRecoveryFreshness(),
 		checkRecoveryCompatibility(),
 		checkSharedVaultFreshness(),
+		checkRollbackStateHealth(),
 	}
 	checks = append(checks, checkRuntimeFileHealth()...)
 
@@ -64,6 +66,21 @@ func handleDoctorCommand() {
 		return
 	}
 	fmt.Println("Status: healthy")
+}
+
+func checkRollbackStateHealth() doctorCheck {
+	state, err := vaultrollback.LoadState(rollbackStateFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return doctorCheck{name: "rollback state", status: "WARN", detail: "not initialized; next successful vault save will create it"}
+		}
+		return doctorCheck{name: "rollback state", status: "WARN", detail: "unreadable: " + err.Error()}
+	}
+	if check := checkFileMode(rollbackStateFile, 0600, false); check.status != "OK" {
+		check.name = "rollback state"
+		return check
+	}
+	return doctorCheck{name: "rollback state", status: "OK", detail: fmt.Sprintf("vault_id=%s, highest_revision=%d", state.VaultID, state.HighestRevision)}
 }
 
 func checkConfigHealth() doctorCheck {
@@ -120,6 +137,7 @@ func checkRuntimeFileHealth() []doctorCheck {
 		{name: "token master key", path: tokenKeyFile, required: false, mode: 0600},
 		{name: "shared token vault", path: sharedTokenVault, required: false, mode: 0600},
 		{name: "token registry", path: tokenRegistry, required: false, mode: 0600},
+		{name: "rollback state", path: rollbackStateFile, required: false, mode: 0600},
 		{name: "audit log", path: logFile, required: false, mode: 0600},
 	}
 

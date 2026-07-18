@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: clone or open the repository root, for example `/tmp/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.12.16`
+- Current baseline release: `v0.12.17`
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -15,7 +15,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `9.9 / 10` under the ordinary project model and `9.50 / 10` under the expanded paranoid review model after `v0.12.16`.
+Current assessment score: `9.9 / 10` under the ordinary project model and `9.60 / 10` under the expanded paranoid review model after `v0.12.17`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, macOS Keychain support for token master-key material, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -35,7 +35,7 @@ Main strengths:
 - tested `internal/clipboard` package for backend selection and clear-if-unchanged behavior
 - tested `internal/export` package for shell export rendering and restrictive file writes
 - tested `internal/health` package for non-decrypting runtime metadata compatibility checks
-- internal package coverage at `85.6%`, with every tested internal package currently above `80.0%`
+- internal package coverage at `81.2%`, above the enforced `80.0%` floor
 - automated CLI smoke coverage for critical workflows in the top-level `tests` package
 - explicit handling for recovery, token sync, locking, backups, export, and password changes
 - a handoff backlog that can restart work from a fresh chat
@@ -48,8 +48,8 @@ Main risks:
 - `cmd/vault` still contains orchestration that may deserve future extraction when it produces a clearer command boundary
 - the security model is clearer, but it is still self-reviewed and not an external audit
 - direct `vault set KEY value` and `vault use-token <token>` remain available for non-sensitive/demo use, but stdin alternatives now exist for both secret values and compact tokens
-- sensitive runtime helpers now reject symlinks, use OS-specific no-follow opens on Unix-like systems, and create key temp/transaction files exclusively; broader rollback and same-user replacement threats remain future work
-- authenticated containers detect tampering but do not prevent replacement with an older valid vault
+- sensitive runtime helpers now reject symlinks, use OS-specific no-follow opens on Unix-like systems, create key temp/transaction files exclusively, and warn on many older-valid-vault rollback cases
+- authenticated containers detect tampering, and initial rollback-state warnings now detect many older-valid-vault replacements; strict blocking and explicit restore acceptance remain future work
 
 Strategic guidance:
 
@@ -65,7 +65,7 @@ Use this section first when resuming work. The detailed backlog below explains e
 ### Immediate Next Work
 
 1. **Secret Input And Runtime Path Hardening**
-   - Status: partial progress through `v0.12.16` with `vault set KEY --stdin`, `vault use-token --stdin`, `vault use-token --token-file`, `vault use-token --token-fd`, portable symlink rejection, Unix no-follow opens for checked sensitive runtime helpers, and exclusive creation for main-vault transaction markers plus main/recovery/shared-token temp files; remaining work covers broader rollback and same-user replacement hardening.
+   - Status: partial progress through `v0.12.17` with `vault set KEY --stdin`, `vault use-token --stdin`, `vault use-token --token-file`, `vault use-token --token-fd`, portable symlink rejection, Unix no-follow opens for checked sensitive runtime helpers, exclusive creation for main-vault transaction markers plus main/recovery/shared-token temp files, and warn-mode rollback-state checks.
    - Goal: reduce direct secret/token exposure in process arguments, keep sensitive runtime symlinks rejected, and keep reducing runtime file race windows.
    - Suggested branch: `secret-input-path-hardening`.
 
@@ -83,8 +83,8 @@ Use this section first when resuming work. The detailed backlog below explains e
    - Suggested branch: `supply-chain-hardening`.
 
 4. **Rollback Policy**
-   - Status: design documented in `docs/rollback-policy.md`; implementation remains future work.
-   - Goal: add monotonic encrypted vault revisions plus local trusted-state checks without breaking backup and recovery workflows.
+   - Status: initial warn-mode implementation completed in `v0.12.17`; strict blocking and explicit restore/accept commands remain future work.
+   - Goal: evolve monotonic encrypted vault revisions plus local trusted-state checks without breaking backup and recovery workflows.
    - Suggested branch: `rollback-policy`.
 
 5. **Coverage And `cmd/vault` Cleanup**
@@ -229,6 +229,7 @@ Docs-only candidates:
 - Updated coverage baselines to `42.5%` full repository and `85.9%` internal packages.
 - Consolidated main vault payload parsing in `internal/storage` and added direct tests for extended and legacy JSON formats.
 - Updated coverage baselines to `42.6%` full repository and `86.0%` internal packages.
+- Added warn-mode rollback-state checks and updated coverage baselines to `44.1%` full repository and `81.2%` internal packages.
 
 ## Current Verification
 
@@ -325,6 +326,8 @@ internal/
     audit.go            redacted audit log formatting and writes
   sync/
     sync.go             sync metadata and shared-vault import policy helpers
+  rollback/
+    rollback.go         local trusted rollback-state checks and revision helpers
   commands/
     commands.go         export/import/key validation helpers
   clipboard/
@@ -437,7 +440,7 @@ Current CI runs formatting, `go vet`, `go test ./...`, full coverage reporting, 
 
 Next actions:
 
-- keep `./internal/...` coverage at or above the current `80.0%` floor, with `85.6%` as the latest local baseline
+- keep `./internal/...` coverage at or above the current `80.0%` floor, with `81.2%` as the latest local baseline
 - raise `cmd/vault` coverage with focused unit tests or further extraction of command-independent logic where it improves clarity
 
 Suggested branch:

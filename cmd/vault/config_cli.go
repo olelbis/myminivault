@@ -21,6 +21,7 @@ const (
 	tokenRegistryName    = "vault-tokens.json"
 	tokenKeyFileName     = "vault-token.key"
 	sharedTokenVaultName = "shared-token-vault.json"
+	rollbackStateName    = "rollback-state.json"
 	lockFileName         = ".myminivault.lock"
 	saltSize             = 16
 )
@@ -34,6 +35,7 @@ var (
 	tokenRegistry           = tokenRegistryName
 	tokenKeyFile            = tokenKeyFileName
 	sharedTokenVault        = sharedTokenVaultName
+	rollbackStateFile       = rollbackStateName
 	vaultLockFile           = lockFileName
 	suppressRuntimeWarnings bool
 )
@@ -79,6 +81,9 @@ func initRuntimePaths() error {
 	if sharedTokenVault, err = vaultpaths.File(sharedTokenVaultName); err != nil {
 		return err
 	}
+	if rollbackStateFile, err = vaultpaths.File(rollbackStateName); err != nil {
+		return err
+	}
 	if vaultLockFile, err = vaultpaths.File(lockFileName); err != nil {
 		return err
 	}
@@ -97,6 +102,7 @@ func hardenRuntimeFilePermissions() error {
 		tokenKeyFile:               true,
 		sharedTokenVault:           true,
 		sharedTokenVault + ".bak":  true,
+		rollbackStateFile:          true,
 	}
 	files := []string{
 		vaultFile,
@@ -109,6 +115,7 @@ func hardenRuntimeFilePermissions() error {
 		tokenKeyFile,
 		sharedTokenVault,
 		sharedTokenVault + ".bak",
+		rollbackStateFile,
 		vaultLockFile,
 	}
 	if backups, err := filepath.Glob(vaultFile + ".*.bak"); err == nil {
@@ -188,6 +195,7 @@ func migrateLegacyRuntimeFiles(home string) error {
 		tokenRegistryName,
 		tokenKeyFileName,
 		sharedTokenVaultName,
+		rollbackStateName,
 		lockFileName,
 	}
 

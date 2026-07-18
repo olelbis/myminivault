@@ -1,5 +1,20 @@
 # Changelog
 
+## [v0.12.17] - 2026-07-18
+
+### Added
+
+- Added encrypted main-vault rollback metadata with a stable `vault_id` and monotonic `revision`.
+- Added local `rollback-state.json` trusted state to remember the highest accepted main-vault revision.
+- Added `doctor` and `inspect-runtime` reporting for rollback state.
+- Added unit coverage for rollback metadata initialization, high-water revision handling, rollback warnings, vault ID mismatch warnings, and symlink rejection.
+
+### Changed
+
+- Mutating password-based saves now increment vault revision metadata and update rollback state after the encrypted vault save succeeds.
+- Loading an older valid vault now emits a warning when its encrypted revision is below the trusted local high-water mark.
+- Updated rollback, security, recovery, runtime, and development documentation for the initial warn-mode rollback detection behavior.
+
 ## [v0.12.16] - 2026-07-18
 
 ### Added
