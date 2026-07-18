@@ -195,6 +195,29 @@ when loaded.
 - A valid token master key plus `shared-token-vault.json` is sufficient to read
   the shared token vault.
 
+## Compatibility Fixture
+
+The repository includes a small encrypted fixture at
+`tools/reference-decryptor/testdata/main-vault-v2.b64`.
+
+Fixture details:
+
+| Field | Value |
+| --- | --- |
+| container | `MYMV` v2 main vault |
+| password | `fixture-password` |
+| scrypt | `N=2, r=1, p=1, key_size=32` |
+| salt | `fixture-salt-001` |
+| purpose | format compatibility tests only |
+
+The weak scrypt parameters are intentional so the fixture can run quickly in
+unit tests. They are not acceptable production parameters.
+
+The standalone Go reference decryptor in `tools/reference-decryptor` reads this
+fixture without importing myminivault internal packages. A Python reader in
+`tools/reference-decryptor-python` reads the same fixture when the external
+`cryptography` package is installed.
+
 ## Non-Goals
 
 The format does not attempt to hide that a file is a myminivault encrypted

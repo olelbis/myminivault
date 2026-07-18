@@ -1,0 +1,73 @@
+name: Focused crypto review
+description: Share non-sensitive review feedback about crypto, file format, recovery, or token vault behavior.
+title: "Review: "
+labels:
+  - security
+  - review
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reviewing myminivault. Please do not attach real vault files, recovery keys, compact tokens, passwords, or secrets.
+
+        If your finding includes exploitable details, use a private security advisory instead:
+        https://github.com/olelbis/myminivault/security/advisories/new
+
+        Useful starting points:
+        - `docs/format.md`
+        - `docs/crypto-review-scope.md`
+        - `docs/security.md`
+        - `docs/review-request.md`
+        - `tools/reference-decryptor`
+        - `tools/reference-decryptor-python`
+  - type: dropdown
+    id: area
+    attributes:
+      label: Review area
+      options:
+        - AAD / AES-GCM usage
+        - KDF / scrypt metadata
+        - Container parsing
+        - Recovery semantics
+        - Token vault semantics
+        - Legacy compatibility
+        - Interrupted-save / file safety
+        - Documentation or trust wording
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What did you review and what did you find?
+      placeholder: I reviewed ... and noticed ...
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Security impact or uncertainty
+      description: Explain why this matters, or what you are uncertain about.
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: Relevant files, lines, or docs
+      description: Link the smallest relevant code/docs scope.
+      placeholder: |
+        - internal/container/container.go
+        - docs/format.md
+  - type: textarea
+    id: recommendation
+    attributes:
+      label: Suggested fix or next step
+      description: Optional, but very helpful.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I have not included real vault files, recovery keys, compact tokens, passwords, or secrets.
+          required: true

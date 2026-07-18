@@ -196,6 +196,51 @@ The automated CLI smoke tests live in `./tests`, create temporary directories, a
 
 Current automated checks cover CLI smoke flows, token lifecycle behavior, token JSON output, config error handling, `vault doctor`, `vault inspect-runtime`, shell-safe import/export round trips, export-to-file behavior, clipboard clear behavior, audit-log redaction, disabled audit logging, token sync metadata decisions, token master-key and compact-token helper behavior, core unit behavior, and package-level coverage for `internal/storage`, `internal/token`, `internal/recovery`, `internal/lock`, `internal/audit`, `internal/sync`, `internal/rollback`, `internal/commands`, `internal/clipboard`, `internal/export`, `internal/container`, `internal/paths`, `internal/config`, and `internal/keychain`. CI enforces `80.0%` minimum coverage for `./internal/...`. Security scanning also runs CodeQL and `govulncheck` on push, pull request, and a weekly schedule.
 
+## Reference Decryptor
+
+`tools/reference-decryptor` is a minimal standalone reader for the documented
+`MYMV` v2 main-vault format. It intentionally avoids importing myminivault
+internal packages, so it can catch drift between `docs/format.md` and the
+production loader.
+
+Run its compatibility fixture tests:
+
+```bash
+go test -count=1 ./tools/reference-decryptor
+```
+
+Manual usage:
+
+```bash
+go run ./tools/reference-decryptor --password-file /path/to/password.txt /path/to/vault.db
+```
+
+The checked-in fixture uses the password `fixture-password` and intentionally
+weak scrypt parameters so the test runs quickly. Do not copy those parameters
+into production files.
+
+A Python reference reader is also available under
+`tools/reference-decryptor-python`. It uses Python's standard-library scrypt
+implementation plus the external `cryptography` package for AES-GCM:
+
+```bash
+python3 -m pip install -r tools/reference-decryptor-python/requirements.txt
+python3 -m unittest discover -s tools/reference-decryptor-python
+python3 tools/reference-decryptor-python/decrypt_mymv.py --password-file /path/to/password.txt /path/to/vault.db
+```
+
+A Java reference reader is feasible, but it should use an explicit crypto
+dependency because the standard JDK does not include scrypt. Keep it out of the
+tree until the dependency and test workflow are agreed.
+
+## Review Request
+
+The ready-to-share request for focused crypto and file-format review lives in
+`docs/review-request.md`. Use it for GitHub issues, GitHub Discussions, forum
+posts, or community review requests. Public issues are appropriate for
+non-sensitive feedback; exploitable vulnerability details should use GitHub
+private security advisories.
+
 ## Branch Workflow
 
 Use `main` as the stable base branch.

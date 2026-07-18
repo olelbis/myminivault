@@ -44,9 +44,12 @@ Supporting files:
 | CLI orchestration | `cmd/vault/*` |
 | Security model | `docs/security.md` |
 | File format | `docs/format.md` |
+| Review request | `docs/review-request.md` |
 | Token sync policy | `docs/token-sync-policy.md` |
 | Recovery policy | `docs/recovery-policy.md` |
 | Rollback policy | `docs/rollback-policy.md` |
+| Go reference decryptor | `tools/reference-decryptor/*` |
+| Python reference decryptor | `tools/reference-decryptor-python/*` |
 
 ## Current Design Summary
 
@@ -62,6 +65,9 @@ Supporting files:
 - Token commands use a local token master key to encrypt the shared token vault.
 - Token writes are staged in `shared-token-vault.json` and imported into
   `vault.db` by master-password commands or `vault sync-tokens`.
+- Standalone Go and Python reference decryptors plus a compatibility fixture are
+  available under `tools/` to check the documented format independently from the
+  production loader.
 
 ## Current Non-Goals
 
