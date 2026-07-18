@@ -1,5 +1,18 @@
 # Changelog
 
+## [v0.12.18] - 2026-07-18
+
+### Added
+
+- Added `vault sync-tokens --dry-run` to preview staged token writes without modifying runtime files.
+- Added internal sync preview tests and CLI smoke coverage.
+
+### Changed
+
+- Dry-run output now lists import/update keys, delete keys, skipped conflicts, and legacy metadata decisions.
+- Dry-run skips automatic token import and avoids saving `vault.db`, `shared-token-vault.json`, or `rollback-state.json`.
+- Updated README, user manual, token sync policy, man page, backlog, and changelog.
+
 ## [v0.12.17] - 2026-07-18
 
 ### Added

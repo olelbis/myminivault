@@ -5,14 +5,61 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	vaultsync "github.com/olelbis/myminivault/internal/sync"
 )
 
 func syncSharedVaultToMainVault(mainVault *ExtendedVault) error {
+	if syncTokensDryRunRequested() {
+		return previewSharedVaultToMainVault(mainVault)
+	}
+	if len(os.Args) > 2 {
+		return fmt.Errorf("unsupported sync-tokens option: %s", os.Args[2])
+	}
 	_, err := importSharedVaultToMainVault(mainVault)
 	return err
+}
+
+func syncTokensDryRunRequested() bool {
+	return len(os.Args) == 3 && os.Args[1] == "sync-tokens" && os.Args[2] == "--dry-run"
+}
+
+func previewSharedVaultToMainVault(mainVault *ExtendedVault) error {
+	if _, err := os.Stat(sharedTokenVault); err != nil {
+		if os.IsNotExist(err) {
+			fmt.Println("🔎 Token sync dry run")
+			fmt.Println("No shared token vault found; nothing to import.")
+			return nil
+		}
+		return err
+	}
+
+	sharedVault, err := loadVaultFromTokenFileEncrypted(sharedTokenVault)
+	if err != nil {
+		return fmt.Errorf("failed to load shared vault: %w", err)
+	}
+
+	preview := vaultsync.PreviewSharedVault(mainVault, sharedVault)
+	fmt.Println("🔎 Token sync dry run")
+	printPreviewKeys("Would import/update", preview.ImportKeys)
+	printPreviewKeys("Would delete", preview.DeleteKeys)
+	printPreviewKeys("Would skip conflicts", preview.ConflictKeys)
+	printPreviewKeys("Legacy metadata decisions", preview.LegacyDecisionKeys)
+	if !preview.HasChanges() {
+		fmt.Println("No token changes would be imported.")
+	}
+	fmt.Println("No files were modified.")
+	return nil
+}
+
+func printPreviewKeys(label string, keys []string) {
+	if len(keys) == 0 {
+		fmt.Printf("%s: none\n", label)
+		return
+	}
+	fmt.Printf("%s (%d): %s\n", label, len(keys), strings.Join(keys, ", "))
 }
 
 func importSharedVaultToMainVault(mainVault *ExtendedVault) (vaultsync.ImportResult, error) {

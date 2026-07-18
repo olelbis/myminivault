@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
@@ -162,6 +163,77 @@ func TestImportSharedVaultReportsLegacyMetadataFallbacks(t *testing.T) {
 	}
 	if _, exists := mainVault.Data["LEGACY_DELETE"]; exists {
 		t.Fatal("LEGACY_DELETE should be removed")
+	}
+}
+
+func TestPreviewSharedVaultReportsChangesWithoutMutation(t *testing.T) {
+	now := time.Now()
+	mainVault := &model.ExtendedVault{
+		Data: map[string]string{
+			"DELETE_ME":  "old",
+			"NEWER_MAIN": "main",
+			"UNCHANGED":  "same",
+		},
+		Sync: &model.SyncMetadata{
+			UpdatedAt: map[string]time.Time{
+				"DELETE_ME":  now.Add(-2 * time.Hour),
+				"NEWER_MAIN": now,
+				"UNCHANGED":  now,
+			},
+		},
+	}
+	sharedVault := &model.ExtendedVault{
+		Data: map[string]string{
+			"NEW_KEY":    "value",
+			"NEWER_MAIN": "shared",
+			"UNCHANGED":  "same",
+		},
+		Sync: &model.SyncMetadata{
+			UpdatedAt: map[string]time.Time{
+				"NEW_KEY":    now.Add(time.Hour),
+				"NEWER_MAIN": now.Add(-time.Hour),
+				"UNCHANGED":  now,
+			},
+			DeletedAt: map[string]time.Time{
+				"DELETE_ME": now.Add(time.Hour),
+			},
+		},
+	}
+
+	before := CopyVaultData(mainVault.Data)
+	preview := PreviewSharedVault(mainVault, sharedVault)
+
+	if !reflect.DeepEqual(preview.ImportKeys, []string{"NEW_KEY"}) {
+		t.Fatalf("import keys = %v", preview.ImportKeys)
+	}
+	if !reflect.DeepEqual(preview.DeleteKeys, []string{"DELETE_ME"}) {
+		t.Fatalf("delete keys = %v", preview.DeleteKeys)
+	}
+	if !reflect.DeepEqual(preview.ConflictKeys, []string{"NEWER_MAIN"}) {
+		t.Fatalf("conflict keys = %v", preview.ConflictKeys)
+	}
+	if len(preview.LegacyDecisionKeys) != 0 {
+		t.Fatalf("legacy keys = %v, want none", preview.LegacyDecisionKeys)
+	}
+	if !reflect.DeepEqual(mainVault.Data, before) {
+		t.Fatalf("preview mutated main data: got %v want %v", mainVault.Data, before)
+	}
+}
+
+func TestPreviewSharedVaultReportsLegacyDecisionKeys(t *testing.T) {
+	now := time.Now()
+	mainVault := &model.ExtendedVault{Data: map[string]string{"LEGACY_DELETE": "old", "LEGACY_IMPORT": "main"}}
+	sharedVault := &model.ExtendedVault{
+		Data: map[string]string{"LEGACY_IMPORT": "shared"},
+		Sync: &model.SyncMetadata{
+			UpdatedAt: map[string]time.Time{"LEGACY_IMPORT": now},
+			DeletedAt: map[string]time.Time{"LEGACY_DELETE": now},
+		},
+	}
+
+	preview := PreviewSharedVault(mainVault, sharedVault)
+	if !reflect.DeepEqual(preview.LegacyDecisionKeys, []string{"LEGACY_DELETE", "LEGACY_IMPORT"}) {
+		t.Fatalf("legacy decision keys = %v", preview.LegacyDecisionKeys)
 	}
 }
 

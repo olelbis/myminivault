@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"sort"
 	"time"
 
 	"github.com/olelbis/myminivault/internal/model"
@@ -12,6 +13,13 @@ type ImportResult struct {
 	Deleted          int
 	SkippedConflicts int
 	LegacyDecisions  int
+}
+
+type PreviewResult struct {
+	ImportKeys         []string
+	DeleteKeys         []string
+	ConflictKeys       []string
+	LegacyDecisionKeys []string
 }
 
 // ImportSharedVault applies shared-token-vault changes to mainVault according
@@ -58,6 +66,57 @@ func ImportSharedVault(mainVault, sharedVault *model.ExtendedVault, now time.Tim
 	}
 
 	return result
+}
+
+// PreviewSharedVault reports the changes ImportSharedVault would make without
+// mutating either vault.
+func PreviewSharedVault(mainVault, sharedVault *model.ExtendedVault) PreviewResult {
+	var result PreviewResult
+	if mainVault == nil || sharedVault == nil {
+		return result
+	}
+	mainData := mainVault.Data
+	if mainData == nil {
+		mainData = map[string]string{}
+	}
+
+	for key, value := range sharedVault.Data {
+		if ShouldImportSharedValue(mainVault, sharedVault, key) {
+			result.ImportKeys = append(result.ImportKeys, key)
+			if UsesLegacyImportDecision(mainVault, sharedVault, key) {
+				result.LegacyDecisionKeys = append(result.LegacyDecisionKeys, key)
+			}
+		} else if mainData[key] != value {
+			result.ConflictKeys = append(result.ConflictKeys, key)
+		}
+	}
+
+	if sharedVault.Sync != nil {
+		for key, sharedDeletedAt := range sharedVault.Sync.DeletedAt {
+			if sharedDeletedAt.IsZero() {
+				continue
+			}
+			mainUpdatedAt := UpdatedAt(mainVault, key)
+			if mainUpdatedAt.IsZero() || sharedDeletedAt.After(mainUpdatedAt) {
+				if _, exists := mainData[key]; exists {
+					result.DeleteKeys = append(result.DeleteKeys, key)
+					if mainUpdatedAt.IsZero() {
+						result.LegacyDecisionKeys = append(result.LegacyDecisionKeys, key)
+					}
+				}
+			}
+		}
+	}
+
+	sort.Strings(result.ImportKeys)
+	sort.Strings(result.DeleteKeys)
+	sort.Strings(result.ConflictKeys)
+	sort.Strings(result.LegacyDecisionKeys)
+	return result
+}
+
+func (result PreviewResult) HasChanges() bool {
+	return len(result.ImportKeys) > 0 || len(result.DeleteKeys) > 0 || len(result.ConflictKeys) > 0
 }
 
 // UsesLegacyImportDecision reports whether an import decision is falling back

@@ -1,4 +1,4 @@
-.TH VAULT 1 "July 18, 2026" "myminivault 0.12.17" "User Commands"
+.TH VAULT 1 "July 18, 2026" "myminivault 0.12.18" "User Commands"
 .SH NAME
 vault \- local encrypted command-line key/value vault
 .SH SYNOPSIS
@@ -106,6 +106,10 @@ Remove expired or fully used tokens.
 .TP
 .B sync-tokens
 Import staged shared-token-vault writes into the main vault.
+.TP
+.B sync-tokens --dry-run
+Preview staged shared-token-vault imports, deletes, conflicts, and legacy
+metadata decisions without modifying runtime files.
 .TP
 .B regenerate-token-key
 Generate a new local token master key and invalidate existing tokens.
