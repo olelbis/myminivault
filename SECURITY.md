@@ -5,10 +5,13 @@ audited. Please do not treat it as a production password manager.
 
 ## Reporting A Vulnerability
 
-Please report security issues through GitHub issues if the report does not
-include exploitable private details. For sensitive reports, contact the
-maintainer privately through the contact methods available on the GitHub
-profile before publishing details.
+Please report non-sensitive review feedback through GitHub issues. For
+vulnerabilities with exploitable details, use GitHub private security advisories
+instead of public issues:
+
+```text
+https://github.com/olelbis/myminivault/security/advisories/new
+```
 
 Useful reports include:
 
@@ -31,6 +34,7 @@ unless the reporter prefers to remain anonymous.
 - The security model is documented in `docs/security.md`.
 - The encrypted file format is documented in `docs/format.md`.
 - The focused review scope is documented in `docs/crypto-review-scope.md`.
+- The ready-to-share review request is documented in `docs/review-request.md`.
 
 ## Disclosure Expectations
 

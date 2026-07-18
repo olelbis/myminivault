@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Added a standalone Go `tools/reference-decryptor` for the documented `MYMV` v2 main-vault format.
+- Added a Python reference decryptor for the same fixture and format.
+- Added a base64 compatibility fixture for the reference decryptor.
+- Added a ready-to-share focused crypto review request and GitHub issue template.
+
+### Changed
+
+- Updated file-format and crypto-review documentation to include the reference decryptor and fixture.
+
 ## [v0.12.18] - 2026-07-18
 
 ### Added
