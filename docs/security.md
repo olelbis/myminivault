@@ -10,6 +10,8 @@ This model covers the local CLI, local runtime files, recovery workflow, token w
 
 It does not cover hosted infrastructure, remote synchronization services, browser extensions, mobile clients, multi-user deployments, or enterprise administration because those features do not exist in the project.
 
+The encrypted runtime file format is documented separately in [Encrypted File Format](format.md). A focused checklist for external cryptographic review is available in [Crypto Review Scope](crypto-review-scope.md).
+
 ## Security Goals
 
 `myminivault` aims to:

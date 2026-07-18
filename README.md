@@ -154,12 +154,27 @@ Token writes are staged in `shared-token-vault.json` and imported into the main 
 - [User Manual](docs/user-manual.md)
 - [Development Guide](docs/development.md)
 - [Security Model](docs/security.md)
+- [Encrypted File Format](docs/format.md)
+- [Crypto Review Scope](docs/crypto-review-scope.md)
 - [Coverage Notes](docs/coverage.md)
 - [Recovery Policy](docs/recovery-policy.md)
 - [Rollback Policy](docs/rollback-policy.md)
 - [Token Sync Policy](docs/token-sync-policy.md)
 - [Changelog](CHANGELOG.md)
 - [Backlog](BACKLOG.md)
+
+## Trust Status
+
+myminivault is experimental and unaudited. Current trust signals are project
+hygiene, not a security audit: automated tests, CI, CodeQL, `govulncheck`,
+release checksums, SBOMs, and GitHub artifact attestations. The encrypted file
+format and focused crypto review scope are documented so external review can be
+targeted at the small set of files that handle keys, encryption, containers,
+recovery, and token vault storage.
+
+Security reports and review feedback are welcome through the process described
+in [SECURITY.md](SECURITY.md). Valid security findings can be credited publicly
+unless the reporter prefers to remain anonymous.
 
 ## Runtime Files
 
