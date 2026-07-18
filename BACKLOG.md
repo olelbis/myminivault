@@ -424,8 +424,7 @@ Recommended order:
 2. add property-style tests for staged token writes/import/delete invariants
 3. implement rollback strict mode with an explicit restore/accept command before blocking by default
 4. keep CodeQL and `govulncheck` results triaged, then evaluate `staticcheck` and possibly `gosec` with a documented triage policy
-5. verify `SECURITY.md` has a real reporting contact and document the encrypted file format enough for independent decryptor experiments
-6. define legacy format deprecation policy plus a future `vault migrate` command and compatibility fixture corpus
+5. define legacy format deprecation policy plus a future `vault migrate` command and broader compatibility fixture corpus
 7. keep rollback and broader same-user file-replacement race hardening moving after no-follow opens, directory fsync, exclusive temp/marker creation, and warn-mode revision checks
 8. continue migration coverage around authenticated KDF metadata and crash-consistency behavior
 9. evaluate signed tags/checksums and platform signing after SBOM and immutable Action pinning
@@ -450,8 +449,8 @@ The July 2026 external-style review produced useful next actions. Treat these as
 - add rollback `strict` or `block` mode with an explicit restore/accept command for legitimate older-vault restores
 - improve recovery freshness reporting with mutation/revision distance, not only file timestamp freshness
 - keep CodeQL and `govulncheck` results triaged, then evaluate `staticcheck` and `gosec`
-- verify `SECURITY.md` contains a real vulnerability reporting path
-- document the encrypted file format well enough for an independent decryptor experiment
+- keep `SECURITY.md`, review request links, and the public focused-review issue current
+- expand the independent decryptor experiment beyond the initial Go/Python reference readers when useful
 - write a legacy format deprecation policy and plan a future `vault migrate`
 - start a compatibility fixture corpus with encrypted files from representative historical formats
 - keep memory hardening honest: avoid string conversions for secrets, keep byte wiping best-effort, and document Go limits instead of promising impossible guarantees

@@ -12,6 +12,7 @@
 ### Changed
 
 - Updated file-format and crypto-review documentation to include the reference decryptor and fixture.
+- Updated GitHub Pages documentation links and project status text for the current review/audit materials.
 
 ## [v0.12.18] - 2026-07-18
 

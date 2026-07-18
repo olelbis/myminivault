@@ -42,9 +42,10 @@
     <main id="content" class="main-content">
       <section class="notice" aria-label="Project status">
         <strong>Project status:</strong> experimental personal security tool on the
-        <code>v0.4.x</code> line. It is useful for local workflows and testing, but it has
-        not received an external security audit and should not be treated as a production
-        password manager.
+        <code>v0.12.x</code> line. It is useful for local workflows and testing, includes
+        documented encrypted file-format notes and standalone reference decryptors, but it
+        has not received an external security audit and should not be treated as a
+        production password manager.
       </section>
 
       <section>
@@ -72,6 +73,18 @@ vault doctor</code></pre>
           <a class="doc-card" href="https://github.com/olelbis/myminivault/blob/main/docs/security.md">
             <span>Security model</span>
             Assets, trust boundaries, threat model, mitigations and residual risks.
+          </a>
+          <a class="doc-card" href="https://github.com/olelbis/myminivault/blob/main/docs/format.md">
+            <span>Encrypted format</span>
+            MYMV v2 container layout, KDF metadata, AAD, payload schema and legacy compatibility.
+          </a>
+          <a class="doc-card" href="https://github.com/olelbis/myminivault/blob/main/docs/crypto-review-scope.md">
+            <span>Crypto review scope</span>
+            Focused review map for encryption, containers, storage, recovery and token vault code.
+          </a>
+          <a class="doc-card" href="https://github.com/olelbis/myminivault/blob/main/docs/review-request.md">
+            <span>Review request</span>
+            Ready-to-share request for focused crypto and file-format review.
           </a>
           <a class="doc-card" href="https://github.com/olelbis/myminivault/blob/main/docs/token-sync-policy.md">
             <span>Token sync policy</span>
@@ -112,7 +125,7 @@ vault doctor</code></pre>
           <tbody>
             <tr>
               <td>Local vault</td>
-              <td>AES-256-GCM encrypted key/value storage with scrypt key derivation.</td>
+              <td>AES-256-GCM encrypted key/value storage with scrypt key derivation and authenticated MYMV v2 container metadata.</td>
             </tr>
             <tr>
               <td>Runtime files</td>
@@ -128,7 +141,7 @@ vault doctor</code></pre>
             </tr>
             <tr>
               <td>Safety checks</td>
-              <td><code>vault doctor</code>, runtime inspection, restrictive file permissions and CI coverage gates.</td>
+              <td><code>vault doctor</code>, runtime inspection, rollback warnings, restrictive file permissions, CI coverage gates and reference decryptor fixtures.</td>
             </tr>
           </tbody>
         </table>
@@ -158,7 +171,7 @@ vault doctor</code></pre>
           <li>Linux <code>.deb</code> packages for amd64 and arm64.</li>
           <li>Linux <code>.rpm</code> packages for amd64 and arm64.</li>
           <li>macOS arm64 <code>.pkg</code> package.</li>
-          <li><code>.tar.gz</code> archives, SHA-256 checksums and GitHub artifact attestations.</li>
+          <li><code>.tar.gz</code> archives, SPDX SBOMs, SHA-256 checksums and GitHub artifact attestations.</li>
         </ul>
       </section>
 
@@ -177,6 +190,9 @@ vault doctor</code></pre>
           </a>
           <a href="https://github.com/olelbis/myminivault/issues/new?template=docs_feedback.yml">
             Documentation feedback
+          </a>
+          <a href="https://github.com/olelbis/myminivault/issues/1">
+            Focused crypto review
           </a>
           <a href="https://github.com/olelbis/myminivault/security/advisories/new">
             Private security advisory
