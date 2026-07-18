@@ -156,6 +156,7 @@ Token writes are staged in `shared-token-vault.json` and imported into the main 
 - [Security Model](docs/security.md)
 - [Coverage Notes](docs/coverage.md)
 - [Recovery Policy](docs/recovery-policy.md)
+- [Rollback Policy](docs/rollback-policy.md)
 - [Token Sync Policy](docs/token-sync-policy.md)
 - [Changelog](CHANGELOG.md)
 - [Backlog](BACKLOG.md)

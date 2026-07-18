@@ -108,7 +108,7 @@ The vault currently uses:
 
 This project is not security-audited. Security claims should stay conservative until an external review exists.
 
-See [Security Model](security.md) for current assumptions, non-goals, sensitive runtime files, and known limitations. See [Recovery Policy](recovery-policy.md) for recovery snapshot and rotation semantics.
+See [Security Model](security.md) for current assumptions, non-goals, sensitive runtime files, and known limitations. See [Recovery Policy](recovery-policy.md) for recovery snapshot and rotation semantics, and [Rollback Policy](rollback-policy.md) for the future monotonic revision/trusted-state design.
 
 ## Test Workflow
 

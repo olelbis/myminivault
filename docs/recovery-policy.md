@@ -8,6 +8,8 @@ Recovery is snapshot-based.
 
 `vault recover` does not reconstruct the latest possible vault state from every runtime file. It decrypts the recovery-encrypted snapshot stored in `vault.db.recovery`, then saves that recovered snapshot with a new master password.
 
+Rollback detection is a separate future concern. See [Rollback Policy](rollback-policy.md) for the intended design around monotonic revisions, trusted local state, and explicit restore acceptance.
+
 ## Runtime Files
 
 Recovery files are resolved inside the active runtime home. By default this is `~/.myminivault/`; set `MYMINIVAULT_HOME=/path/to/dir` to use an isolated runtime home.
@@ -94,6 +96,7 @@ Future improvements to consider:
 - a dedicated `rotate-recovery` command with clearer output
 - richer recovery repair guidance after `vault doctor` reports a stale or incompatible recovery snapshot
 - versioned recovery metadata for future verifier migrations
+- rollback-state integration that treats successful recovery as an explicit event instead of a silent downgrade
 - clearer backup cleanup guidance after recovery rotation
 
 ## Inspection And Doctor Checks

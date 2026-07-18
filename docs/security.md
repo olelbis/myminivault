@@ -285,7 +285,7 @@ Current mitigations:
 | Terminal capture | Out of scope once plaintext is printed |
 | Clipboard capture | Partially mitigated by TTL clearing, but not prevented |
 | Runtime file tampering | Partially mitigated by authenticated encryption and checksums |
-| Replacement with an older valid vault | Not detected; authenticated encryption does not provide freshness or rollback protection |
+| Replacement with an older valid vault | Not detected in current releases; [Rollback Policy](rollback-policy.md) designs a future local trusted-state approach |
 | Supply-chain compromise | Partially mitigated by CI, pinned Actions, SBOMs, checksums, and GitHub artifact attestations; still not a full external audit or platform signing process |
 
 ## Operational Guidance
@@ -298,6 +298,7 @@ Current mitigations:
 - Disable audit logging with `"audit_log": false` if command metadata is too sensitive for your environment.
 - Run `vault doctor` periodically in active vault directories.
 - Run `vault inspect-runtime` when runtime-home confusion, legacy files, or `MYMINIVAULT_HOME` overrides are suspected.
+- Treat unexpected disappearance of recent keys or reappearance of deleted keys as possible rollback until proven otherwise.
 - Rotate tokens quickly if a compact token may have been exposed.
 - Regenerate the token master key if `vault-token.key` may have been exposed.
 - Do not describe the tool as production secure without external review.
@@ -360,7 +361,7 @@ Recommended next steps:
 - keep expanding crash-consistency tests around directory sync and interrupted writes
 - keep extending migration coverage around bounded KDF metadata loading and legacy compatibility
 - sync runtime directories after atomic renames where supported and document the remaining crash-consistency limits
-- design rollback detection without undermining intentional backup and recovery restores
+- implement the rollback detection design in [Rollback Policy](rollback-policy.md) without undermining intentional backup and recovery restores
 - keep macOS Keychain support current and reconsider Linux Secret Service storage only with a reliable desktop/headless policy
 - evaluate signed tags/checksums and platform signing before stronger supply-chain claims
 - consider signed tags, signed checksum manifests, or platform-specific package signing later in the release process

@@ -83,7 +83,8 @@ Use this section first when resuming work. The detailed backlog below explains e
    - Suggested branch: `supply-chain-hardening`.
 
 4. **Rollback Policy**
-   - Goal: design monotonic revision or trusted-state checks without breaking backup and recovery workflows. Treat this as a design task before implementation.
+   - Status: design documented in `docs/rollback-policy.md`; implementation remains future work.
+   - Goal: add monotonic encrypted vault revisions plus local trusted-state checks without breaking backup and recovery workflows.
    - Suggested branch: `rollback-policy`.
 
 5. **Coverage And `cmd/vault` Cleanup**
@@ -337,6 +338,7 @@ docs/
   development.md        architecture, test, and release workflow notes
   security.md           security model, assumptions, limits, and compromise guidance
   recovery-policy.md    recovery snapshot, verifier, divergence, and rotation policy
+  rollback-policy.md    future rollback detection design
   token-sync-policy.md  main/shared token vault sync policy and deferred decisions
 ```
 
