@@ -1,7 +1,9 @@
 # Rollback Policy
 
-This document designs the intended rollback-detection policy for `myminivault`.
-It is a design note for future implementation, not current executable behavior.
+This document describes the rollback-detection policy for `myminivault`.
+The initial implementation is warning-only: it detects suspicious local rollback
+conditions and reports them, but it does not yet block commands or provide an
+explicit restore-acceptance command.
 
 ## Problem
 
@@ -33,10 +35,9 @@ reappear.
 
 ## Proposed Model
 
-Add encrypted vault revision metadata and a separate local trusted-state file.
+Use encrypted vault revision metadata and a separate local trusted-state file.
 
-The encrypted main vault payload should gain a monotonic revision field, for
-example:
+The encrypted main vault payload carries a monotonic revision field:
 
 ```json
 {
@@ -55,8 +56,8 @@ The revision is encrypted inside `vault.db`, so it does not expose usage
 frequency to someone who only sees the file. It is authenticated with the rest
 of the vault payload.
 
-A separate local trusted-state file, for example `rollback-state.json`, should
-record the highest accepted revision for the active runtime home:
+A separate local trusted-state file, `rollback-state.json`, records the highest
+accepted revision for the active runtime home:
 
 ```json
 {
@@ -67,9 +68,9 @@ record the highest accepted revision for the active runtime home:
 ```
 
 This trusted-state file is not secret, but it is security-relevant local state.
-It should live in the active runtime home, use restrictive permissions, reject
-symlinks, use checked writes, and be included in `doctor` and `inspect-runtime`
-output.
+It lives in the active runtime home, uses restrictive permissions, rejects
+symlinks, uses checked writes, and is included in `doctor` and
+`inspect-runtime` output.
 
 ## Load Policy
 
@@ -81,9 +82,9 @@ When loading `vault.db`:
 3. If there is no trusted-state file, initialize it from the loaded vault after
    a successful password-authenticated load.
 4. If `vault_id` differs from trusted state, warn or require an explicit accept
-   command depending on configured mode.
+   command in a future strict mode.
 5. If `revision` is lower than `highest_revision`, report a rollback warning or
-   error depending on configured mode.
+   warning.
 6. If `revision` is equal or higher, accept the vault and update trusted state
    after successful mutating saves.
 
@@ -103,9 +104,9 @@ the save has completed and tell the user to run `vault doctor` or a future
 
 ## Restore Policy
 
-Intentional restore must be explicit.
+Intentional restore should become explicit before strict blocking is enabled.
 
-Opening an older backup should not silently lower trusted state. A future command
+Opening an older backup does not silently lower trusted state. A future command
 should make this action deliberate, for example:
 
 ```bash
@@ -149,20 +150,18 @@ explicit rollback/restore handling first.
 
 ## Modes
 
-Start with conservative modes:
+The initial implementation behaves like `warn`. Future modes may include:
 
 - `off`: do not check rollback state; useful for debugging and legacy recovery
 - `warn`: report suspicious rollback but allow read-only commands
 - `strict`: block commands until the user accepts or repairs the state
 
-Recommended initial default: `warn`.
-
 After the behavior matures and restore workflows are documented, `strict` can be
-reconsidered as a default for mutating commands.
+considered for mutating commands.
 
 ## Doctor And Inspect Output
 
-`vault doctor` should report:
+`vault doctor` reports:
 
 - whether trusted rollback state exists
 - active `vault_id`
@@ -171,9 +170,9 @@ reconsidered as a default for mutating commands.
 - rollback status: OK, WARN, or FAIL
 - stale or unreadable trusted-state file
 
-`vault inspect-runtime` should list the trusted-state file and show non-secret
-rollback metadata without decrypting secrets beyond normal authenticated load
-requirements.
+`vault inspect-runtime` lists the trusted-state file and shows non-secret
+rollback-state metadata. It does not decrypt the main vault to print encrypted
+`vault_id` or `revision`.
 
 ## Migration
 
@@ -198,16 +197,12 @@ For stronger rollback protection, the trusted high-water mark would need an
 OS-backed store, hardware-backed storage, signed remote transparency log, or
 another trust anchor outside the runtime directory.
 
-## Implementation Plan
+## Remaining Implementation Plan
 
-1. Add `VaultID` and `Revision` metadata fields with legacy-safe JSON tags.
-2. Add an internal rollback package for trusted-state load, save, compare, and
-   repair decisions.
-3. Add checked, restrictive, symlink-rejecting atomic writes for
-   `rollback-state.json`.
-4. Wire load-time checks into main-vault command flow before token sync.
-5. Increment revision on successful mutating saves.
-6. Add `doctor` and `inspect-runtime` reporting.
-7. Add an explicit accept/repair command before introducing strict blocking.
-8. Add unit and CLI smoke tests for legacy migration, rollback warning, restore
-   acceptance, recovery interaction, and trusted-state corruption.
+1. Add an explicit accept/repair command before introducing strict blocking.
+2. Add a restore command that can deliberately accept an older revision.
+3. Add config support for `off`, `warn`, and `strict` modes.
+4. Add stronger smoke coverage for rollback warning output across full CLI
+   backup/restore simulations.
+5. Evaluate OS-backed trusted state for platforms that provide a better trust
+   anchor than a file in the runtime directory.

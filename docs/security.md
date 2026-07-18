@@ -165,6 +165,7 @@ Security notes for `MYMINIVAULT_HOME`:
 | `vault-token.key` | Critical | Token system compromise | Restrictive writes, `regenerate-token-key`, macOS Keychain support with file fallback |
 | `shared-token-vault.json` and `.bak` | High | Token-access vault exposure | Encrypted current and previous shared vault, token master key |
 | `vault-tokens.json` | Medium | Token registry metadata leakage | Restrictive writes |
+| `rollback-state.json` | Medium | Trusted revision confusion | Restrictive writes, symlink rejection, warning-only rollback checks |
 | `vault.log` | Medium | Operational metadata leakage | Redacted key/token identifiers, optional logging |
 | `vault-config.json` | Low/Medium | Unsafe runtime configuration | Validation on load |
 | `.myminivault.lock` | Low | Write coordination confusion | Advisory lock only |
@@ -285,7 +286,7 @@ Current mitigations:
 | Terminal capture | Out of scope once plaintext is printed |
 | Clipboard capture | Partially mitigated by TTL clearing, but not prevented |
 | Runtime file tampering | Partially mitigated by authenticated encryption and checksums |
-| Replacement with an older valid vault | Not detected in current releases; [Rollback Policy](rollback-policy.md) designs a future local trusted-state approach |
+| Replacement with an older valid vault | Warned when encrypted vault revision falls below local trusted rollback state; not blocked yet |
 | Supply-chain compromise | Partially mitigated by CI, pinned Actions, SBOMs, checksums, and GitHub artifact attestations; still not a full external audit or platform signing process |
 
 ## Operational Guidance
@@ -361,7 +362,7 @@ Recommended next steps:
 - keep expanding crash-consistency tests around directory sync and interrupted writes
 - keep extending migration coverage around bounded KDF metadata loading and legacy compatibility
 - sync runtime directories after atomic renames where supported and document the remaining crash-consistency limits
-- implement the rollback detection design in [Rollback Policy](rollback-policy.md) without undermining intentional backup and recovery restores
+- continue the rollback detection work in [Rollback Policy](rollback-policy.md) with explicit restore acceptance and possible strict mode
 - keep macOS Keychain support current and reconsider Linux Secret Service storage only with a reliable desktop/headless policy
 - evaluate signed tags/checksums and platform signing before stronger supply-chain claims
 - consider signed tags, signed checksum manifests, or platform-specific package signing later in the release process

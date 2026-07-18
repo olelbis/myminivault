@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/olelbis/myminivault/internal/container"
 	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
+	vaultrollback "github.com/olelbis/myminivault/internal/rollback"
 	vaultstorage "github.com/olelbis/myminivault/internal/storage"
 )
 
@@ -23,7 +24,14 @@ func saveExtendedVault(vault *ExtendedVault, password string, salt []byte) error
 }
 
 func saveExtendedVaultBytes(vault *ExtendedVault, password []byte, salt []byte) error {
-	return vaultstorage.SaveBytes(vault, password, salt, storageOptions())
+	state, _ := vaultrollback.LoadState(rollbackStateFile)
+	if err := vaultrollback.PrepareNextRevision(&vault.Metadata, state); err != nil {
+		return err
+	}
+	if err := vaultstorage.SaveBytes(vault, password, salt, storageOptions()); err != nil {
+		return err
+	}
+	return vaultrollback.SaveState(rollbackStateFile, vault.Metadata)
 }
 
 func wipeBytes(data []byte) {

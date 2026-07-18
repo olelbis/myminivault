@@ -54,6 +54,8 @@ type VaultMetadata struct {
 	CreatedAt   time.Time `json:"created_at"`
 	LastAccess  time.Time `json:"last_access"`
 	AccessCount int       `json:"access_count"`
+	VaultID     string    `json:"vault_id,omitempty"`
+	Revision    int64     `json:"revision,omitempty"`
 }
 
 // TokenRegistry maps token IDs to their shared vault location without storing
