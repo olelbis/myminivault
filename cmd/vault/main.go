@@ -10,6 +10,7 @@ import (
 	"time"
 
 	vaultrollback "github.com/olelbis/myminivault/internal/rollback"
+	vaultsync "github.com/olelbis/myminivault/internal/sync"
 )
 
 func main() {
@@ -128,14 +129,20 @@ func runPasswordCommandBytes(command string, password []byte) error {
 		fmt.Fprintf(os.Stderr, "⚠️  Rollback warning: %s\n", rollbackCheck.Detail)
 	}
 
-	tokenImportResult, err := importSharedVaultToMainVault(extendedVault)
-	if err != nil {
-		log.Printf("Warning: failed to sync from shared vault: %v", err)
+	var tokenImportResult vaultsync.ImportResult
+	if !syncTokensDryRunRequested() {
+		var err error
+		tokenImportResult, err = importSharedVaultToMainVault(extendedVault)
+		if err != nil {
+			log.Printf("Warning: failed to sync from shared vault: %v", err)
+		}
 	}
 	tokenImportChanged := hasImportedTokenChanges(tokenImportResult)
 
-	if err := cleanupExpiredTokens(extendedVault); err != nil {
-		log.Printf("Token cleanup warning: %v", err)
+	if !syncTokensDryRunRequested() {
+		if err := cleanupExpiredTokens(extendedVault); err != nil {
+			log.Printf("Token cleanup warning: %v", err)
+		}
 	}
 
 	extendedVault.Metadata.LastAccess = time.Now()
@@ -238,7 +245,12 @@ func runPasswordCommandBytes(command string, password []byte) error {
 		if err := syncSharedVaultToMainVault(extendedVault); err != nil {
 			fmt.Printf("❌ Sync failed: %v\n", err)
 		} else {
-			fmt.Println("✅ Token changes synchronized to main vault")
+			if !syncTokensDryRunRequested() {
+				fmt.Println("✅ Token changes synchronized to main vault")
+			}
+		}
+		if syncTokensDryRunRequested() {
+			return nil
 		}
 
 	case "security-audit":
@@ -269,7 +281,7 @@ func showUsage() {
 	fmt.Println("Basic: set, get, copy, delete, export, list, search, clear, import, backup, stats")
 	fmt.Println("Recovery: setup-recovery, refresh-recovery, recover, test-recovery, change-password")
 	fmt.Println("Tokens: create-token, list-tokens, revoke-token, use-token, token-info, cleanup-tokens")
-	fmt.Println("Sync: sync-tokens")
+	fmt.Println("Sync: sync-tokens [--dry-run]")
 	fmt.Println("Security: security-audit, doctor, inspect-runtime, config, regenerate-token-key, help")
 }
 
@@ -322,6 +334,7 @@ SYNCHRONIZED TOKEN SYSTEM:
 
 SYNCHRONIZATION:
   sync-tokens           Import staged token writes to main vault
+  sync-tokens --dry-run Preview staged token writes without modifying files
 
 SECURITY:
   security-audit        Comprehensive security audit

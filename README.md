@@ -63,7 +63,7 @@ go build -o bin/vault ./cmd/vault
 Local builds display the CLI version as `dev`. Release assets inject the Git tag version during packaging with Go ldflags, for example:
 
 ```bash
-go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.17" -o bin/vault ./cmd/vault
+go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.18" -o bin/vault ./cmd/vault
 ```
 
 Run it:
@@ -140,7 +140,7 @@ vault use-token --token-fd 3 get API_KEY --json
 {"key":"API_KEY","value":"secret"}
 ```
 
-Token writes are staged in `shared-token-vault.json` and imported into the main vault by master-password commands or explicitly with `vault sync-tokens`. `vault doctor` warns when the shared token vault appears newer than the main vault, which usually means staged token writes should be synced.
+Token writes are staged in `shared-token-vault.json` and imported into the main vault by master-password commands or explicitly with `vault sync-tokens`. Use `vault sync-tokens --dry-run` to preview pending imports, deletes, skipped conflicts, and legacy metadata decisions without modifying runtime files. `vault doctor` warns when the shared token vault appears newer than the main vault, which usually means staged token writes should be synced.
 
 ## Screenshots
 

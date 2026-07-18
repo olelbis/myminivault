@@ -67,6 +67,8 @@ Token commands also support `--json` for third-party subprocess callers. JSON ou
 
 It is useful when the user wants to make token writes durable in the main vault immediately instead of waiting for another master-password command.
 
+`sync-tokens --dry-run` applies the same import policy as a preview only. It reports keys that would be imported or updated, deleted keys, skipped conflicts, and legacy metadata fallback decisions, then exits without saving `vault.db`, `shared-token-vault.json`, or `rollback-state.json`.
+
 ## Conflict Policy
 
 Current conflict behavior is timestamp-aware when both sides have sync metadata.
@@ -96,6 +98,12 @@ vault sync-tokens
 ```
 
 or when a later master-password command imports staged token writes.
+
+To inspect the pending effect first:
+
+```bash
+vault sync-tokens --dry-run
+```
 
 ### Newer main value wins
 

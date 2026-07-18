@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: clone or open the repository root, for example `/tmp/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.12.17`
+- Current baseline release: `v0.12.18`
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -15,7 +15,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `9.9 / 10` under the ordinary project model and `9.60 / 10` under the expanded paranoid review model after `v0.12.17`.
+Current assessment score: `9.9 / 10` under the ordinary project model and `9.62 / 10` under the expanded paranoid review model after `v0.12.18`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, macOS Keychain support for token master-key material, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -65,7 +65,7 @@ Use this section first when resuming work. The detailed backlog below explains e
 ### Immediate Next Work
 
 1. **Secret Input And Runtime Path Hardening**
-   - Status: partial progress through `v0.12.17` with `vault set KEY --stdin`, `vault use-token --stdin`, `vault use-token --token-file`, `vault use-token --token-fd`, portable symlink rejection, Unix no-follow opens for checked sensitive runtime helpers, exclusive creation for main-vault transaction markers plus main/recovery/shared-token temp files, and warn-mode rollback-state checks.
+   - Status: partial progress through `v0.12.18` with `vault set KEY --stdin`, `vault use-token --stdin`, `vault use-token --token-file`, `vault use-token --token-fd`, `vault sync-tokens --dry-run`, portable symlink rejection, Unix no-follow opens for checked sensitive runtime helpers, exclusive creation for main-vault transaction markers plus main/recovery/shared-token temp files, and warn-mode rollback-state checks.
    - Goal: reduce direct secret/token exposure in process arguments, keep sensitive runtime symlinks rejected, and keep reducing runtime file race windows.
    - Suggested branch: `secret-input-path-hardening`.
 
@@ -421,7 +421,7 @@ These items are the most direct path beyond the current `9.9 / 10` ordinary asse
 Recommended order:
 
 1. keep explicit process-argument warnings current and continue reducing argument exposure where practical
-2. add `vault sync-tokens --dry-run` and property-style tests for staged token writes/import/delete invariants
+2. add property-style tests for staged token writes/import/delete invariants
 3. implement rollback strict mode with an explicit restore/accept command before blocking by default
 4. keep CodeQL and `govulncheck` results triaged, then evaluate `staticcheck` and possibly `gosec` with a documented triage policy
 5. verify `SECURITY.md` has a real reporting contact and document the encrypted file format enough for independent decryptor experiments
@@ -447,7 +447,6 @@ Priority: high.
 The July 2026 external-style review produced useful next actions. Treat these as hardening work before new product features:
 
 - add property-based or fuzz-style tests around token staged writes, master sync, imports, and deletes
-- add `vault sync-tokens --dry-run` so users can inspect pending token imports before mutation
 - add rollback `strict` or `block` mode with an explicit restore/accept command for legitimate older-vault restores
 - improve recovery freshness reporting with mutation/revision distance, not only file timestamp freshness
 - keep CodeQL and `govulncheck` results triaged, then evaluate `staticcheck` and `gosec`

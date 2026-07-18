@@ -251,6 +251,25 @@ func TestCLISmokeTokenReadAndWrite(t *testing.T) {
 	requireFailedContains(t, runVault(t, bin, dir, "", "use-token", token, "get", "API_KEY"), "requires --show")
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", token, "get", "API_KEY", "--show")), "hello")
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "", "use-token", token, "set", "API_KEY", "updated")), "set via token")
+
+	vaultPath := filepath.Join(dir, vaultFile)
+	beforeDryRun, err := os.ReadFile(vaultPath)
+	if err != nil {
+		t.Fatalf("read vault before dry run: %v", err)
+	}
+	dryRunOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "sync-tokens", "--dry-run"))
+	requireContains(t, dryRunOutput, "Token sync dry run")
+	requireContains(t, dryRunOutput, "Would import/update")
+	requireContains(t, dryRunOutput, "API_KEY")
+	requireContains(t, dryRunOutput, "No files were modified")
+	afterDryRun, err := os.ReadFile(vaultPath)
+	if err != nil {
+		t.Fatalf("read vault after dry run: %v", err)
+	}
+	if string(afterDryRun) != string(beforeDryRun) {
+		t.Fatal("sync-tokens --dry-run modified vault.db")
+	}
+
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "sync-tokens")), "synchronized")
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY", "--show")), "updated")
 }

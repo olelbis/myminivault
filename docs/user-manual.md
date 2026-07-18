@@ -473,6 +473,14 @@ Token write operations save immediately to the shared token vault. Master-passwo
 ./bin/vault sync-tokens
 ```
 
+To preview staged token changes before saving them into `vault.db`:
+
+```bash
+./bin/vault sync-tokens --dry-run
+```
+
+The dry run lists keys that would be imported or updated, keys that would be deleted, conflicts that would be skipped, and decisions that depend on legacy sync metadata. It does not save `vault.db`, `shared-token-vault.json`, or `rollback-state.json`.
+
 Sync policy:
 
 - `vault.db` is the master-password source of truth after a master command saves
