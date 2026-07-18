@@ -22,7 +22,7 @@ Current assessment score: `9.9 / 10` under the ordinary project model and `9.60 
 Main strengths:
 
 - release discipline with Git tags, GitHub releases, and a changelog
-- GitHub CI for formatting, vetting, and automated tests across Linux and macOS
+- GitHub CI for formatting, vetting, automated tests across Linux and macOS, CodeQL, and `govulncheck`
 - release package automation for Linux amd64, Linux arm64, and macOS arm64, including archives, `.deb`, `.rpm`, `.pkg`, checksums, and GitHub artifact attestations
 - dedicated runtime directory under `~/.myminivault/` with `MYMINIVAULT_HOME` override
 - CI coverage reporting with downloadable artifacts and documented baseline coverage
@@ -78,8 +78,8 @@ Use this section first when resuming work. The detailed backlog below explains e
    - Suggested branch: `container-runtime-hardening`.
 
 3. **Supply-Chain Hardening**
-   - Goal: evaluate signed tags/checksums and platform signing after SBOM generation and immutable Action pinning.
-   - Status: release packages upload per-target SPDX JSON SBOM files, include them in checksum manifests, attest them, and workflows pin GitHub Actions to commit SHAs.
+   - Goal: evaluate signed tags/checksums and platform signing after SBOM generation, immutable Action pinning, and automated security scanning.
+   - Status: release packages upload per-target SPDX JSON SBOM files, include them in checksum manifests, attest them, workflows pin GitHub Actions to commit SHAs, and CI runs CodeQL plus `govulncheck`.
    - Suggested branch: `supply-chain-hardening`.
 
 4. **Rollback Policy**
@@ -423,7 +423,7 @@ Recommended order:
 1. keep explicit process-argument warnings current and continue reducing argument exposure where practical
 2. add `vault sync-tokens --dry-run` and property-style tests for staged token writes/import/delete invariants
 3. implement rollback strict mode with an explicit restore/accept command before blocking by default
-4. add CodeQL, `govulncheck`, `staticcheck`, and possibly `gosec` CI jobs with a documented triage policy
+4. keep CodeQL and `govulncheck` results triaged, then evaluate `staticcheck` and possibly `gosec` with a documented triage policy
 5. verify `SECURITY.md` has a real reporting contact and document the encrypted file format enough for independent decryptor experiments
 6. define legacy format deprecation policy plus a future `vault migrate` command and compatibility fixture corpus
 7. keep rollback and broader same-user file-replacement race hardening moving after no-follow opens, directory fsync, exclusive temp/marker creation, and warn-mode revision checks
@@ -450,7 +450,7 @@ The July 2026 external-style review produced useful next actions. Treat these as
 - add `vault sync-tokens --dry-run` so users can inspect pending token imports before mutation
 - add rollback `strict` or `block` mode with an explicit restore/accept command for legitimate older-vault restores
 - improve recovery freshness reporting with mutation/revision distance, not only file timestamp freshness
-- add CodeQL and `govulncheck` to CI, then evaluate `staticcheck` and `gosec`
+- keep CodeQL and `govulncheck` results triaged, then evaluate `staticcheck` and `gosec`
 - verify `SECURITY.md` contains a real vulnerability reporting path
 - document the encrypted file format well enough for an independent decryptor experiment
 - write a legacy format deprecation policy and plan a future `vault migrate`

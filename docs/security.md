@@ -138,7 +138,7 @@ This is a local convenience model, not distributed synchronization. Per-key time
 
 ### Release Boundary
 
-GitHub Releases publish source tags, binary archives, and installable packages. Per-target SPDX JSON SBOMs document Go module dependencies for each release target. Per-target checksum files and the aggregate `SHA256SUMS` manifest help detect accidental corruption or mismatched downloads. Release workflow artifacts also receive GitHub artifact attestations, which provide signed build provenance for assets produced by GitHub Actions. GitHub Actions are pinned to immutable commit SHAs in workflows to reduce tag-retargeting risk.
+GitHub Releases publish source tags, binary archives, and installable packages. Per-target SPDX JSON SBOMs document Go module dependencies for each release target. Per-target checksum files and the aggregate `SHA256SUMS` manifest help detect accidental corruption or mismatched downloads. Release workflow artifacts also receive GitHub artifact attestations, which provide signed build provenance for assets produced by GitHub Actions. GitHub Actions are pinned to immutable commit SHAs in workflows to reduce tag-retargeting risk. CodeQL and `govulncheck` run in GitHub Actions to catch common static-analysis findings and known Go vulnerabilities, but they are automated checks rather than an external security audit.
 
 The project does not currently require manually signed commits or tags, and release packages are not notarized or signed with platform-specific installer certificates.
 
@@ -287,7 +287,7 @@ Current mitigations:
 | Clipboard capture | Partially mitigated by TTL clearing, but not prevented |
 | Runtime file tampering | Partially mitigated by authenticated encryption and checksums |
 | Replacement with an older valid vault | Warned when encrypted vault revision falls below local trusted rollback state; not blocked yet |
-| Supply-chain compromise | Partially mitigated by CI, pinned Actions, SBOMs, checksums, and GitHub artifact attestations; still not a full external audit or platform signing process |
+| Supply-chain compromise | Partially mitigated by CI, CodeQL, `govulncheck`, pinned Actions, SBOMs, checksums, and GitHub artifact attestations; still not a full external audit or platform signing process |
 
 ## Operational Guidance
 
@@ -364,6 +364,6 @@ Recommended next steps:
 - sync runtime directories after atomic renames where supported and document the remaining crash-consistency limits
 - continue the rollback detection work in [Rollback Policy](rollback-policy.md) with explicit restore acceptance and possible strict mode
 - keep macOS Keychain support current and reconsider Linux Secret Service storage only with a reliable desktop/headless policy
-- evaluate signed tags/checksums and platform signing before stronger supply-chain claims
+- keep CodeQL and `govulncheck` results triaged, then evaluate signed tags/checksums and platform signing before stronger supply-chain claims
 - consider signed tags, signed checksum manifests, or platform-specific package signing later in the release process
 - avoid claiming production security without an external audit
