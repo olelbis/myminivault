@@ -177,3 +177,44 @@ func TestKindNameAndDescriptionCoverKnownKinds(t *testing.T) {
 		t.Fatalf("description with params = %q", got)
 	}
 }
+
+func FuzzParse(f *testing.F) {
+	salt := []byte("1234567890123456")
+	wrapped, err := Wrap(KindMainVault, salt, []byte("ciphertext"))
+	if err != nil {
+		f.Fatalf("Wrap seed: %v", err)
+	}
+	v1 := append([]byte{'M', 'Y', 'M', 'V', Version1, KindRecoveryVault, 0, 0}, salt...)
+	v1 = append(v1, []byte("ciphertext")...)
+
+	f.Add(wrapped)
+	f.Add(v1)
+	f.Add(append(append([]byte(nil), salt...), []byte("legacy-ciphertext")...))
+	f.Add([]byte("short"))
+	f.Add([]byte{'M', 'Y', 'M', 'V', Version, KindMainVault, 0xff, 0xff})
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		parsed, err := Parse(data, 16)
+		if err != nil {
+			return
+		}
+		if len(parsed.Salt) != 16 {
+			t.Fatalf("salt length = %d, want 16", len(parsed.Salt))
+		}
+		if parsed.Legacy {
+			if parsed.Version != 0 || parsed.Kind != 0 || len(parsed.AssociatedData) != 0 {
+				t.Fatalf("legacy parse carried header fields: %#v", parsed)
+			}
+			return
+		}
+		if parsed.Version != Version && parsed.Version != Version1 {
+			t.Fatalf("unsupported parsed version %d", parsed.Version)
+		}
+		if KindName(parsed.Kind) == "unknown" {
+			t.Fatalf("unknown parsed kind %d", parsed.Kind)
+		}
+		if parsed.Version == Version && len(parsed.AssociatedData) < HeaderSize+16 {
+			t.Fatalf("v2 AAD too short: %d", len(parsed.AssociatedData))
+		}
+	})
+}
