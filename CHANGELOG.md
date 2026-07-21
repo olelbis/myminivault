@@ -8,11 +8,14 @@
 - Added a Python reference decryptor for the same fixture and format.
 - Added a base64 compatibility fixture for the reference decryptor.
 - Added a ready-to-share focused crypto review request and GitHub issue template.
+- Added a storage compatibility fixture corpus covering legacy main vaults, `MYMV` v1 main vaults, `MYMV` v2 main vaults, recovery vaults, and shared token vaults.
+- Added an initial migration policy skeleton for future `vault migrate` work and legacy format deprecation decisions.
 
 ### Changed
 
 - Updated file-format and crypto-review documentation to include the reference decryptor and fixture.
 - Updated GitHub Pages documentation links and project status text for the current review/audit materials.
+- Updated backlog and development documentation for compatibility fixtures and migration planning.
 
 ## [v0.12.18] - 2026-07-18
 

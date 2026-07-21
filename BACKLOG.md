@@ -424,7 +424,7 @@ Recommended order:
 2. add property-style tests for staged token writes/import/delete invariants
 3. implement rollback strict mode with an explicit restore/accept command before blocking by default
 4. keep CodeQL and `govulncheck` results triaged, then evaluate `staticcheck` and possibly `gosec` with a documented triage policy
-5. define legacy format deprecation policy plus a future `vault migrate` command and broader compatibility fixture corpus
+5. implement `vault migrate --dry-run` and `vault migrate` based on the migration policy
 7. keep rollback and broader same-user file-replacement race hardening moving after no-follow opens, directory fsync, exclusive temp/marker creation, and warn-mode revision checks
 8. continue migration coverage around authenticated KDF metadata and crash-consistency behavior
 9. evaluate signed tags/checksums and platform signing after SBOM and immutable Action pinning
@@ -451,8 +451,8 @@ The July 2026 external-style review produced useful next actions. Treat these as
 - keep CodeQL and `govulncheck` results triaged, then evaluate `staticcheck` and `gosec`
 - keep `SECURITY.md`, review request links, and the public focused-review issue current
 - expand the independent decryptor experiment beyond the initial Go/Python reference readers when useful
-- write a legacy format deprecation policy and plan a future `vault migrate`
-- start a compatibility fixture corpus with encrypted files from representative historical formats
+- implement the `vault migrate` command once the migration policy has settled
+- expand the compatibility fixture corpus when new historical formats or payload layouts need long-term read coverage
 - keep memory hardening honest: avoid string conversions for secrets, keep byte wiping best-effort, and document Go limits instead of promising impossible guarantees
 
 ### Next: Coverage Follow-Up

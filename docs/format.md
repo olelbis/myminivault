@@ -218,6 +218,10 @@ fixture without importing myminivault internal packages. A Python reader in
 `tools/reference-decryptor-python` reads the same fixture when the external
 `cryptography` package is installed.
 
+A broader compatibility fixture corpus for the production loaders lives in
+`internal/storage/testdata/compat/`. See [Migration Policy](migration-policy.md)
+for the current compatibility and future migration rules.
+
 ## Non-Goals
 
 The format does not attempt to hide that a file is a myminivault encrypted
