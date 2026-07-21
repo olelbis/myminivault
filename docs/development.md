@@ -196,6 +196,12 @@ The automated CLI smoke tests live in `./tests`, create temporary directories, a
 
 Current automated checks cover CLI smoke flows, token lifecycle behavior, token JSON output, config error handling, `vault doctor`, `vault inspect-runtime`, shell-safe import/export round trips, export-to-file behavior, clipboard clear behavior, audit-log redaction, disabled audit logging, token sync metadata decisions, token master-key and compact-token helper behavior, core unit behavior, and package-level coverage for `internal/storage`, `internal/token`, `internal/recovery`, `internal/lock`, `internal/audit`, `internal/sync`, `internal/rollback`, `internal/commands`, `internal/clipboard`, `internal/export`, `internal/container`, `internal/paths`, `internal/config`, and `internal/keychain`. CI enforces `80.0%` minimum coverage for `./internal/...`. Security scanning also runs CodeQL and `govulncheck` on push, pull request, and a weekly schedule.
 
+Compatibility fixtures for legacy and current encrypted file formats live in
+`internal/storage/testdata/compat/` and are exercised by
+`internal/storage/compatibility_fixture_test.go`. Update that corpus whenever a
+format, payload, recovery, or shared-token storage change needs long-term read
+compatibility.
+
 ## Reference Decryptor
 
 `tools/reference-decryptor` is a minimal standalone reader for the documented
