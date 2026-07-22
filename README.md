@@ -13,7 +13,7 @@
   <img alt="Go" src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white">
   <img alt="Latest release" src="https://img.shields.io/github/v/release/olelbis/myminivault?sort=semver">
   <img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/olelbis/myminivault.svg">
-  <img alt="Internal coverage" src="https://img.shields.io/badge/internal_coverage-81.2%25-brightgreen">
+  <img alt="Internal coverage" src="https://img.shields.io/badge/internal_coverage-81.4%25-brightgreen">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
   <img alt="Status" src="https://img.shields.io/badge/status-experimental-orange">
   <img alt="CLI" src="https://img.shields.io/badge/interface-CLI-2f3337">
@@ -44,10 +44,18 @@ GitHub Releases also publish installable packages:
 
 Release assets include per-target SHA-256 checksum files, SPDX JSON SBOMs, an aggregate `SHA256SUMS` manifest, and GitHub artifact attestations when built by the release workflow.
 
-For a macOS `.tar.gz` binary unpacked locally, make it executable and remove the downloaded-file quarantine only when Gatekeeper blocks the unsigned local binary:
+Prefer the macOS `.pkg` release asset on macOS. The `.tar.gz` binary is unsigned and not notarized, so Gatekeeper may block it when downloaded from a browser.
+
+For local testing of an unsigned `.tar.gz` binary, make it executable first:
 
 ```bash
 chmod +x ./vault
+./vault help
+```
+
+Only as an explicit local exception, if Gatekeeper blocks that unsigned binary and you trust the downloaded release asset you verified, remove quarantine from that one file:
+
+```bash
 xattr -dr com.apple.quarantine ./vault
 ./vault help
 ```
@@ -63,7 +71,7 @@ go build -o bin/vault ./cmd/vault
 Local builds display the CLI version as `dev`. Release assets inject the Git tag version during packaging with Go ldflags, for example:
 
 ```bash
-go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.19" -o bin/vault ./cmd/vault
+go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.20" -o bin/vault ./cmd/vault
 ```
 
 Run it:
@@ -80,7 +88,13 @@ go run ./cmd/vault help
 
 ## Quick Start
 
-Create or update a secret:
+Create or update a real secret without placing the value in process arguments:
+
+```bash
+printf '%s' "$API_KEY_VALUE" | ./bin/vault set API_KEY --stdin
+```
+
+For demos or low-risk test values, the positional form remains available:
 
 ```bash
 ./bin/vault set API_KEY secret-value
@@ -108,15 +122,15 @@ Create a backup:
 
 | Command | Purpose |
 | --- | --- |
-| `set <key> <value>` | Store or update a value |
 | `set <key> --stdin` | Store a value read from stdin instead of process arguments |
+| `set <key> <value>` | Store a value from argv, mainly for demos or low-risk values |
 | `get <key> --show` | Print a stored value intentionally |
 | `copy <key>` | Copy a value to the clipboard without printing it |
 | `delete <key>` | Delete a key |
 | `list` | List key names |
 | `search <pattern> --show` | Search keys and print matching values intentionally |
 | `backup` | Create a timestamped backup |
-| `export --output <file>` | Write shell-safe export lines to a restrictive plaintext file |
+| `export --output <file>` | Write shell-safe export lines to a restrictive plaintext file after confirmation |
 | `import <file>` | Import values from a file |
 | `setup-recovery` | Create a recovery key |
 | `refresh-recovery` | Rewrite the recovery snapshot |
@@ -252,7 +266,9 @@ On normal startup, commands tighten existing runtime file permissions to `0600` 
 
 Each release is published as a Git tag and a GitHub Release, with notes recorded in `CHANGELOG.md`. Release assets currently include Linux and macOS archives, Linux `.deb`/`.rpm` packages, macOS `.pkg` packages, SPDX JSON SBOMs, SHA-256 checksum files, and GitHub artifact attestations.
 
-The CLI-visible version is injected from the release tag when GitHub release assets are built. Local development builds use `dev` unless `main.vaultVersion` is set with Go ldflags. Patch releases are used for documentation, tests, packaging, fixes, and small refactors. Minor releases are reserved for user-facing behavior changes or larger security/compatibility work.
+The CLI-visible version is injected from the release tag when GitHub release assets are built. Local development builds use `dev` unless `main.vaultVersion` is set with Go ldflags.
+
+Release cadence should stay readable: documentation-only and test-only work can be committed without an immediate release, then summarized in the next functional release. Patch releases are for user-visible CLI behavior, security hardening, packaging, compatibility fixes, and small grouped improvements. Minor releases are reserved for larger user-facing behavior changes or security/compatibility work.
 
 If the vault file format changes, the release notes should include migration guidance and any compatibility limits.
 

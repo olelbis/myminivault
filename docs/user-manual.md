@@ -14,18 +14,18 @@ Keep these rules in mind:
 - keep runtime files out of Git, shared folders, and chat uploads
 - treat `vault.db.recovery` plus its recovery key like access to the recovered vault snapshot
 - treat `vault-token.key` as critical token-system material
-- prefer `copy` or `export --output` when terminal scrollback matters
+- prefer `copy` for one-off use; treat `export --output` as a persistent plaintext artifact
 - rotate exposed secrets rather than relying only on file deletion
 
 ## Common Workflows
 
 | Goal | Command |
 | --- | --- |
-| Add or update a secret | `vault set KEY value` |
-| Add or update a secret from stdin | `printf '%s' "$SECRET" \| vault set KEY --stdin` |
+| Add or update a real secret | `printf '%s' "$SECRET" \| vault set KEY --stdin` |
+| Add or update a demo value | `vault set KEY value` |
 | Print one secret intentionally | `vault get KEY --show` |
 | Copy one secret without terminal output | `vault copy KEY --ttl=30s` |
-| Export secrets to a restrictive file | `vault export --output secrets.env` |
+| Export secrets to a restrictive plaintext file | `vault export --output secrets.env` |
 | Import shell-style secrets | `vault import secrets.env` |
 | Check local file health | `vault doctor` |
 | Preview format migration | `vault migrate --dry-run` |
@@ -45,10 +45,18 @@ go install github.com/olelbis/myminivault/cmd/vault@latest
 
 GitHub Releases also provide `.tar.gz`, `.deb`, `.rpm`, macOS `.pkg`, and SPDX JSON SBOM assets. Release workflow assets include SHA-256 checksum manifests and GitHub artifact attestations.
 
-For a macOS `.tar.gz` binary unpacked locally, make it executable and remove the downloaded-file quarantine only if Gatekeeper blocks the unsigned local binary:
+Prefer the macOS `.pkg` release asset on macOS. The `.tar.gz` binary is unsigned and not notarized, so Gatekeeper may block it when downloaded from a browser.
+
+For local testing of an unsigned `.tar.gz` binary, make it executable first:
 
 ```bash
 chmod +x ./vault
+./vault help
+```
+
+Only as an explicit local exception, if Gatekeeper blocks that unsigned binary and you trust the downloaded release asset you verified, remove quarantine from that one file:
+
+```bash
 xattr -dr com.apple.quarantine ./vault
 ./vault help
 ```
@@ -72,7 +80,7 @@ Show help:
 Most commands ask for the master password. If the vault does not exist yet, entering a new password creates it. Use the same password for later commands.
 
 ```bash
-./bin/vault set API_KEY secret-value
+printf '%s' "$API_KEY_VALUE" | ./bin/vault set API_KEY --stdin
 ```
 
 The master password is never stored directly. It derives the encryption key used to open `vault.db`.
@@ -81,14 +89,16 @@ The master password is never stored directly. It derives the encryption key used
 
 ### Set A Secret
 
-```bash
-./bin/vault set API_KEY secret-value
-```
-
 Prefer stdin when the value should not appear directly in process arguments or shell history:
 
 ```bash
 printf '%s' "$API_KEY_VALUE" | ./bin/vault set API_KEY --stdin
+```
+
+For demos or low-risk test values, the positional form remains available:
+
+```bash
+./bin/vault set API_KEY secret-value
 ```
 
 `set --stdin` reads the remaining standard input after the master password prompt. One trailing newline is removed so `echo secret | vault set KEY --stdin` stores `secret`, while embedded newlines are preserved.
@@ -161,15 +171,19 @@ Shows vault metadata, recovery status, token summary, access count, and timestam
 
 `export --output` writes entries as shell-safe `export KEY='value'` lines. Export uses POSIX single-quote escaping, so values containing quotes, `$`, backticks, backslashes, and newlines are printed without triggering shell expansion.
 
+Export files are plaintext secrets. They may be copied by backups, Time Machine, cloud-sync folders, editors, indexing tools, or other local processes. The command asks for confirmation before writing. For controlled automation only, use:
+
+```bash
+./bin/vault export --output secrets.env --yes
+```
+
 Plaintext stdout export is still available for controlled automation, but it must be requested explicitly:
 
 ```bash
 ./bin/vault export --stdout
 ```
 
-The output file is written with `0600` permissions.
-
-Export files are plaintext. Delete them when they are no longer needed and rotate any exposed secrets.
+The output file is written with `0600` permissions. Delete export files when they are no longer needed and rotate any exposed secrets.
 
 ### Import
 

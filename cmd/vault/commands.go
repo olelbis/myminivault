@@ -30,8 +30,9 @@ func handleSetCommand(vault map[string]string) (string, bool) {
 	}
 
 	if len(os.Args) != 4 {
-		fmt.Println("Usage: vault set <key> <value>")
-		fmt.Println("       vault set <key> --stdin")
+		fmt.Println("Usage: vault set <key> --stdin")
+		fmt.Println("       vault set <key> <value>")
+		fmt.Println("Prefer --stdin for real secrets to avoid process-argument exposure.")
 		return "", false
 	}
 	if err := validateKey(os.Args[2]); err != nil {
@@ -96,20 +97,20 @@ func handleDeleteCommand(vault map[string]string) {
 func handleExportCommand(vault map[string]string) {
 	outputPath := ""
 	stdout := false
-	if len(os.Args) == 4 && os.Args[2] == "--output" {
-		outputPath = os.Args[3]
-	} else if len(os.Args) == 3 && strings.HasPrefix(os.Args[2], "--output=") {
-		outputPath = strings.TrimPrefix(os.Args[2], "--output=")
-	} else if len(os.Args) == 3 && os.Args[2] == "--stdout" {
-		stdout = true
-	} else {
+	assumeYes := false
+	if ok := parseExportArgs(&outputPath, &stdout, &assumeYes); !ok {
 		fmt.Println("Usage: vault export --output <file>")
+		fmt.Println("       vault export --output <file> --yes")
 		fmt.Println("       vault export --stdout")
-		fmt.Println("Plaintext stdout export requires --stdout. Prefer --output for restrictive file permissions.")
+		fmt.Println("Plaintext export files require confirmation unless --yes is used for automation.")
 		return
 	}
 
 	if outputPath != "" {
+		if !confirmPlaintextExport(outputPath, assumeYes) {
+			fmt.Println("Export cancelled")
+			return
+		}
 		if err := vaultexport.WriteFile(outputPath, vault); err != nil {
 			fmt.Printf("❌ Export failed: %v\n", err)
 			return
@@ -124,6 +125,52 @@ func handleExportCommand(vault map[string]string) {
 	}
 	fmt.Fprintln(os.Stderr, "⚠️  Exporting plaintext secrets to stdout by explicit --stdout request.")
 	fmt.Print(vaultexport.Render(vault))
+}
+
+func parseExportArgs(outputPath *string, stdout *bool, assumeYes *bool) bool {
+	args := os.Args[2:]
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case arg == "--output":
+			if *outputPath != "" || *stdout || i+1 >= len(args) {
+				return false
+			}
+			i++
+			*outputPath = args[i]
+		case strings.HasPrefix(arg, "--output="):
+			if *outputPath != "" || *stdout {
+				return false
+			}
+			*outputPath = strings.TrimPrefix(arg, "--output=")
+		case arg == "--stdout":
+			if *outputPath != "" || *stdout {
+				return false
+			}
+			*stdout = true
+		case arg == "--yes":
+			*assumeYes = true
+		default:
+			return false
+		}
+	}
+	if *stdout && *assumeYes {
+		return false
+	}
+	return *stdout || *outputPath != ""
+}
+
+func confirmPlaintextExport(outputPath string, assumeYes bool) bool {
+	fmt.Fprintf(os.Stderr, "⚠️  Export writes plaintext secrets to %s.\n", outputPath)
+	fmt.Fprintln(os.Stderr, "⚠️  Plaintext export files may be copied by backups, sync tools, or other local processes.")
+	if assumeYes {
+		fmt.Fprintln(os.Stderr, "⚠️  Proceeding because --yes was provided.")
+		return true
+	}
+	fmt.Fprint(os.Stderr, "Type 'yes' to continue: ")
+	reader := bufio.NewReader(os.Stdin)
+	confirm, _ := reader.ReadString('\n')
+	return strings.TrimSpace(strings.ToLower(confirm)) == "yes"
 }
 
 func renderExport(vault map[string]string) string {

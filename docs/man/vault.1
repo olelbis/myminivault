@@ -1,4 +1,4 @@
-.TH VAULT 1 "July 22, 2026" "myminivault 0.12.19" "User Commands"
+.TH VAULT 1 "July 23, 2026" "myminivault 0.12.20" "User Commands"
 .SH NAME
 vault \- local encrypted command-line key/value vault
 .SH SYNOPSIS
@@ -16,11 +16,13 @@ The tool is an experimental personal project. It is not independently audited
 and should not be treated as a production password manager.
 .SH BASIC COMMANDS
 .TP
-.B set <key> <value>
-Store or update a secret value.
-.TP
 .B set <key> --stdin
-Store or update a secret value read from standard input.
+Store or update a secret value read from standard input. This is recommended
+for real secrets because values are not placed in process arguments.
+.TP
+.B set <key> <value>
+Store or update a secret value from a process argument. Use mainly for demos or
+low-risk values.
 .TP
 .B get <key> --show
 Print a stored value to the terminal by explicit request.
@@ -38,7 +40,11 @@ List key names without printing values.
 Search key names and print matching plaintext values by explicit request.
 .TP
 .B export --output <file>
-Write shell-safe export lines to a restrictive plaintext file.
+Write shell-safe export lines to a restrictive plaintext file after
+confirmation.
+.TP
+.B export --output <file> --yes
+Write a plaintext export file without prompting, for controlled automation.
 .TP
 .B export --stdout
 Print shell-safe export lines to stdout by explicit request.
@@ -171,9 +177,9 @@ or
 .B export --stdout
 may remain in terminal scrollback or logs. Prefer
 .B copy
-or
+for one secret. Use
 .B export --output
-when terminal exposure matters.
+only when a persistent plaintext artifact is intentional.
 
 Release artifacts include SPDX JSON SBOMs, SHA-256 checksums, an aggregate SHA256SUMS manifest, and GitHub artifact attestations
 when built by the release workflow. Verify release assets before installing

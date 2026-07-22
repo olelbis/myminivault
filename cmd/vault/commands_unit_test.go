@@ -77,6 +77,35 @@ func TestImportFromFile(t *testing.T) {
 	}
 }
 
+func TestParseExportArgsAcceptsOutputYes(t *testing.T) {
+	originalArgs := os.Args
+	t.Cleanup(func() { os.Args = originalArgs })
+	os.Args = []string{"vault", "export", "--output", "secrets.env", "--yes"}
+
+	outputPath := ""
+	stdout := false
+	assumeYes := false
+	if !parseExportArgs(&outputPath, &stdout, &assumeYes) {
+		t.Fatal("parseExportArgs returned false")
+	}
+	if outputPath != "secrets.env" || stdout || !assumeYes {
+		t.Fatalf("outputPath/stdout/assumeYes = %q/%t/%t", outputPath, stdout, assumeYes)
+	}
+}
+
+func TestParseExportArgsRejectsStdoutYes(t *testing.T) {
+	originalArgs := os.Args
+	t.Cleanup(func() { os.Args = originalArgs })
+	os.Args = []string{"vault", "export", "--stdout", "--yes"}
+
+	outputPath := ""
+	stdout := false
+	assumeYes := false
+	if parseExportArgs(&outputPath, &stdout, &assumeYes) {
+		t.Fatal("parseExportArgs should reject --stdout with --yes")
+	}
+}
+
 func TestPruneTimestampedBackupsKeepsNewestConfiguredCount(t *testing.T) {
 	dir := t.TempDir()
 	originalVaultFile := vaultFile

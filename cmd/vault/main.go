@@ -293,14 +293,16 @@ func showHelp() {
 Author: olelbis
 
 BASIC COMMANDS:
-  set <key> <value>     Set a key-value pair
-  set <key> --stdin     Read the value from stdin
+  set <key> --stdin     Read the value from stdin (recommended for real secrets)
+  set <key> <value>     Set a key-value pair from argv (demo/low-risk values)
   get <key> --show      Print plaintext value for a key
   copy <key> [--ttl=30s] Copy value to clipboard and clear it when supported
   delete <key>          Delete a key
   list                  List all keys
   search <pattern> --show Search keys and print matching plaintext values
-  export --output file  Export shell variables to a restrictive plaintext file
+  export --output file  Export shell variables to a restrictive plaintext file; asks confirmation
+  export --output file --yes
+                        Export plaintext without prompt for controlled automation
   export --stdout       Print shell variables to stdout explicitly
   clear                 Clear all data
   import <file>         Import from file

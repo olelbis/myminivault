@@ -52,7 +52,7 @@
         <h2>Quick Start</h2>
         <div class="code-block" role="img" aria-label="Quick start commands">
           <pre><code>go install github.com/olelbis/myminivault/cmd/vault@latest
-vault set API_KEY secret-value
+printf '%s' "$API_KEY_VALUE" | vault set API_KEY --stdin
 vault get API_KEY --show
 vault copy API_KEY
 vault doctor</code></pre>

@@ -23,7 +23,7 @@ The encrypted runtime file format is documented separately in [Encrypted File Fo
 - support temporary token access with key-pattern, permission, expiry, and max-use limits
 - reduce local write races with an inter-process lock file
 - keep runtime vault files out of Git by default
-- avoid printing plaintext where a safer workflow exists, such as `copy` or `export --output`
+- avoid printing plaintext where a safer workflow exists, such as `copy`; treat export files as persistent plaintext artifacts
 - document operational risks clearly before claiming stronger guarantees
 - keep security-sensitive behavior covered by automated tests where practical
 
@@ -122,7 +122,7 @@ Newly saved encrypted runtime files include a small cleartext `MYMV` container h
 
 Anything printed to the terminal can be captured by terminal scrollback, shell wrappers, logs, screen recording, remote desktop software, or clipboard copy.
 
-`get --show`, `search --show`, and `export --stdout` intentionally print plaintext. The explicit flags are required so terminal exposure is an intentional choice. Prefer `copy` for one secret and `export --output <file>` for export artifacts when terminal exposure matters.
+`get --show`, `search --show`, and `export --stdout` intentionally print plaintext. The explicit flags are required so terminal exposure is an intentional choice. Prefer `copy` for one secret. Use `export --output <file>` only when a persistent plaintext artifact is intentional.
 
 ### Clipboard Boundary
 
@@ -257,7 +257,7 @@ Current mitigations:
 
 ### Export And Clipboard Flow
 
-`export --output <file>` creates shell-friendly plaintext in a restrictive file. `export --stdout` prints the same plaintext to stdout only by explicit request. `copy` writes one secret to the system clipboard and clears it after a TTL when supported.
+`export --output <file>` creates shell-friendly plaintext in a restrictive file after confirmation, or with `--yes` for controlled automation. `export --stdout` prints the same plaintext to stdout only by explicit request. `copy` writes one secret to the system clipboard and clears it after a TTL when supported.
 
 Primary risks:
 
@@ -269,7 +269,7 @@ Primary risks:
 Current mitigations:
 
 - explicit `--show` and `--stdout` flags for plaintext terminal output
-- `export --output` writes with restrictive permissions
+- `export --output` writes with restrictive permissions and requires confirmation unless `--yes` is provided
 - `copy` avoids terminal output
 - clipboard warning and TTL-based best-effort clearing
 
@@ -296,8 +296,8 @@ Current mitigations:
 - Use a strong, unique master password.
 - Keep runtime files out of Git and cloud-shared folders unless you understand the risk.
 - Prefer `copy` over `get --show` when terminal exposure matters.
-- Prefer `export --output <file>` over `export --stdout` when an export artifact is needed.
-- Treat export files as plaintext secrets.
+- Prefer avoiding export when possible; when an export artifact is needed, prefer `export --output <file>` over `export --stdout`.
+- Treat export files as plaintext secrets that may be copied by backups, sync tools, editors, indexing tools, and local processes.
 - Disable audit logging with `"audit_log": false` if command metadata is too sensitive for your environment.
 - Run `vault doctor` periodically in active vault directories.
 - Run `vault inspect-runtime` when runtime-home confusion, legacy files, or `MYMINIVAULT_HOME` overrides are suspected.
