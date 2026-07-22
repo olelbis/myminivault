@@ -28,6 +28,7 @@ Keep these rules in mind:
 | Export secrets to a restrictive file | `vault export --output secrets.env` |
 | Import shell-style secrets | `vault import secrets.env` |
 | Check local file health | `vault doctor` |
+| Preview format migration | `vault migrate --dry-run` |
 | Create recovery access | `vault setup-recovery` |
 | Refresh recovery snapshot | `vault refresh-recovery` |
 | Test recovery access | `vault test-recovery` |
@@ -245,6 +246,16 @@ Use this when:
 - `vault` looks empty and you suspect you are pointing at a different runtime home
 - `vault doctor` reports recovery freshness or compatibility warnings
 - you want to review file permissions without unlocking the vault
+
+## Migration Preview
+
+```bash
+./bin/vault migrate --dry-run
+```
+
+Previews encrypted runtime file format migration without asking for the master password and without modifying files. It inspects active main vault, backup, recovery, and shared token vault files, reports whether each file is missing, legacy, `MYMV v1`, or current `MYMV v2`, and shows which files would be rewritten by a future real migration command.
+
+The real mutating `vault migrate` command is not implemented yet. Current saves already rewrite readable older files as `MYMV v2` after normal authenticated save operations.
 
 ## Password Recovery
 

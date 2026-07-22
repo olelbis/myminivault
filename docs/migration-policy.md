@@ -33,7 +33,8 @@ quickly in unit tests. They are not production examples.
 
 ## Future `vault migrate` Shape
 
-A future migration command should be explicit and non-destructive by default.
+Migration starts with a non-mutating dry-run command. A future real migration
+command should be explicit and non-destructive by default.
 
 Proposed command shape:
 
@@ -41,6 +42,13 @@ Proposed command shape:
 vault migrate --dry-run
 vault migrate
 ```
+
+Current status:
+
+- `vault migrate --dry-run` is implemented as an inspection-only preview.
+- `vault migrate` is not implemented yet.
+- Dry-run does not ask for passwords, decrypt secrets, take the vault lock, or
+  modify runtime files.
 
 Expected behavior:
 

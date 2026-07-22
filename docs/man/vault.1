@@ -1,4 +1,4 @@
-.TH VAULT 1 "July 18, 2026" "myminivault 0.12.18" "User Commands"
+.TH VAULT 1 "July 22, 2026" "myminivault 0.12.19" "User Commands"
 .SH NAME
 vault \- local encrypted command-line key/value vault
 .SH SYNOPSIS
@@ -124,6 +124,10 @@ and lock state.
 List active and legacy runtime files without decrypting vault data. Encrypted
 runtime files also show cleartext container format details when available,
 plus a recovery/main-vault relationship summary.
+.TP
+.B migrate --dry-run
+Preview encrypted runtime file format migration without decrypting secrets or
+modifying files. Reports missing, legacy, older MYMV, and current MYMV files.
 .TP
 .B security-audit
 Print a local vault security summary.

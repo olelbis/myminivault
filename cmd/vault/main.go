@@ -50,6 +50,9 @@ func run() error {
 		handleInspectRuntimeCommand()
 		return nil
 	}
+	if command == "migrate" {
+		return handleMigrateCommand()
+	}
 
 	if err := hardenRuntimeFilePermissions(); err != nil {
 		return fmt.Errorf("runtime permission error: %w", err)
@@ -282,7 +285,7 @@ func showUsage() {
 	fmt.Println("Recovery: setup-recovery, refresh-recovery, recover, test-recovery, change-password")
 	fmt.Println("Tokens: create-token, list-tokens, revoke-token, use-token, token-info, cleanup-tokens")
 	fmt.Println("Sync: sync-tokens [--dry-run]")
-	fmt.Println("Security: security-audit, doctor, inspect-runtime, config, regenerate-token-key, help")
+	fmt.Println("Security: security-audit, doctor, inspect-runtime, migrate, config, regenerate-token-key, help")
 }
 
 func showHelp() {
@@ -340,6 +343,7 @@ SECURITY:
   security-audit        Comprehensive security audit
   doctor                Check runtime file permissions and local health
   inspect-runtime       List active and legacy runtime files without decrypting
+  migrate --dry-run     Preview encrypted runtime file format migration
   config                Show configuration
   regenerate-token-key  Generate new token master key
 

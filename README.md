@@ -63,7 +63,7 @@ go build -o bin/vault ./cmd/vault
 Local builds display the CLI version as `dev`. Release assets inject the Git tag version during packaging with Go ldflags, for example:
 
 ```bash
-go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.18" -o bin/vault ./cmd/vault
+go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.19" -o bin/vault ./cmd/vault
 ```
 
 Run it:
@@ -126,6 +126,7 @@ Create a backup:
 | `security-audit` | Print local vault status |
 | `doctor` | Check runtime file permissions and local health |
 | `inspect-runtime` | List active and legacy runtime files without decrypting |
+| `migrate --dry-run` | Preview encrypted runtime file format migration without modifying files |
 
 Token commands can emit JSON for third-party integrations:
 
