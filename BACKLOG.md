@@ -35,7 +35,7 @@ Main strengths:
 - tested `internal/clipboard` package for backend selection and clear-if-unchanged behavior
 - tested `internal/export` package for shell export rendering and restrictive file writes
 - tested `internal/health` package for non-decrypting runtime metadata compatibility checks
-- internal package coverage at `81.2%`, above the enforced `80.0%` floor
+- internal package coverage at `81.4%`, above the enforced `80.0%` floor
 - automated CLI smoke coverage for critical workflows in the top-level `tests` package
 - explicit handling for recovery, token sync, locking, backups, export, and password changes
 - a handoff backlog that can restart work from a fresh chat
@@ -421,15 +421,17 @@ These items are the most direct path beyond the current `9.9 / 10` ordinary asse
 Recommended order:
 
 1. keep explicit process-argument warnings current and continue reducing argument exposure where practical
-2. add property-style tests for staged token writes/import/delete invariants
-3. implement rollback strict mode with an explicit restore/accept command before blocking by default
-4. keep CodeQL and `govulncheck` results triaged, then evaluate `staticcheck` and possibly `gosec` with a documented triage policy
-5. implement real `vault migrate` based on the migration policy and existing `vault migrate --dry-run` preview
-7. keep rollback and broader same-user file-replacement race hardening moving after no-follow opens, directory fsync, exclusive temp/marker creation, and warn-mode revision checks
-8. continue migration coverage around authenticated KDF metadata and crash-consistency behavior
-9. evaluate signed tags/checksums and platform signing after SBOM and immutable Action pinning
-10. keep Linux token key storage file-backed until a reliable desktop/headless Secret Service strategy emerges
-11. keep the internal coverage floor healthy and reduce `cmd/vault` orchestration only when tests protect the boundary
+2. evaluate Argon2id as an additional authenticated container KDF before the file format is considered stable
+3. add property-style tests for staged token writes/import/delete invariants
+4. harden token sync UX and policy so staged token writes are less likely to remain unreconciled
+5. implement rollback strict mode with an explicit restore/accept command before blocking by default
+6. keep CodeQL and `govulncheck` results triaged, then evaluate `staticcheck` and possibly `gosec` with a documented triage policy
+7. implement real `vault migrate` based on the migration policy and existing `vault migrate --dry-run` preview
+8. keep rollback and broader same-user file-replacement race hardening moving after no-follow opens, directory fsync, exclusive temp/marker creation, and warn-mode revision checks
+9. continue migration coverage around authenticated KDF metadata and crash-consistency behavior
+10. evaluate signed tags/checksums and platform signing after SBOM and immutable Action pinning
+11. keep Linux token key storage file-backed until a reliable desktop/headless Secret Service strategy emerges
+12. keep the internal coverage floor healthy and reduce `cmd/vault` orchestration only when tests protect the boundary
 
 Suggested branches:
 
@@ -446,6 +448,8 @@ Priority: high.
 The July 2026 external-style review produced useful next actions. Treat these as hardening work before new product features:
 
 - add property-based or fuzz-style tests around token staged writes, master sync, imports, and deletes
+- design Argon2id support as an additional KDF option using authenticated container metadata, compatibility fixtures, config validation, migration guidance, and explicit release notes
+- reduce token sync footguns: make stale staged token writes more visible, consider stricter doctor status, and evaluate whether manual reconciliation should become harder to ignore
 - add rollback `strict` or `block` mode with an explicit restore/accept command for legitimate older-vault restores
 - improve recovery freshness reporting with mutation/revision distance, not only file timestamp freshness
 - keep CodeQL and `govulncheck` results triaged, then evaluate `staticcheck` and `gosec`
@@ -455,6 +459,18 @@ The July 2026 external-style review produced useful next actions. Treat these as
 - expand the compatibility fixture corpus when new historical formats or payload layouts need long-term read coverage
 - keep memory hardening honest: avoid string conversions for secrets, keep byte wiping best-effort, and document Go limits instead of promising impossible guarantees
 
+### Next: Release Cadence Cleanup
+
+Priority: medium.
+
+The early project history intentionally used many tiny releases while stabilizing behavior and packaging. Going forward, keep the changelog useful for upgrade decisions:
+
+- avoid releases for docs-only, test-only, and internal-only commits
+- group small hardening and documentation improvements under `Unreleased`
+- create patch releases for user-visible CLI behavior, security hardening, packaging, compatibility fixes, and grouped small improvements
+- reserve minor releases for larger user-facing changes or format/security compatibility work
+- keep release notes short and focused on what changes user risk, behavior, packaging, or compatibility
+
 ### Next: Coverage Follow-Up
 
 Priority: medium.
@@ -463,7 +479,7 @@ Current CI runs formatting, `go vet`, `go test ./...`, full coverage reporting, 
 
 Next actions:
 
-- keep `./internal/...` coverage at or above the current `80.0%` floor, with `81.2%` as the latest local baseline
+- keep `./internal/...` coverage at or above the current `80.0%` floor, with `81.4%` as the latest local baseline
 - raise `cmd/vault` coverage with focused unit tests or further extraction of command-independent logic where it improves clarity
 
 Suggested branch:

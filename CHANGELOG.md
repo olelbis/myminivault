@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased]
+
+## [v0.12.20] - 2026-07-23
+
+### Changed
+
+- `export --output` now warns that export files are persistent plaintext and asks for confirmation before writing.
+- Added `export --output <file> --yes` for controlled automation that intentionally writes plaintext export files.
+- Repositioned `set <key> --stdin` as the recommended documentation path for real secrets, with `set <key> <value>` kept for demos and low-risk values.
+- Reframed macOS quarantine removal as an exceptional local workaround for unsigned `.tar.gz` binaries rather than normal installation guidance.
+- Clarified release cadence guidance so documentation, test-only, and internal-only commits can be batched instead of producing a release for every small change.
+- Updated local coverage baselines to `44.9%` full repository and `81.4%` internal packages.
+
 ## [v0.12.19] - 2026-07-22
 
 ### Added
