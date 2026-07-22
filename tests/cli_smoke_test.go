@@ -169,6 +169,37 @@ func TestCLISmokeRuntimeHomeKeepsVaultOutOfWorkingDirectory(t *testing.T) {
 	requireFileNotExists(t, filepath.Join(workDir, logFile))
 }
 
+func TestCLISmokeMigrateDryRunDoesNotModifyVault(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "API_KEY", "hello"))
+	vaultPath := filepath.Join(dir, vaultFile)
+	before, err := os.ReadFile(vaultPath)
+	if err != nil {
+		t.Fatalf("read vault before migrate dry run: %v", err)
+	}
+
+	output := requireOK(t, runVault(t, bin, dir, "", "migrate", "--dry-run"))
+	for _, want := range []string{
+		"Vault Migration Dry Run",
+		"Secrets: not decrypted or printed",
+		"Mode: preview only; no files modified",
+		"vault.db",
+		"already current",
+	} {
+		requireContains(t, output, want)
+	}
+
+	after, err := os.ReadFile(vaultPath)
+	if err != nil {
+		t.Fatalf("read vault after migrate dry run: %v", err)
+	}
+	if string(after) != string(before) {
+		t.Fatal("migrate --dry-run modified vault.db")
+	}
+}
+
 func TestCLISmokePasswordCommandsDoNotInitializeTokenFiles(t *testing.T) {
 	bin := buildVaultBinary(t)
 	dir := t.TempDir()

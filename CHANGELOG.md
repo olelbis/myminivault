@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [v0.12.19] - 2026-07-22
 
 ### Added
 
@@ -10,12 +10,14 @@
 - Added a ready-to-share focused crypto review request and GitHub issue template.
 - Added a storage compatibility fixture corpus covering legacy main vaults, `MYMV` v1 main vaults, `MYMV` v2 main vaults, recovery vaults, and shared token vaults.
 - Added an initial migration policy skeleton for future `vault migrate` work and legacy format deprecation decisions.
+- Added `vault migrate --dry-run` to preview encrypted runtime file format migration without decrypting secrets or modifying files.
 
 ### Changed
 
 - Updated file-format and crypto-review documentation to include the reference decryptor and fixture.
 - Updated GitHub Pages documentation links and project status text for the current review/audit materials.
 - Updated backlog and development documentation for compatibility fixtures and migration planning.
+- Updated README, user manual, man page, and migration policy for the dry-run migration preview.
 
 ## [v0.12.18] - 2026-07-18
 

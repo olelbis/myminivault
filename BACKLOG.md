@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: clone or open the repository root, for example `/tmp/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.12.18`
+- Current baseline release: `v0.12.19`
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -15,7 +15,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `9.9 / 10` under the ordinary project model and `9.62 / 10` under the expanded paranoid review model after `v0.12.18`.
+Current assessment score: `9.9 / 10` under the ordinary project model and `9.64 / 10` under the expanded paranoid review model after `v0.12.19`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, macOS Keychain support for token master-key material, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -65,7 +65,7 @@ Use this section first when resuming work. The detailed backlog below explains e
 ### Immediate Next Work
 
 1. **Secret Input And Runtime Path Hardening**
-   - Status: partial progress through `v0.12.18` with `vault set KEY --stdin`, `vault use-token --stdin`, `vault use-token --token-file`, `vault use-token --token-fd`, `vault sync-tokens --dry-run`, portable symlink rejection, Unix no-follow opens for checked sensitive runtime helpers, exclusive creation for main-vault transaction markers plus main/recovery/shared-token temp files, and warn-mode rollback-state checks.
+   - Status: partial progress through `v0.12.19` with `vault set KEY --stdin`, `vault use-token --stdin`, `vault use-token --token-file`, `vault use-token --token-fd`, `vault sync-tokens --dry-run`, `vault migrate --dry-run`, portable symlink rejection, Unix no-follow opens for checked sensitive runtime helpers, exclusive creation for main-vault transaction markers plus main/recovery/shared-token temp files, and warn-mode rollback-state checks.
    - Goal: reduce direct secret/token exposure in process arguments, keep sensitive runtime symlinks rejected, and keep reducing runtime file race windows.
    - Suggested branch: `secret-input-path-hardening`.
 
@@ -424,7 +424,7 @@ Recommended order:
 2. add property-style tests for staged token writes/import/delete invariants
 3. implement rollback strict mode with an explicit restore/accept command before blocking by default
 4. keep CodeQL and `govulncheck` results triaged, then evaluate `staticcheck` and possibly `gosec` with a documented triage policy
-5. implement `vault migrate --dry-run` and `vault migrate` based on the migration policy
+5. implement real `vault migrate` based on the migration policy and existing `vault migrate --dry-run` preview
 7. keep rollback and broader same-user file-replacement race hardening moving after no-follow opens, directory fsync, exclusive temp/marker creation, and warn-mode revision checks
 8. continue migration coverage around authenticated KDF metadata and crash-consistency behavior
 9. evaluate signed tags/checksums and platform signing after SBOM and immutable Action pinning
@@ -451,7 +451,7 @@ The July 2026 external-style review produced useful next actions. Treat these as
 - keep CodeQL and `govulncheck` results triaged, then evaluate `staticcheck` and `gosec`
 - keep `SECURITY.md`, review request links, and the public focused-review issue current
 - expand the independent decryptor experiment beyond the initial Go/Python reference readers when useful
-- implement the `vault migrate` command once the migration policy has settled
+- implement the real mutating `vault migrate` command once the dry-run behavior and migration policy have settled
 - expand the compatibility fixture corpus when new historical formats or payload layouts need long-term read coverage
 - keep memory hardening honest: avoid string conversions for secrets, keep byte wiping best-effort, and document Go limits instead of promising impossible guarantees
 
