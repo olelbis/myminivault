@@ -28,20 +28,16 @@ func TestMetadataCompatibilityIssueReportsMismatches(t *testing.T) {
 			want:   "unexpected algorithm",
 		},
 		"kdf": {
-			mutate: func(meta *container.Metadata) { meta.KDF = "argon2id" },
+			mutate: func(meta *container.Metadata) { meta.KDF = "pbkdf2" },
 			want:   "unexpected KDF",
 		},
-		"scrypt n": {
-			mutate: func(meta *container.Metadata) { meta.ScryptN *= 2 },
-			want:   "scrypt_n=",
+		"argon2id metadata": {
+			mutate: func(meta *container.Metadata) { meta.Argon2MemoryKiB = 0 },
+			want:   "incomplete argon2id metadata",
 		},
-		"scrypt r": {
-			mutate: func(meta *container.Metadata) { meta.ScryptR++ },
-			want:   "scrypt_r=",
-		},
-		"scrypt p": {
-			mutate: func(meta *container.Metadata) { meta.ScryptP++ },
-			want:   "scrypt_p=",
+		"deprecated scrypt": {
+			mutate: func(meta *container.Metadata) { meta.KDF = container.KDFScrypt },
+			want:   "deprecated KDF scrypt",
 		},
 		"key size": {
 			mutate: func(meta *container.Metadata) { meta.KeySize = 16 },
@@ -78,9 +74,6 @@ func testCryptoConfig() CryptoConfig {
 
 func testMetadata(cfg CryptoConfig) container.Metadata {
 	meta := container.DefaultMetadata(cfg.SaltSize)
-	meta.ScryptN = cfg.ScryptN
-	meta.ScryptR = cfg.ScryptR
-	meta.ScryptP = cfg.ScryptP
 	meta.KeySize = cfg.KeySize
 	return meta
 }

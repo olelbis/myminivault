@@ -27,6 +27,7 @@ const HeaderSize = 8
 
 const (
 	AlgorithmAES256GCM      = "AES-256-GCM"
+	KDFArgon2id             = "argon2id"
 	KDFScrypt               = "scrypt"
 	PayloadChecksumJSON     = "sha256-prefix-json"
 	CiphertextNoncePrefixed = "nonce-prefixed"
@@ -41,6 +42,9 @@ type Metadata struct {
 	ScryptN          int    `json:"scrypt_n,omitempty"`
 	ScryptR          int    `json:"scrypt_r,omitempty"`
 	ScryptP          int    `json:"scrypt_p,omitempty"`
+	Argon2MemoryKiB  uint32 `json:"argon2_memory_kib,omitempty"`
+	Argon2Time       uint32 `json:"argon2_time,omitempty"`
+	Argon2Threads    uint8  `json:"argon2_threads,omitempty"`
 	KeySize          int    `json:"key_size,omitempty"`
 	SaltSize         int    `json:"salt_size"`
 	NonceSize        int    `json:"nonce_size"`
@@ -177,7 +181,11 @@ func ReadFile(path string, saltSize int) (Parsed, error) {
 func DefaultMetadata(saltSize int) Metadata {
 	return Metadata{
 		Algorithm:        AlgorithmAES256GCM,
-		KDF:              KDFScrypt,
+		KDF:              KDFArgon2id,
+		Argon2MemoryKiB:  19 * 1024,
+		Argon2Time:       2,
+		Argon2Threads:    1,
+		KeySize:          32,
 		SaltSize:         saltSize,
 		NonceSize:        12,
 		Payload:          PayloadChecksumJSON,
@@ -192,6 +200,20 @@ func normalizeMetadata(meta Metadata, saltSize int) Metadata {
 	}
 	if meta.KDF == "" {
 		meta.KDF = defaults.KDF
+	}
+	if meta.KDF == KDFArgon2id {
+		if meta.Argon2MemoryKiB == 0 {
+			meta.Argon2MemoryKiB = defaults.Argon2MemoryKiB
+		}
+		if meta.Argon2Time == 0 {
+			meta.Argon2Time = defaults.Argon2Time
+		}
+		if meta.Argon2Threads == 0 {
+			meta.Argon2Threads = defaults.Argon2Threads
+		}
+	}
+	if meta.KeySize == 0 {
+		meta.KeySize = defaults.KeySize
 	}
 	if meta.SaltSize == 0 {
 		meta.SaltSize = saltSize
@@ -228,6 +250,18 @@ func Description(parsed Parsed) string {
 		return "legacy salt+ciphertext"
 	}
 	if parsed.Metadata.Algorithm != "" || parsed.Metadata.KDF != "" {
+		if parsed.Metadata.KDF == KDFArgon2id {
+			return fmt.Sprintf(
+				"MYMV v%d %s %s/%s argon2id=%dKiB/t%d/p%d",
+				parsed.Version,
+				KindName(parsed.Kind),
+				parsed.Metadata.Algorithm,
+				parsed.Metadata.KDF,
+				parsed.Metadata.Argon2MemoryKiB,
+				parsed.Metadata.Argon2Time,
+				parsed.Metadata.Argon2Threads,
+			)
+		}
 		if parsed.Metadata.ScryptN > 0 || parsed.Metadata.ScryptR > 0 || parsed.Metadata.ScryptP > 0 {
 			return fmt.Sprintf(
 				"MYMV v%d %s %s/%s scrypt=%d/%d/%d",

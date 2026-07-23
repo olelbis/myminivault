@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"errors"
 
+	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/scrypt"
 )
 
@@ -18,9 +19,37 @@ type ScryptConfig struct {
 	KeySize int
 }
 
+// Argon2idConfig contains the memory-hard key derivation parameters used by
+// current MYMV v2 saves.
+type Argon2idConfig struct {
+	MemoryKiB uint32
+	Time      uint32
+	Threads   uint8
+	KeySize   uint32
+}
+
+// KDFConfig identifies a supported password-based key derivation function.
+type KDFConfig struct {
+	Name     string
+	Scrypt   ScryptConfig
+	Argon2id Argon2idConfig
+}
+
 // DeriveKey is the only password-to-key boundary for vault encryption.
 func DeriveKey(password, salt []byte, cfg ScryptConfig) ([]byte, error) {
 	return scrypt.Key(password, salt, cfg.N, cfg.R, cfg.P, cfg.KeySize)
+}
+
+// DeriveKeyWithConfig derives an encryption key using the selected KDF.
+func DeriveKeyWithConfig(password, salt []byte, cfg KDFConfig) ([]byte, error) {
+	switch cfg.Name {
+	case "scrypt":
+		return DeriveKey(password, salt, cfg.Scrypt)
+	case "argon2id":
+		return argon2.IDKey(password, salt, cfg.Argon2id.Time, cfg.Argon2id.MemoryKiB, cfg.Argon2id.Threads, cfg.Argon2id.KeySize), nil
+	default:
+		return nil, errors.New("unsupported KDF")
+	}
 }
 
 // Encrypt prefixes the random GCM nonce to the ciphertext so Decrypt can

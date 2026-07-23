@@ -13,7 +13,7 @@
   <img alt="Go" src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white">
   <img alt="Latest release" src="https://img.shields.io/github/v/release/olelbis/myminivault?sort=semver">
   <img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/olelbis/myminivault.svg">
-  <img alt="Internal coverage" src="https://img.shields.io/badge/internal_coverage-81.4%25-brightgreen">
+  <img alt="Internal coverage" src="https://img.shields.io/badge/internal_coverage-81.6%25-brightgreen">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
   <img alt="Status" src="https://img.shields.io/badge/status-experimental-orange">
   <img alt="CLI" src="https://img.shields.io/badge/interface-CLI-2f3337">
@@ -71,7 +71,7 @@ go build -o bin/vault ./cmd/vault
 Local builds display the CLI version as `dev`. Release assets inject the Git tag version during packaging with Go ldflags, for example:
 
 ```bash
-go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.20" -o bin/vault ./cmd/vault
+go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.13.0" -o bin/vault ./cmd/vault
 ```
 
 Run it:
@@ -241,7 +241,7 @@ MYMINIVAULT_HOME=/tmp/myminivault-demo vault inspect-runtime
 
 The command prints active runtime files, legacy current-directory files, modified times, sizes, file modes, encrypted container format details where available, and a recovery/main-vault relationship summary. It never decrypts vault data or prints stored values.
 
-Encrypted runtime files saved by current releases start with a small cleartext `MYMV` container header. Current saves write container format `v2`, which identifies the file kind and records non-sensitive crypto metadata such as algorithm, KDF, scrypt parameters, salt size, nonce size, and payload layout. The `MYMV v2` header, metadata, and salt are authenticated with AES-GCM AAD, so tampering with that cleartext context makes decryption fail. Load paths validate supported KDF metadata and bounded scrypt parameters before deriving keys. It does not expose stored keys, values, recovery metadata, token contents, or encrypted vault metadata. Older `MYMV v1` and salt-plus-ciphertext files remain readable and are reported as older formats until they are rewritten by a save operation.
+Encrypted runtime files saved by current releases start with a small cleartext `MYMV` container header. Current saves write container format `v2`, which identifies the file kind and records non-sensitive crypto metadata such as algorithm, KDF, Argon2id parameters, salt size, nonce size, and payload layout. The `MYMV v2` header, metadata, and salt are authenticated with AES-GCM AAD, so tampering with that cleartext context makes decryption fail. Load paths validate supported KDF metadata and bounded parameters before deriving keys. It does not expose stored keys, values, recovery metadata, token contents, or encrypted vault metadata. New saves use Argon2id; older scrypt-based `MYMV v2`, `MYMV v1`, and salt-plus-ciphertext files remain readable but are deprecated and are reported as older/legacy formats until they are rewritten by a save operation.
 
 On normal startup, commands tighten existing runtime file permissions to `0600` when possible and reject symlinked sensitive runtime paths. Checked runtime opens use no-follow semantics where supported, and sensitive temp/transaction files are created exclusively so pre-existing paths fail instead of being reused. Mutating password-based saves maintain encrypted `vault_id`/`revision` metadata and a local `rollback-state.json` high-water mark; older valid vaults warn instead of silently downgrading local state. `doctor` and `inspect-runtime` remain non-mutating inspection commands, so they report the current state without auto-fixing it. `vault doctor` also reports symlinked sensitive files, recovery snapshot freshness, non-decrypting recovery container compatibility, and rollback-state health so stale or mismatched recovery/runtime files are easier to spot before an emergency.
 

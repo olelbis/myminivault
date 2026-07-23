@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"os"
 
+	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/scrypt"
 )
 
@@ -36,6 +37,9 @@ type metadata struct {
 	ScryptN          int    `json:"scrypt_n"`
 	ScryptR          int    `json:"scrypt_r"`
 	ScryptP          int    `json:"scrypt_p"`
+	Argon2MemoryKiB  uint32 `json:"argon2_memory_kib"`
+	Argon2Time       uint32 `json:"argon2_time"`
+	Argon2Threads    uint8  `json:"argon2_threads"`
 	KeySize          int    `json:"key_size"`
 	SaltSize         int    `json:"salt_size"`
 	NonceSize        int    `json:"nonce_size"`
@@ -150,7 +154,7 @@ func validateMetadata(meta metadata) error {
 	if meta.Algorithm != "AES-256-GCM" {
 		return fmt.Errorf("unsupported algorithm %q", meta.Algorithm)
 	}
-	if meta.KDF != "scrypt" {
+	if meta.KDF != "argon2id" && meta.KDF != "scrypt" {
 		return fmt.Errorf("unsupported KDF %q", meta.KDF)
 	}
 	if meta.Payload != "sha256-prefix-json" {
@@ -168,13 +172,29 @@ func validateMetadata(meta metadata) error {
 	if meta.KeySize != 32 {
 		return fmt.Errorf("unsupported key size %d", meta.KeySize)
 	}
-	if meta.ScryptN < 2 || meta.ScryptR < 1 || meta.ScryptP < 1 {
-		return errors.New("invalid scrypt metadata")
+	switch meta.KDF {
+	case "argon2id":
+		if meta.Argon2MemoryKiB < 19*1024 || meta.Argon2MemoryKiB > 256*1024 {
+			return errors.New("invalid argon2id memory metadata")
+		}
+		if meta.Argon2Time < 1 || meta.Argon2Time > 8 {
+			return errors.New("invalid argon2id time metadata")
+		}
+		if meta.Argon2Threads < 1 || meta.Argon2Threads > 8 {
+			return errors.New("invalid argon2id threads metadata")
+		}
+	case "scrypt":
+		if meta.ScryptN < 2 || meta.ScryptR < 1 || meta.ScryptP < 1 {
+			return errors.New("invalid scrypt metadata")
+		}
 	}
 	return nil
 }
 
 func deriveKey(password, salt []byte, meta metadata) ([]byte, error) {
+	if meta.KDF == "argon2id" {
+		return argon2.IDKey(password, salt, meta.Argon2Time, meta.Argon2MemoryKiB, meta.Argon2Threads, uint32(meta.KeySize)), nil
+	}
 	return scrypt.Key(password, salt, meta.ScryptN, meta.ScryptR, meta.ScryptP, meta.KeySize)
 }
 

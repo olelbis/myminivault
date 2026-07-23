@@ -22,8 +22,15 @@ func MetadataCompatibilityIssue(meta container.Metadata, cfg CryptoConfig) strin
 	if meta.Algorithm != container.AlgorithmAES256GCM {
 		return fmt.Sprintf("unexpected algorithm %s; expected %s", meta.Algorithm, container.AlgorithmAES256GCM)
 	}
-	if meta.KDF != container.KDFScrypt {
-		return fmt.Sprintf("unexpected KDF %s; expected %s", meta.KDF, container.KDFScrypt)
+	switch meta.KDF {
+	case container.KDFArgon2id:
+		if meta.Argon2MemoryKiB == 0 || meta.Argon2Time == 0 || meta.Argon2Threads == 0 || meta.KeySize == 0 {
+			return "incomplete argon2id metadata"
+		}
+	case container.KDFScrypt:
+		return "deprecated KDF scrypt; save again after migration to rewrite with argon2id"
+	default:
+		return fmt.Sprintf("unexpected KDF %s; expected %s", meta.KDF, container.KDFArgon2id)
 	}
 	if meta.ScryptN != 0 && meta.ScryptN != cfg.ScryptN {
 		return fmt.Sprintf("scrypt_n=%d differs from current config %d; recovery may require the original config", meta.ScryptN, cfg.ScryptN)

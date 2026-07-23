@@ -554,6 +554,10 @@ Default values:
 
 The program loads `vault-config.json` from the runtime directory.
 
+The scrypt settings are retained as the compatibility fallback for deprecated
+legacy files. Newly written `MYMV v2` runtime files use the authenticated
+Argon2id metadata stored in the container header.
+
 Config validation:
 
 - `scrypt_n` must be a power of two between `32768` and `1048576`
@@ -649,7 +653,7 @@ Important behavior:
 | `vault-config.json` | Optional config override |
 | `.myminivault.lock` | Inter-process lock file |
 
-Current encrypted runtime files include a small cleartext `MYMV v2` container header with the container format version, file kind, and non-sensitive crypto metadata. This helps `vault doctor` and `vault inspect-runtime` identify file format information without decrypting secrets. The v2 cleartext context is authenticated with AES-GCM AAD, so header or metadata tampering makes decryption fail. Mutating password-based saves also keep encrypted vault rollback metadata and update `rollback-state.json`; if a later command sees an older valid vault revision, it warns instead of silently lowering trusted local state. Older `MYMV v1` and salt-plus-ciphertext files remain readable and are upgraded to the current container format when rewritten.
+Current encrypted runtime files include a small cleartext `MYMV v2` container header with the container format version, file kind, and non-sensitive crypto metadata. New saves use Argon2id metadata. This helps `vault doctor` and `vault inspect-runtime` identify file format information without decrypting secrets. The v2 cleartext context is authenticated with AES-GCM AAD, so header or metadata tampering makes decryption fail. Mutating password-based saves also keep encrypted vault rollback metadata and update `rollback-state.json`; if a later command sees an older valid vault revision, it warns instead of silently lowering trusted local state. scrypt-based `MYMV v2`, older `MYMV v1`, and salt-plus-ciphertext files remain readable but are deprecated and are upgraded to the current Argon2id-based profile when rewritten.
 
 These files are ignored by Git because they may contain encrypted secrets, keys, logs, or local runtime state.
 

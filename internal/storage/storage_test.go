@@ -40,8 +40,8 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse saved vault: %v", err)
 	}
-	if parsed.Metadata.ScryptN != opts.Scrypt.N || parsed.Metadata.KeySize != opts.Scrypt.KeySize {
-		t.Fatalf("metadata = %+v, want scrypt params from options", parsed.Metadata)
+	if parsed.Metadata.KDF != container.KDFArgon2id || parsed.Metadata.Argon2MemoryKiB != 19*1024 || parsed.Metadata.Argon2Time != 2 || parsed.Metadata.Argon2Threads != 1 {
+		t.Fatalf("metadata = %+v, want argon2id defaults", parsed.Metadata)
 	}
 
 	loaded, _, err := Load("password", opts)
@@ -141,7 +141,7 @@ func TestLoadRejectsUnsupportedContainerKDF(t *testing.T) {
 		t.Fatalf("DeriveKey: %v", err)
 	}
 	meta := containerMetadata(opts)
-	meta.KDF = "argon2id"
+	meta.KDF = "pbkdf2"
 	aad, err := container.AssociatedData(container.KindMainVault, salt, meta)
 	if err != nil {
 		t.Fatalf("AssociatedData: %v", err)
@@ -351,7 +351,7 @@ func TestSaveFileAtomicCreatesBackupAndReplacesPrimary(t *testing.T) {
 	if parsed.Version != container.Version || parsed.Kind != container.KindMainVault {
 		t.Fatalf("container version/kind = %d/%d", parsed.Version, parsed.Kind)
 	}
-	if parsed.Metadata.Algorithm != container.AlgorithmAES256GCM || parsed.Metadata.KDF != container.KDFScrypt {
+	if parsed.Metadata.Algorithm != container.AlgorithmAES256GCM || parsed.Metadata.KDF != container.KDFArgon2id {
 		t.Fatalf("container metadata = %+v", parsed.Metadata)
 	}
 	if string(parsed.Salt)+string(parsed.Ciphertext) != "new-saltnew-data" {
@@ -719,7 +719,15 @@ func TestSaveWritesRecoverySnapshotWhenConfigured(t *testing.T) {
 	if len(recoveryCiphertext) == 0 {
 		t.Fatal("expected recovery ciphertext to be saved")
 	}
-	loadedRecovery, err := recovery.DecryptVault(recoverySalt, recoveryCiphertext, recoveryKey, recovery.Options{Scrypt: opts.Scrypt}, recoveryAAD)
+	parsedRecovery := container.Parsed{
+		Salt:           recoverySalt,
+		Ciphertext:     recoveryCiphertext,
+		AssociatedData: recoveryAAD,
+		Version:        container.Version,
+		Kind:           container.KindRecoveryVault,
+		Metadata:       containerMetadata(opts),
+	}
+	loadedRecovery, err := recovery.DecryptParsedVault(parsedRecovery, []byte(recoveryKey), recovery.Options{Scrypt: opts.Scrypt})
 	if err != nil {
 		t.Fatalf("DecryptVault recovery snapshot: %v", err)
 	}
@@ -730,7 +738,15 @@ func TestSaveWritesRecoverySnapshotWhenConfigured(t *testing.T) {
 
 func TestSaveReturnsEncryptionError(t *testing.T) {
 	opts := storageTestOptions(t.TempDir())
-	opts.Scrypt.KeySize = 31
+	opts.KDF = vaultcrypto.KDFConfig{
+		Name: container.KDFArgon2id,
+		Argon2id: vaultcrypto.Argon2idConfig{
+			MemoryKiB: 19 * 1024,
+			Time:      2,
+			Threads:   1,
+			KeySize:   31,
+		},
+	}
 	vault := &model.ExtendedVault{
 		Data:     map[string]string{"API_KEY": "secret"},
 		Metadata: model.VaultMetadata{Version: opts.Version, CreatedAt: time.Now()},
@@ -762,6 +778,29 @@ func TestSaveReturnsRecoverySnapshotError(t *testing.T) {
 	}
 }
 
+func TestContainerMetadataCanWriteDeprecatedScryptProfile(t *testing.T) {
+	opts := storageTestOptions(t.TempDir())
+	opts.KDF = vaultcrypto.KDFConfig{Name: container.KDFScrypt, Scrypt: vaultcrypto.ScryptConfig{N: 4, R: 1, P: 1, KeySize: 32}}
+
+	meta := containerMetadata(opts)
+	if meta.KDF != container.KDFScrypt || meta.ScryptN != 4 || meta.ScryptR != 1 || meta.ScryptP != 1 || meta.KeySize != 32 {
+		t.Fatalf("metadata = %+v, want explicit scrypt profile", meta)
+	}
+	if meta.Argon2MemoryKiB != 0 || meta.Argon2Time != 0 || meta.Argon2Threads != 0 {
+		t.Fatalf("metadata = %+v, want no argon2id fields for scrypt profile", meta)
+	}
+}
+
+func TestKDFConfigFromMetadataReturnsDeprecatedScryptProfile(t *testing.T) {
+	meta := container.Metadata{KDF: container.KDFScrypt}
+	fallback := vaultcrypto.ScryptConfig{N: 4, R: 1, P: 1, KeySize: 32}
+
+	cfg := kdfConfigFromMetadata(meta, fallback)
+	if cfg.Name != container.KDFScrypt || cfg.Scrypt != fallback {
+		t.Fatalf("config = %+v, want fallback scrypt", cfg)
+	}
+}
+
 func storageTestOptions(dir string) Options {
 	return Options{
 		VaultFile: filepath.Join(dir, "vault.db"),
@@ -785,15 +824,11 @@ func writeVault(t *testing.T, path, password string, salt []byte, vault *model.E
 func writeEncryptedPlaintext(t *testing.T, opts Options, password, salt, plaintext []byte) {
 	t.Helper()
 
-	key, err := vaultcrypto.DeriveKey(password, salt, opts.Scrypt)
+	meta := container.DefaultMetadata(opts.SaltSize)
+	key, err := vaultcrypto.DeriveKeyWithConfig(password, salt, kdfConfigFromMetadata(meta, opts.Scrypt))
 	if err != nil {
 		t.Fatalf("DeriveKey: %v", err)
 	}
-	meta := container.DefaultMetadata(opts.SaltSize)
-	meta.ScryptN = opts.Scrypt.N
-	meta.ScryptR = opts.Scrypt.R
-	meta.ScryptP = opts.Scrypt.P
-	meta.KeySize = opts.Scrypt.KeySize
 	aad, err := container.AssociatedData(container.KindMainVault, salt, meta)
 	if err != nil {
 		t.Fatalf("AssociatedData: %v", err)

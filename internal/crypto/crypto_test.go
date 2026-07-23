@@ -103,3 +103,42 @@ func TestDecryptRejectsShortCiphertext(t *testing.T) {
 		t.Fatal("expected short ciphertext to fail")
 	}
 }
+
+func TestDeriveKeyWithConfigSupportsScryptAndArgon2id(t *testing.T) {
+	password := []byte("password")
+	salt := []byte("1234567890123456")
+
+	scryptKey, err := DeriveKeyWithConfig(password, salt, KDFConfig{Name: "scrypt", Scrypt: testScryptConfig})
+	if err != nil {
+		t.Fatalf("DeriveKeyWithConfig scrypt: %v", err)
+	}
+	if len(scryptKey) != testScryptConfig.KeySize {
+		t.Fatalf("scrypt key length = %d", len(scryptKey))
+	}
+
+	argonKey, err := DeriveKeyWithConfig(password, salt, KDFConfig{
+		Name: "argon2id",
+		Argon2id: Argon2idConfig{
+			MemoryKiB: 19 * 1024,
+			Time:      2,
+			Threads:   1,
+			KeySize:   32,
+		},
+	})
+	if err != nil {
+		t.Fatalf("DeriveKeyWithConfig argon2id: %v", err)
+	}
+	if len(argonKey) != 32 {
+		t.Fatalf("argon2id key length = %d", len(argonKey))
+	}
+	if bytes.Equal(scryptKey, argonKey) {
+		t.Fatal("different KDFs should not derive the same key for the same input")
+	}
+}
+
+func TestDeriveKeyWithConfigRejectsUnknownKDF(t *testing.T) {
+	_, err := DeriveKeyWithConfig([]byte("password"), []byte("1234567890123456"), KDFConfig{Name: "pbkdf2"})
+	if err == nil {
+		t.Fatal("expected unknown KDF error")
+	}
+}

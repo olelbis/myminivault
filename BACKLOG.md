@@ -35,7 +35,7 @@ Main strengths:
 - tested `internal/clipboard` package for backend selection and clear-if-unchanged behavior
 - tested `internal/export` package for shell export rendering and restrictive file writes
 - tested `internal/health` package for non-decrypting runtime metadata compatibility checks
-- internal package coverage at `81.4%`, above the enforced `80.0%` floor
+- internal package coverage at `81.6%`, above the enforced `80.0%` floor
 - automated CLI smoke coverage for critical workflows in the top-level `tests` package
 - explicit handling for recovery, token sync, locking, backups, export, and password changes
 - a handoff backlog that can restart work from a fresh chat
@@ -73,7 +73,7 @@ Use this section first when resuming work. The detailed backlog below explains e
 
 2. **Container KDF And Crash Consistency**
    - Goal: continue migration tests and broader rollback/file-replacement race hardening after the first crash-consistency and exclusive-create passes.
-   - KDF status: bounded MYMV v2 KDF metadata loading policy implemented; main vault, shared-token vault, and recovery decrypt paths validate supported algorithm/KDF/layout and cap scrypt parameters before deriving keys.
+   - KDF status: bounded MYMV v2 KDF metadata loading policy implemented; new saves use Argon2id, while scrypt-based MYMV v2, MYMV v1, and legacy salt+ciphertext files remain readable but deprecated.
    - Crash-consistency status: parent directories are synced after atomic runtime-file renames and legacy runtime migration moves where supported.
    - Suggested branch: `container-runtime-hardening`.
 
@@ -421,7 +421,7 @@ These items are the most direct path beyond the current `9.9 / 10` ordinary asse
 Recommended order:
 
 1. keep explicit process-argument warnings current and continue reducing argument exposure where practical
-2. evaluate Argon2id as an additional authenticated container KDF before the file format is considered stable
+2. expand compatibility fixtures and migration docs around the Argon2id default and deprecated scrypt/v1 profiles
 3. add property-style tests for staged token writes/import/delete invariants
 4. harden token sync UX and policy so staged token writes are less likely to remain unreconciled
 5. implement rollback strict mode with an explicit restore/accept command before blocking by default
@@ -448,7 +448,7 @@ Priority: high.
 The July 2026 external-style review produced useful next actions. Treat these as hardening work before new product features:
 
 - add property-based or fuzz-style tests around token staged writes, master sync, imports, and deletes
-- design Argon2id support as an additional KDF option using authenticated container metadata, compatibility fixtures, config validation, migration guidance, and explicit release notes
+- expand Argon2id support with compatibility fixtures, config validation, migration guidance, and explicit release notes
 - reduce token sync footguns: make stale staged token writes more visible, consider stricter doctor status, and evaluate whether manual reconciliation should become harder to ignore
 - add rollback `strict` or `block` mode with an explicit restore/accept command for legitimate older-vault restores
 - improve recovery freshness reporting with mutation/revision distance, not only file timestamp freshness
@@ -479,7 +479,7 @@ Current CI runs formatting, `go vet`, `go test ./...`, full coverage reporting, 
 
 Next actions:
 
-- keep `./internal/...` coverage at or above the current `80.0%` floor, with `81.4%` as the latest local baseline
+- keep `./internal/...` coverage at or above the current `80.0%` floor, with `81.6%` as the latest local baseline
 - raise `cmd/vault` coverage with focused unit tests or further extraction of command-independent logic where it improves clarity
 
 Suggested branch:
@@ -516,7 +516,7 @@ git switch -c install-packaging
 
 Status: `MYMV v1` completed in `v0.4.6`; `MYMV v2` metadata and AAD hardening completed in `v0.5.0`.
 
-Newly saved main vault, recovery snapshot, and shared token vault files use a cleartext `MYMV` container header before the existing salt+ciphertext payload. The current `MYMV v2` header records the container version, file kind, algorithm, KDF, scrypt parameters, salt size, nonce size, and payload layout without exposing encrypted vault contents.
+Newly saved main vault, recovery snapshot, and shared token vault files use a cleartext `MYMV` container header before the existing salt+ciphertext payload. The current `MYMV v2` header records the container version, file kind, algorithm, KDF, Argon2id parameters, salt size, nonce size, and payload layout without exposing encrypted vault contents.
 
 Current behavior:
 
@@ -524,8 +524,7 @@ Current behavior:
 - main vault, recovery vault, and shared token vault have distinct file kinds
 - container metadata is non-sensitive and intended for inspection and future migration planning
 - `MYMV v2` header, metadata, and salt are authenticated with AES-GCM AAD
-- `MYMV v1` files remain readable
-- legacy salt-plus-ciphertext files remain readable
+- scrypt-based `MYMV v2`, `MYMV v1`, and legacy salt-plus-ciphertext files remain readable but deprecated
 - `vault doctor` and `vault inspect-runtime` report headered versus legacy format without decrypting
 - encrypted user data, key names, values, recovery metadata, token contents, and vault metadata remain encrypted
 

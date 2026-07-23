@@ -58,10 +58,10 @@ The v2 metadata JSON contains non-sensitive crypto and layout information:
 ```json
 {
   "algorithm": "AES-256-GCM",
-  "kdf": "scrypt",
-  "scrypt_n": 32768,
-  "scrypt_r": 8,
-  "scrypt_p": 1,
+  "kdf": "argon2id",
+  "argon2_memory_kib": 19456,
+  "argon2_time": 2,
+  "argon2_threads": 1,
   "key_size": 32,
   "salt_size": 16,
   "nonce_size": 12,
@@ -71,23 +71,26 @@ The v2 metadata JSON contains non-sensitive crypto and layout information:
 ```
 
 Load paths validate the algorithm, KDF, payload layout, nonce size, and bounded
-scrypt parameters before deriving keys from v2 metadata.
+KDF parameters before deriving keys from v2 metadata.
 
 Metadata must not contain stored keys, values, recovery metadata, compact
 tokens, token secrets, or encrypted vault metadata.
 
 ## Key Derivation
 
-All current encrypted runtime files use scrypt.
+Current encrypted runtime files use Argon2id.
 
 Default parameters:
 
 | Parameter | Value |
 | --- | --- |
-| `N` | `32768` |
-| `r` | `8` |
-| `p` | `1` |
+| memory | `19456` KiB |
+| time | `2` |
+| threads | `1` |
 | key size | `32` bytes |
+
+scrypt remains readable for older `MYMV` v2 files and for legacy fallback
+formats, but it is deprecated for newly written runtime files.
 | salt size | `16` bytes |
 
 Key inputs differ by file:
@@ -186,7 +189,7 @@ when loaded.
 - The v2 header, metadata JSON, and salt are authenticated as AES-GCM AAD.
 - The file kind must match the loader expectation.
 - Unsupported algorithms, KDFs, payload layouts, nonce sizes, or out-of-bounds
-  scrypt parameters fail before decryption.
+  KDF parameters fail before decryption.
 - Nonces are generated with `crypto/rand`.
 - Main-vault saves use a transaction marker, restrictive temp file creation,
   directory sync, `.bak` preservation, and atomic rename.
@@ -210,8 +213,9 @@ Fixture details:
 | salt | `fixture-salt-001` |
 | purpose | format compatibility tests only |
 
-The weak scrypt parameters are intentional so the fixture can run quickly in
-unit tests. They are not acceptable production parameters.
+The weak scrypt parameters are intentional because this fixture covers the
+deprecated scrypt compatibility path and must run quickly in unit tests. They
+are not acceptable production parameters.
 
 The standalone Go reference decryptor in `tools/reference-decryptor` reads this
 fixture without importing myminivault internal packages. A Python reader in
