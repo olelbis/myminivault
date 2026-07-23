@@ -79,7 +79,7 @@ docs/
 
 - `internal/config`: config defaults, JSON loading, validation
 - `internal/container`: cleartext `MYMV` framing for encrypted runtime files
-- `internal/crypto`: scrypt, AES-GCM, secure random bytes
+- `internal/crypto`: Argon2id, scrypt compatibility reads, AES-GCM, secure random bytes
 - `internal/model`: persisted data structures
 - `internal/recovery`: recovery keys, verifier checks, recovery snapshot decrypt, recovery file write
 - `internal/storage`: main vault load/save, checksum, atomic writes, legacy payload parsing
@@ -96,7 +96,7 @@ docs/
 
 The project still keeps command-line parsing, prompts, output, and top-level orchestration in `cmd/vault`. Future extractions should happen only when tests cover the behavior well enough.
 
-Encrypted runtime file framing lives in `internal/container`. Current saves write a cleartext `MYMV v2` container header containing the container version, file kind, and non-sensitive crypto metadata before the existing salt+ciphertext payload. That v2 cleartext context is authenticated with AES-GCM AAD, so header or metadata tampering fails during decryption. Legacy salt+ciphertext files and earlier `MYMV v1` files remain readable, and `vault doctor` plus `vault inspect-runtime` use the header for non-decrypting format inspection.
+Encrypted runtime file framing lives in `internal/container`. Current saves write a cleartext `MYMV v2` container header containing the container version, file kind, and non-sensitive crypto metadata before the existing salt+ciphertext payload. New saves use Argon2id metadata; scrypt-based `MYMV v2`, legacy salt+ciphertext files, and earlier `MYMV v1` files remain readable but deprecated. That v2 cleartext context is authenticated with AES-GCM AAD, so header or metadata tampering fails during decryption. `vault doctor` plus `vault inspect-runtime` use the header for non-decrypting format inspection.
 
 ## Cryptography
 
@@ -104,7 +104,7 @@ The vault currently uses:
 
 - AES-GCM for authenticated encryption
 - AES-GCM AAD for current container header, metadata, and salt authentication
-- scrypt for key derivation
+- Argon2id for new key derivation, with scrypt kept for deprecated compatibility reads
 - SHA-256 checksums over serialized vault data
 - HMAC-SHA256 for token signatures
 - random salt per vault encryption
@@ -173,7 +173,7 @@ go build -o bin/vault ./cmd/vault
 Local builds show `vdev` in `vault help`. To emulate a release build locally, inject the version with ldflags:
 
 ```bash
-go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.12.20" -o bin/vault ./cmd/vault
+go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.13.0" -o bin/vault ./cmd/vault
 ```
 
 Suggested manual smoke-test pattern in an isolated temporary directory:
@@ -222,12 +222,13 @@ go run ./tools/reference-decryptor --password-file /path/to/password.txt /path/t
 ```
 
 The checked-in fixture uses the password `fixture-password` and intentionally
-weak scrypt parameters so the test runs quickly. Do not copy those parameters
+weak compatibility parameters so the test runs quickly. Do not copy those parameters
 into production files.
 
 A Python reference reader is also available under
 `tools/reference-decryptor-python`. It uses Python's standard-library scrypt
-implementation plus the external `cryptography` package for AES-GCM:
+implementation for compatibility fixtures plus the external `cryptography`
+package for AES-GCM and Argon2id when supported by the installed version:
 
 ```bash
 python3 -m pip install -r tools/reference-decryptor-python/requirements.txt
@@ -236,7 +237,7 @@ python3 tools/reference-decryptor-python/decrypt_mymv.py --password-file /path/t
 ```
 
 A Java reference reader is feasible, but it should use an explicit crypto
-dependency because the standard JDK does not include scrypt. Keep it out of the
+dependency because the standard JDK does not include the full current KDF set. Keep it out of the
 tree until the dependency and test workflow are agreed.
 
 ## Review Request
@@ -279,7 +280,7 @@ For each completed branch:
 6. Merge to `main` with an explicit merge commit (`git merge --no-ff <branch>`).
 7. Run `go test ./...` again on `main`.
 8. Create and push the release tag.
-9. Create the GitHub release with a title matching only the tag, such as `v0.12.20`.
+9. Create the GitHub release with a title matching only the tag, such as `v0.13.0`.
 10. Wait for the release package workflow to upload archives, `.deb`, `.rpm`, `.pkg`, per-target SPDX JSON SBOMs, per-target checksums, the aggregate `SHA256SUMS` manifest, and artifact attestations.
 11. Verify one packaged binary or release build with `vault help`; it should show the tag version injected by `-X main.vaultVersion=<version>`.
 12. Delete the completed branch locally and remotely.

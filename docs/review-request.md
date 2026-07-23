@@ -14,7 +14,7 @@ an experimental single-user local CLI vault written in Go.
 
 Scope:
 
-- scrypt + AES-256-GCM
+- Argon2id + AES-256-GCM for new saves, with scrypt compatibility reads
 - `MYMV` v2 cleartext header authenticated as AES-GCM AAD
 - encrypted main-vault payload format
 - recovery snapshot encryption
@@ -85,7 +85,7 @@ I am looking for focused review of the crypto/file-format layer of myminivault,
 an experimental local Go CLI vault.
 
 Scope:
-- scrypt + AES-256-GCM
+- Argon2id + AES-256-GCM for new saves, with scrypt compatibility reads
 - MYMV v2 cleartext header authenticated as AES-GCM AAD
 - encrypted main-vault payload format
 - recovery snapshot encryption

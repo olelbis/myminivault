@@ -25,6 +25,7 @@ type Options struct {
 	TokenKeyFile string
 	SaltSize     int
 	Scrypt       vaultcrypto.ScryptConfig
+	KDF          vaultcrypto.KDFConfig
 	MasterKey    func() ([]byte, error)
 }
 
@@ -114,13 +115,13 @@ func SaveEncryptedVault(vault *model.ExtendedVault, tokenVaultPath string, opts 
 	defer wipeBytes(tokenKey)
 
 	salt := vaultcrypto.Random(opts.SaltSize)
-	key, err := vaultcrypto.DeriveKey(tokenKey, salt, opts.Scrypt)
+	meta := containerMetadata(opts)
+	key, err := vaultcrypto.DeriveKeyWithConfig(tokenKey, salt, kdfConfigFromMetadata(meta, opts.Scrypt))
 	if err != nil {
 		return err
 	}
 	defer wipeBytes(key)
 
-	meta := containerMetadata(opts)
 	aad, err := container.AssociatedData(container.KindSharedTokenVault, salt, meta)
 	if err != nil {
 		return err
@@ -158,12 +159,12 @@ func LoadEncryptedVault(tokenFilePath string, opts Options) (*model.ExtendedVaul
 	}
 	defer wipeBytes(tokenKey)
 
-	scryptConfig, err := vaultcrypto.ScryptConfigForContainer(parsed, opts.Scrypt)
+	kdfConfig, err := vaultcrypto.KDFConfigForContainer(parsed, opts.Scrypt)
 	if err != nil {
 		return nil, err
 	}
 
-	key, err := vaultcrypto.DeriveKey(tokenKey, parsed.Salt, scryptConfig)
+	key, err := vaultcrypto.DeriveKeyWithConfig(tokenKey, parsed.Salt, kdfConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -279,11 +280,39 @@ func SaveVaultFileAtomic(tokenVaultPath string, salt, data []byte, metadata ...c
 
 func containerMetadata(opts Options) container.Metadata {
 	meta := container.DefaultMetadata(opts.SaltSize)
-	meta.ScryptN = opts.Scrypt.N
-	meta.ScryptR = opts.Scrypt.R
-	meta.ScryptP = opts.Scrypt.P
-	meta.KeySize = opts.Scrypt.KeySize
+	switch opts.KDF.Name {
+	case container.KDFScrypt:
+		meta.KDF = container.KDFScrypt
+		meta.ScryptN = opts.KDF.Scrypt.N
+		meta.ScryptR = opts.KDF.Scrypt.R
+		meta.ScryptP = opts.KDF.Scrypt.P
+		meta.Argon2MemoryKiB = 0
+		meta.Argon2Time = 0
+		meta.Argon2Threads = 0
+		meta.KeySize = opts.KDF.Scrypt.KeySize
+	case container.KDFArgon2id:
+		meta.KDF = container.KDFArgon2id
+		meta.Argon2MemoryKiB = opts.KDF.Argon2id.MemoryKiB
+		meta.Argon2Time = opts.KDF.Argon2id.Time
+		meta.Argon2Threads = opts.KDF.Argon2id.Threads
+		meta.KeySize = int(opts.KDF.Argon2id.KeySize)
+	}
 	return meta
+}
+
+func kdfConfigFromMetadata(meta container.Metadata, fallback vaultcrypto.ScryptConfig) vaultcrypto.KDFConfig {
+	if meta.KDF == container.KDFArgon2id {
+		return vaultcrypto.KDFConfig{
+			Name: container.KDFArgon2id,
+			Argon2id: vaultcrypto.Argon2idConfig{
+				MemoryKiB: meta.Argon2MemoryKiB,
+				Time:      meta.Argon2Time,
+				Threads:   meta.Argon2Threads,
+				KeySize:   uint32(meta.KeySize),
+			},
+		}
+	}
+	return vaultcrypto.KDFConfig{Name: container.KDFScrypt, Scrypt: fallback}
 }
 
 // GetOrCreateMasterKey loads the token master key or creates one when absent.

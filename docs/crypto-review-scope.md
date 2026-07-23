@@ -7,7 +7,7 @@ possible in a short sitting.
 ## Suggested Review Question
 
 Is the current local encrypted-vault design sound for an experimental
-single-user CLI that uses scrypt-derived AES-256-GCM keys, authenticated
+single-user CLI that uses Argon2id-derived AES-256-GCM keys for new saves, authenticated
 cleartext container metadata, local recovery snapshots, and local token access?
 
 In particular, review:
@@ -54,7 +54,7 @@ Supporting files:
 ## Current Design Summary
 
 - Master vault data is encrypted with AES-256-GCM.
-- Encryption keys are derived with scrypt.
+- Encryption keys for new saves are derived with Argon2id; scrypt remains readable for deprecated compatibility files.
 - Current encrypted files use a cleartext `MYMV` v2 header.
 - The `MYMV` v2 header, metadata JSON, and salt are authenticated as AES-GCM
   additional authenticated data.
@@ -85,7 +85,7 @@ The project does not claim protection from:
 
 Reviewers should focus on whether:
 
-- scrypt parameters and metadata bounds are reasonable
+- Argon2id and scrypt compatibility metadata bounds are reasonable
 - all AES-GCM decryptions use the same AAD that was authenticated at encryption
   time
 - nonce generation is random and nonce reuse is unlikely under current save
@@ -116,7 +116,7 @@ Suggested short post:
 I am looking for focused review of the crypto/file-format layer of an
 experimental local Go CLI vault.
 
-Scope: scrypt + AES-256-GCM, MYMV v2 header authenticated as AAD, recovery
+Scope: Argon2id/scrypt-compatibility + AES-256-GCM, MYMV v2 header authenticated as AAD, recovery
 snapshot encryption, and shared token vault encryption.
 
 Review docs:

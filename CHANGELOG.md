@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [v0.13.0] - 2026-07-23
+
+### Changed
+
+- Changed newly written `MYMV v2` runtime files to use Argon2id KDF metadata by default while keeping scrypt-based `MYMV v2`, `MYMV v1`, and legacy salt-plus-ciphertext files readable as deprecated compatibility formats.
+- Updated storage, recovery, shared-token vault, health, reference decryptor, and documentation paths for the Argon2id default and scrypt compatibility policy.
+- Updated local coverage baselines to `45.7%` full repository and `81.6%` internal packages.
+
 ## [v0.12.20] - 2026-07-23
 
 ### Changed

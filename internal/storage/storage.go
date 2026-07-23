@@ -21,6 +21,7 @@ type Options struct {
 	SaltSize         int
 	Version          string
 	Scrypt           vaultcrypto.ScryptConfig
+	KDF              vaultcrypto.KDFConfig
 	RecoveryKey      string
 	RecoveryKeyBytes []byte
 	SaveRecoveryFile func(salt, recoveryCiphertext []byte, metadata ...container.Metadata) error
@@ -101,12 +102,12 @@ func LoadFileBytes(file string, password []byte, opts Options) (*model.ExtendedV
 		return nil, nil, errors.New("unexpected container kind for main vault")
 	}
 
-	scryptConfig, err := vaultcrypto.ScryptConfigForContainer(parsed, opts.Scrypt)
+	kdfConfig, err := vaultcrypto.KDFConfigForContainer(parsed, opts.Scrypt)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	key, err := vaultcrypto.DeriveKey(password, parsed.Salt, scryptConfig)
+	key, err := vaultcrypto.DeriveKeyWithConfig(password, parsed.Salt, kdfConfig)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -184,13 +185,13 @@ func SaveBytes(vault *model.ExtendedVault, password []byte, salt []byte, opts Op
 		return err
 	}
 
-	masterKey, err := vaultcrypto.DeriveKey(password, salt, opts.Scrypt)
+	meta := containerMetadata(opts)
+	masterKey, err := vaultcrypto.DeriveKeyWithConfig(password, salt, kdfConfigFromMetadata(meta, opts.Scrypt))
 	if err != nil {
 		return err
 	}
 	defer wipeBytes(masterKey)
 
-	meta := containerMetadata(opts)
 	aad, err := container.AssociatedData(container.KindMainVault, salt, meta)
 	if err != nil {
 		return err
@@ -204,7 +205,7 @@ func SaveBytes(vault *model.ExtendedVault, password []byte, salt []byte, opts Op
 	recoveryKey := recoveryKeyBytes(opts)
 	if vault.Recovery != nil && len(recoveryKey) > 0 && opts.SaveRecoveryFile != nil {
 		recoverySalt := vaultcrypto.Random(opts.SaltSize)
-		recoveryKeyDerived, err := vaultcrypto.DeriveKey(recoveryKey, recoverySalt, opts.Scrypt)
+		recoveryKeyDerived, err := vaultcrypto.DeriveKeyWithConfig(recoveryKey, recoverySalt, kdfConfigFromMetadata(meta, opts.Scrypt))
 		if err != nil {
 			return err
 		}
@@ -380,11 +381,39 @@ func cleanupInterruptedSaveMarker(vaultFile string) {
 
 func containerMetadata(opts Options) container.Metadata {
 	meta := container.DefaultMetadata(opts.SaltSize)
-	meta.ScryptN = opts.Scrypt.N
-	meta.ScryptR = opts.Scrypt.R
-	meta.ScryptP = opts.Scrypt.P
-	meta.KeySize = opts.Scrypt.KeySize
+	switch opts.KDF.Name {
+	case container.KDFScrypt:
+		meta.KDF = container.KDFScrypt
+		meta.ScryptN = opts.KDF.Scrypt.N
+		meta.ScryptR = opts.KDF.Scrypt.R
+		meta.ScryptP = opts.KDF.Scrypt.P
+		meta.Argon2MemoryKiB = 0
+		meta.Argon2Time = 0
+		meta.Argon2Threads = 0
+		meta.KeySize = opts.KDF.Scrypt.KeySize
+	case container.KDFArgon2id:
+		meta.KDF = container.KDFArgon2id
+		meta.Argon2MemoryKiB = opts.KDF.Argon2id.MemoryKiB
+		meta.Argon2Time = opts.KDF.Argon2id.Time
+		meta.Argon2Threads = opts.KDF.Argon2id.Threads
+		meta.KeySize = int(opts.KDF.Argon2id.KeySize)
+	}
 	return meta
+}
+
+func kdfConfigFromMetadata(meta container.Metadata, fallback vaultcrypto.ScryptConfig) vaultcrypto.KDFConfig {
+	if meta.KDF == container.KDFArgon2id {
+		return vaultcrypto.KDFConfig{
+			Name: container.KDFArgon2id,
+			Argon2id: vaultcrypto.Argon2idConfig{
+				MemoryKiB: meta.Argon2MemoryKiB,
+				Time:      meta.Argon2Time,
+				Threads:   meta.Argon2Threads,
+				KeySize:   uint32(meta.KeySize),
+			},
+		}
+	}
+	return vaultcrypto.KDFConfig{Name: container.KDFScrypt, Scrypt: fallback}
 }
 
 // TryLoad reads either a headered MYMV container or the legacy salt prefix and

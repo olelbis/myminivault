@@ -27,8 +27,8 @@ func TestWrapParseRoundTrip(t *testing.T) {
 	if parsed.Version != Version || parsed.Kind != KindMainVault {
 		t.Fatalf("version/kind = %d/%d", parsed.Version, parsed.Kind)
 	}
-	if parsed.Metadata.Algorithm != AlgorithmAES256GCM || parsed.Metadata.KDF != KDFScrypt {
-		t.Fatalf("metadata = %+v, want AES-GCM/scrypt", parsed.Metadata)
+	if parsed.Metadata.Algorithm != AlgorithmAES256GCM || parsed.Metadata.KDF != KDFArgon2id {
+		t.Fatalf("metadata = %+v, want AES-GCM/argon2id", parsed.Metadata)
 	}
 	wantAAD, err := AssociatedData(KindMainVault, salt)
 	if err != nil {
@@ -136,7 +136,7 @@ func TestReadFileAndDescription(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)
 	}
-	if got := Description(parsed); got != "MYMV v2 recovery-vault AES-256-GCM/scrypt" {
+	if got := Description(parsed); got != "MYMV v2 recovery-vault AES-256-GCM/argon2id argon2id=19456KiB/t2/p1" {
 		t.Fatalf("description = %q", got)
 	}
 }

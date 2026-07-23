@@ -238,8 +238,8 @@ func TestEncryptedVaultRoundTripAndChecksumFailure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse shared vault: %v", err)
 	}
-	if parsed.Metadata.ScryptN != opts.Scrypt.N || parsed.Metadata.KeySize != opts.Scrypt.KeySize {
-		t.Fatalf("metadata = %+v, want scrypt params from options", parsed.Metadata)
+	if parsed.Metadata.KDF != container.KDFArgon2id || parsed.Metadata.Argon2MemoryKiB != 19*1024 || parsed.Metadata.Argon2Time != 2 || parsed.Metadata.Argon2Threads != 1 {
+		t.Fatalf("metadata = %+v, want argon2id defaults", parsed.Metadata)
 	}
 	raw[len(raw)-1] ^= 0xff
 	if err := os.WriteFile(sharedVault, raw, 0600); err != nil {
@@ -749,6 +749,29 @@ func tokenTestVault() *model.ExtendedVault {
 	}
 }
 
+func TestContainerMetadataCanWriteDeprecatedScryptProfile(t *testing.T) {
+	opts := tokenTestOptions(bytesOf(0x11, 32))
+	opts.KDF = vaultcrypto.KDFConfig{Name: container.KDFScrypt, Scrypt: vaultcrypto.ScryptConfig{N: 4, R: 1, P: 1, KeySize: 32}}
+
+	meta := containerMetadata(opts)
+	if meta.KDF != container.KDFScrypt || meta.ScryptN != 4 || meta.ScryptR != 1 || meta.ScryptP != 1 || meta.KeySize != 32 {
+		t.Fatalf("metadata = %+v, want explicit scrypt profile", meta)
+	}
+	if meta.Argon2MemoryKiB != 0 || meta.Argon2Time != 0 || meta.Argon2Threads != 0 {
+		t.Fatalf("metadata = %+v, want no argon2id fields for scrypt profile", meta)
+	}
+}
+
+func TestKDFConfigFromMetadataReturnsDeprecatedScryptProfile(t *testing.T) {
+	meta := container.Metadata{KDF: container.KDFScrypt}
+	fallback := vaultcrypto.ScryptConfig{N: 4, R: 1, P: 1, KeySize: 32}
+
+	cfg := kdfConfigFromMetadata(meta, fallback)
+	if cfg.Name != container.KDFScrypt || cfg.Scrypt != fallback {
+		t.Fatalf("config = %+v, want fallback scrypt", cfg)
+	}
+}
+
 func appendTokenChecksum(data []byte) []byte {
 	checksum := sha256.Sum256(data)
 	return append(checksum[:], data...)
@@ -761,11 +784,11 @@ func encryptTokenPlaintext(t *testing.T, plaintext, salt []byte, opts Options) [
 	if err != nil {
 		t.Fatalf("MasterKey: %v", err)
 	}
-	key, err := vaultcrypto.DeriveKey(tokenKey, salt, opts.Scrypt)
+	meta := container.DefaultMetadata(opts.SaltSize)
+	key, err := vaultcrypto.DeriveKeyWithConfig(tokenKey, salt, kdfConfigFromMetadata(meta, opts.Scrypt))
 	if err != nil {
 		t.Fatalf("DeriveKey: %v", err)
 	}
-	meta := container.DefaultMetadata(opts.SaltSize)
 	aad, err := container.AssociatedData(container.KindSharedTokenVault, salt, meta)
 	if err != nil {
 		t.Fatalf("AssociatedData: %v", err)

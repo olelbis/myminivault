@@ -23,6 +23,11 @@ except ImportError as exc:  # pragma: no cover - exercised only without dependen
         "missing dependency: install with `python3 -m pip install cryptography`"
     ) from exc
 
+try:
+    from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
+except ImportError:  # pragma: no cover - depends on installed cryptography version
+    Argon2id = None
+
 
 MAGIC = b"MYMV"
 VERSION = 2
@@ -38,7 +43,22 @@ def decrypt_file(path: Path, password: bytes) -> bytes:
     if kind != 1:
         raise ValueError(f"unsupported container kind {kind}: expected main vault")
 
-    key = hashlib.scrypt(
+    key = derive_key(password, salt, metadata)
+    return strip_checksum(decrypt_payload(ciphertext, key, aad))
+
+
+def derive_key(password: bytes, salt: bytes, metadata: dict[str, object]) -> bytes:
+    if metadata["kdf"] == "argon2id":
+        if Argon2id is None:
+            raise ValueError("installed cryptography package does not provide Argon2id")
+        return Argon2id(
+            salt=salt,
+            length=metadata["key_size"],
+            iterations=metadata["argon2_time"],
+            lanes=metadata["argon2_threads"],
+            memory_cost=metadata["argon2_memory_kib"],
+        ).derive(password)
+    return hashlib.scrypt(
         password,
         salt=salt,
         n=metadata["scrypt_n"],
@@ -46,7 +66,6 @@ def decrypt_file(path: Path, password: bytes) -> bytes:
         p=metadata["scrypt_p"],
         dklen=metadata["key_size"],
     )
-    return strip_checksum(decrypt_payload(ciphertext, key, aad))
 
 
 def parse_mymv2(data: bytes) -> tuple[int, bytes, bytes, bytes, dict[str, object]]:
@@ -73,7 +92,6 @@ def parse_mymv2(data: bytes) -> tuple[int, bytes, bytes, bytes, dict[str, object
 def validate_metadata(metadata: dict[str, object]) -> None:
     expected = {
         "algorithm": "AES-256-GCM",
-        "kdf": "scrypt",
         "salt_size": SALT_SIZE,
         "nonce_size": NONCE_SIZE,
         "key_size": 32,
@@ -83,9 +101,21 @@ def validate_metadata(metadata: dict[str, object]) -> None:
     for key, value in expected.items():
         if metadata.get(key) != value:
             raise ValueError(f"unsupported metadata {key}={metadata.get(key)!r}")
-    for key in ("scrypt_n", "scrypt_r", "scrypt_p"):
-        if not isinstance(metadata.get(key), int) or metadata[key] < 1:
-            raise ValueError(f"invalid {key}")
+    if metadata.get("kdf") == "argon2id":
+        if not isinstance(metadata.get("argon2_memory_kib"), int) or not (
+            19 * 1024 <= metadata["argon2_memory_kib"] <= 256 * 1024
+        ):
+            raise ValueError("invalid argon2_memory_kib")
+        if not isinstance(metadata.get("argon2_time"), int) or not (1 <= metadata["argon2_time"] <= 8):
+            raise ValueError("invalid argon2_time")
+        if not isinstance(metadata.get("argon2_threads"), int) or not (1 <= metadata["argon2_threads"] <= 8):
+            raise ValueError("invalid argon2_threads")
+    elif metadata.get("kdf") == "scrypt":
+        for key in ("scrypt_n", "scrypt_r", "scrypt_p"):
+            if not isinstance(metadata.get(key), int) or metadata[key] < 1:
+                raise ValueError(f"invalid {key}")
+    else:
+        raise ValueError(f"unsupported metadata kdf={metadata.get('kdf')!r}")
 
 
 def decrypt_payload(ciphertext: bytes, key: bytes, aad: bytes) -> bytes:

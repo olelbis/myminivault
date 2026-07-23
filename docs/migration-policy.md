@@ -11,9 +11,10 @@ removed.
 | --- | --- | --- | --- |
 | legacy salt-plus-ciphertext | yes | no | Rewritten as `MYMV` v2 after a normal save. |
 | `MYMV` v1 | yes | no | Older headered format without structured metadata. |
-| `MYMV` v2 | yes | yes | Current format with authenticated metadata and salt as AES-GCM AAD. |
+| `MYMV` v2 with scrypt | yes | no | Deprecated KDF profile; readable for compatibility and rewritten with Argon2id on save. |
+| `MYMV` v2 with Argon2id | yes | yes | Current format with authenticated metadata and salt as AES-GCM AAD. |
 
-Current saves always write `MYMV` v2.
+Current saves always write `MYMV` v2 with Argon2id metadata.
 
 ## Compatibility Fixtures
 
@@ -28,8 +29,8 @@ Current fixture coverage:
 - `MYMV` v2 recovery vault
 - `MYMV` v2 shared token vault
 
-The fixtures use intentionally weak test-only scrypt parameters so they run
-quickly in unit tests. They are not production examples.
+Some fixtures use intentionally weak test-only scrypt parameters so they run
+quickly in unit tests. They are compatibility fixtures, not production examples.
 
 ## Future `vault migrate` Shape
 
