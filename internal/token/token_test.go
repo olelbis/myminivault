@@ -452,6 +452,30 @@ func TestSaveVaultFileAtomicPreservesPreviousVersionAsBackup(t *testing.T) {
 	}
 }
 
+func TestSaveVaultFileAtomicRejectsBackupDirectory(t *testing.T) {
+	dir := t.TempDir()
+	sharedVault := filepath.Join(dir, "shared-token-vault.json")
+	backup := sharedVault + ".bak"
+	if err := os.WriteFile(sharedVault, []byte("previous"), 0600); err != nil {
+		t.Fatalf("write previous vault: %v", err)
+	}
+	if err := os.Mkdir(backup, 0700); err != nil {
+		t.Fatalf("mkdir backup path: %v", err)
+	}
+
+	err := SaveVaultFileAtomic(sharedVault, []byte("1234567890123456"), []byte("new"))
+	if err == nil || !strings.Contains(err.Error(), "failed to preserve existing token vault") {
+		t.Fatalf("error = %v, want preserve context", err)
+	}
+	data, err := os.ReadFile(sharedVault)
+	if err != nil {
+		t.Fatalf("read original vault: %v", err)
+	}
+	if string(data) != "previous" {
+		t.Fatalf("original vault was modified: %q", data)
+	}
+}
+
 func TestSaveVaultFileAtomicRejectsPreexistingTempFile(t *testing.T) {
 	sharedVault := filepath.Join(t.TempDir(), "shared-token-vault.json")
 	tempFile := sharedVault + ".tmp"
@@ -468,6 +492,32 @@ func TestSaveVaultFileAtomicRejectsPreexistingTempFile(t *testing.T) {
 	}
 	if string(data) != "existing temp" {
 		t.Fatalf("temp file was modified: %q", data)
+	}
+}
+
+func TestSaveVaultFileAtomicRejectsSymlinkPaths(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target")
+	sharedVault := filepath.Join(dir, "shared-token-vault.json")
+	if err := os.WriteFile(target, []byte("target"), 0600); err != nil {
+		t.Fatalf("write target: %v", err)
+	}
+	if err := os.Symlink(target, sharedVault); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+
+	err := SaveVaultFileAtomic(sharedVault, []byte("1234567890123456"), []byte("encrypted"))
+	if err == nil {
+		t.Fatal("expected symlink path to be rejected")
+	}
+}
+
+func TestGetOrCreateMasterKeyReportsSaveError(t *testing.T) {
+	opts := Options{TokenKeyFile: filepath.Join(t.TempDir(), "missing", "vault-token.key")}
+
+	_, err := GetOrCreateMasterKey(opts)
+	if err == nil || !strings.Contains(err.Error(), "failed to save token master key") {
+		t.Fatalf("error = %v, want save context", err)
 	}
 }
 
@@ -762,6 +812,27 @@ func TestContainerMetadataCanWriteDeprecatedScryptProfile(t *testing.T) {
 	}
 }
 
+func TestContainerMetadataCanWriteArgon2idProfile(t *testing.T) {
+	opts := tokenTestOptions(bytesOf(0x11, 32))
+	opts.KDF = vaultcrypto.KDFConfig{
+		Name: container.KDFArgon2id,
+		Argon2id: vaultcrypto.Argon2idConfig{
+			MemoryKiB: 96 * 1024,
+			Time:      4,
+			Threads:   2,
+			KeySize:   32,
+		},
+	}
+
+	meta := containerMetadata(opts)
+	if meta.KDF != container.KDFArgon2id || meta.Argon2MemoryKiB != 96*1024 || meta.Argon2Time != 4 || meta.Argon2Threads != 2 || meta.KeySize != 32 {
+		t.Fatalf("metadata = %+v, want explicit argon2id profile", meta)
+	}
+	if meta.ScryptN != 0 || meta.ScryptR != 0 || meta.ScryptP != 0 {
+		t.Fatalf("metadata = %+v, want no scrypt fields for argon2id profile", meta)
+	}
+}
+
 func TestKDFConfigFromMetadataReturnsDeprecatedScryptProfile(t *testing.T) {
 	meta := container.Metadata{KDF: container.KDFScrypt}
 	fallback := vaultcrypto.ScryptConfig{N: 4, R: 1, P: 1, KeySize: 32}
@@ -769,6 +840,21 @@ func TestKDFConfigFromMetadataReturnsDeprecatedScryptProfile(t *testing.T) {
 	cfg := kdfConfigFromMetadata(meta, fallback)
 	if cfg.Name != container.KDFScrypt || cfg.Scrypt != fallback {
 		t.Fatalf("config = %+v, want fallback scrypt", cfg)
+	}
+}
+
+func TestKDFConfigFromMetadataReturnsArgon2idProfile(t *testing.T) {
+	meta := container.Metadata{
+		KDF:             container.KDFArgon2id,
+		Argon2MemoryKiB: 96 * 1024,
+		Argon2Time:      4,
+		Argon2Threads:   2,
+		KeySize:         32,
+	}
+
+	cfg := kdfConfigFromMetadata(meta, testScrypt)
+	if cfg.Name != container.KDFArgon2id || cfg.Argon2id.MemoryKiB != 96*1024 || cfg.Argon2id.Time != 4 || cfg.Argon2id.Threads != 2 || cfg.Argon2id.KeySize != 32 {
+		t.Fatalf("config = %+v, want argon2id profile", cfg)
 	}
 }
 

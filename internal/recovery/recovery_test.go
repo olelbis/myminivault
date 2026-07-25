@@ -87,6 +87,65 @@ func TestDecryptVaultBytesRoundTrip(t *testing.T) {
 	}
 }
 
+func TestDecryptParsedVaultRoundTripWithAAD(t *testing.T) {
+	recoveryKey := []byte("RECOVERY-KEY")
+	salt := []byte("1234567890123456")
+	opts := Options{Scrypt: testScrypt}
+	vault := recoveryTestVault(string(recoveryKey))
+	serialized, err := json.Marshal(vault)
+	if err != nil {
+		t.Fatalf("marshal vault: %v", err)
+	}
+	checksum := sha256.Sum256(serialized)
+	plaintext := append(checksum[:], serialized...)
+	meta := container.Metadata{
+		Algorithm:        container.AlgorithmAES256GCM,
+		KDF:              container.KDFScrypt,
+		ScryptN:          opts.Scrypt.N,
+		ScryptR:          opts.Scrypt.R,
+		ScryptP:          opts.Scrypt.P,
+		KeySize:          opts.Scrypt.KeySize,
+		SaltSize:         len(salt),
+		NonceSize:        12,
+		Payload:          container.PayloadChecksumJSON,
+		CiphertextLayout: container.CiphertextNoncePrefixed,
+	}
+	aad, err := container.AssociatedData(container.KindRecoveryVault, salt, meta)
+	if err != nil {
+		t.Fatalf("AssociatedData: %v", err)
+	}
+	key, err := vaultcrypto.DeriveKey(recoveryKey, salt, opts.Scrypt)
+	if err != nil {
+		t.Fatalf("DeriveKey: %v", err)
+	}
+	ciphertext, err := vaultcrypto.EncryptWithAAD(plaintext, key, aad)
+	if err != nil {
+		t.Fatalf("EncryptWithAAD: %v", err)
+	}
+
+	loaded, err := DecryptParsedVault(container.Parsed{
+		Salt:           salt,
+		Ciphertext:     ciphertext,
+		AssociatedData: aad,
+		Version:        container.Version,
+		Kind:           container.KindRecoveryVault,
+		Metadata:       meta,
+	}, recoveryKey, opts)
+	if err != nil {
+		t.Fatalf("DecryptParsedVault: %v", err)
+	}
+	if loaded.Data["API_KEY"] != "secret" {
+		t.Fatalf("secret = %q, want secret", loaded.Data["API_KEY"])
+	}
+}
+
+func TestDecryptParsedVaultRejectsWrongKind(t *testing.T) {
+	_, err := DecryptParsedVault(container.Parsed{Kind: container.KindMainVault}, []byte("RECOVERY-KEY"), Options{Scrypt: testScrypt})
+	if err == nil || !strings.Contains(err.Error(), "unexpected container kind") {
+		t.Fatalf("error = %v, want kind rejection", err)
+	}
+}
+
 func TestDecryptVaultRejectsWrongKeyAndChecksumMismatch(t *testing.T) {
 	recoveryKey := "RECOVERY-KEY"
 	salt := []byte("1234567890123456")
