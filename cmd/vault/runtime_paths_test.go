@@ -8,6 +8,22 @@ import (
 	"testing"
 )
 
+func TestRuntimeFileSpecsIncludeHealthSpecs(t *testing.T) {
+	all := make(map[string]bool)
+	for _, spec := range runtimeFileSpecs() {
+		all[spec.name] = true
+	}
+
+	for _, spec := range runtimeHealthFileSpecs() {
+		if !all[spec.name] {
+			t.Fatalf("runtimeFileSpecs missing health spec %s", spec.name)
+		}
+		if spec.mode != 0600 {
+			t.Fatalf("health spec %s mode = %04o, want 0600", spec.name, spec.mode)
+		}
+	}
+}
+
 func TestMigrateLegacyRuntimeFilesMovesMissingTargets(t *testing.T) {
 	cwd := t.TempDir()
 	home := t.TempDir()

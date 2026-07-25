@@ -15,9 +15,20 @@ import (
 	vaulttoken "github.com/olelbis/myminivault/internal/token"
 )
 
+type tokenCommandRequest struct {
+	token       string
+	command     string
+	commandArgs []string
+	jsonOutput  bool
+	showOutput  bool
+}
+
 func executeWithToken() error {
-	args := tokenCommandArgs(os.Args)
-	if len(args) < 4 {
+	request, ok, err := parseTokenCommandRequest(os.Args)
+	if err != nil {
+		return tokenCommandError(tokenJSONRequested(os.Args), err.Error())
+	}
+	if !ok {
 		if tokenJSONRequested(os.Args) {
 			return writeJSONError("usage: vault use-token (<token>|--stdin|--token-file <path>|--token-fd <fd>) <command> [args...]")
 		}
@@ -33,52 +44,66 @@ func executeWithToken() error {
 		return nil
 	}
 
-	jsonOutput := tokenJSONRequested(os.Args)
-	showOutput := tokenShowRequested(os.Args)
-	tokenStr, commandIndex, err := readTokenArgument(args)
+	token, vault, err := parseAndValidateProductionToken(request.token)
 	if err != nil {
-		return tokenCommandError(jsonOutput, err.Error())
-	}
-	if len(args) <= commandIndex {
-		return tokenCommandError(jsonOutput, "usage: vault use-token (<token>|--stdin|--token-file <path>|--token-fd <fd>) <command> [args...]")
-	}
-	command := args[commandIndex]
-
-	token, vault, err := parseAndValidateProductionToken(tokenStr)
-	if err != nil {
-		if jsonOutput {
+		if request.jsonOutput {
 			return writeJSONError("token validation failed: " + err.Error())
 		}
 		return fmt.Errorf("token validation failed: %w", err)
 	}
 
-	logTokenAccess(command)
+	logTokenAccess(request.command)
 
-	switch command {
+	switch request.command {
 	case "get":
-		if len(args) <= commandIndex+1 {
-			return tokenCommandError(jsonOutput, "usage: vault use-token (<token>|--stdin|--token-file <path>|--token-fd <fd>) get <key> (--show|--json)")
+		if len(request.commandArgs) < 1 {
+			return tokenCommandError(request.jsonOutput, "usage: vault use-token (<token>|--stdin|--token-file <path>|--token-fd <fd>) get <key> (--show|--json)")
 		}
-		return executeTokenGet(vault, token, args[commandIndex+1], jsonOutput, showOutput)
+		return executeTokenGet(vault, token, request.commandArgs[0], request.jsonOutput, request.showOutput)
 
 	case "set":
-		if len(args) <= commandIndex+2 {
-			return tokenCommandError(jsonOutput, "usage: vault use-token (<token>|--stdin|--token-file <path>|--token-fd <fd>) set <key> <value>")
+		if len(request.commandArgs) < 2 {
+			return tokenCommandError(request.jsonOutput, "usage: vault use-token (<token>|--stdin|--token-file <path>|--token-fd <fd>) set <key> <value>")
 		}
-		return executeTokenSet(vault, token, args[commandIndex+1], args[commandIndex+2], jsonOutput)
+		return executeTokenSet(vault, token, request.commandArgs[0], request.commandArgs[1], request.jsonOutput)
 
 	case "list":
-		return executeTokenList(vault, token, jsonOutput)
+		return executeTokenList(vault, token, request.jsonOutput)
 
 	case "search":
-		if len(args) <= commandIndex+1 {
-			return tokenCommandError(jsonOutput, "usage: vault use-token (<token>|--stdin|--token-file <path>|--token-fd <fd>) search <pattern> (--show|--json)")
+		if len(request.commandArgs) < 1 {
+			return tokenCommandError(request.jsonOutput, "usage: vault use-token (<token>|--stdin|--token-file <path>|--token-fd <fd>) search <pattern> (--show|--json)")
 		}
-		return executeTokenSearch(vault, token, args[commandIndex+1], jsonOutput, showOutput)
+		return executeTokenSearch(vault, token, request.commandArgs[0], request.jsonOutput, request.showOutput)
 
 	default:
-		return tokenCommandError(jsonOutput, fmt.Sprintf("command '%s' not allowed with tokens (only: get, set, list, search)", command))
+		return tokenCommandError(request.jsonOutput, fmt.Sprintf("command '%s' not allowed with tokens (only: get, set, list, search)", request.command))
 	}
+}
+
+func parseTokenCommandRequest(rawArgs []string) (tokenCommandRequest, bool, error) {
+	args := tokenCommandArgs(rawArgs)
+	if len(args) < 4 {
+		return tokenCommandRequest{}, false, nil
+	}
+
+	jsonOutput := tokenJSONRequested(rawArgs)
+	showOutput := tokenShowRequested(rawArgs)
+	tokenStr, commandIndex, err := readTokenArgument(args)
+	if err != nil {
+		return tokenCommandRequest{}, true, err
+	}
+	if len(args) <= commandIndex {
+		return tokenCommandRequest{}, true, errors.New("usage: vault use-token (<token>|--stdin|--token-file <path>|--token-fd <fd>) <command> [args...]")
+	}
+
+	return tokenCommandRequest{
+		token:       tokenStr,
+		command:     args[commandIndex],
+		commandArgs: args[commandIndex+1:],
+		jsonOutput:  jsonOutput,
+		showOutput:  showOutput,
+	}, true, nil
 }
 
 func readTokenArgument(args []string) (string, int, error) {

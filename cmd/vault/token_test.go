@@ -133,6 +133,27 @@ func TestTokenJSONFlagParsingWithFileAndFDToken(t *testing.T) {
 	}
 }
 
+func TestParseTokenCommandRequest(t *testing.T) {
+	args := []string{"vault", "use-token", "compact-token", "search", "API", "--json"}
+
+	request, ok, err := parseTokenCommandRequest(args)
+	if err != nil {
+		t.Fatalf("parseTokenCommandRequest: %v", err)
+	}
+	if !ok {
+		t.Fatal("expected request to be parsed")
+	}
+	if request.token != "compact-token" || request.command != "search" {
+		t.Fatalf("request = %+v, want token and search command", request)
+	}
+	if strings.Join(request.commandArgs, "\x00") != "API" {
+		t.Fatalf("commandArgs = %#v, want API", request.commandArgs)
+	}
+	if !request.jsonOutput || request.showOutput {
+		t.Fatalf("json/show = %t/%t, want true/false", request.jsonOutput, request.showOutput)
+	}
+}
+
 func TestExecuteTokenGetJSON(t *testing.T) {
 	vault := &ExtendedVault{Data: map[string]string{"API_KEY": "hello"}}
 	token := AccessToken{TokenID: "token-id", KeyPattern: "API_*", Permissions: []string{"read"}, MaxUses: 3, ExpiresAt: time.Now().Add(time.Hour)}
