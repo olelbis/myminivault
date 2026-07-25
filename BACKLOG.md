@@ -421,8 +421,9 @@ These items are the most direct path beyond the current `9.9 / 10` ordinary asse
 Recommended order:
 
 1. keep explicit process-argument warnings current and continue reducing argument exposure where practical
-2. expand compatibility fixtures and migration docs around the Argon2id default and deprecated scrypt/v1 profiles
-3. add property-style tests for staged token writes/import/delete invariants
+2. expand compatibility fixtures around the Argon2id default and deprecated scrypt/v1 profiles
+3. keep fuzzing `internal/container.FuzzParse` after format or metadata parser changes
+4. add property-style tests for staged token writes/import/delete invariants
 4. harden token sync UX and policy so staged token writes are less likely to remain unreconciled
 5. implement rollback strict mode with an explicit restore/accept command before blocking by default
 6. keep CodeQL and `govulncheck` results triaged, then evaluate `staticcheck` and possibly `gosec` with a documented triage policy
@@ -448,7 +449,8 @@ Priority: high.
 The July 2026 external-style review produced useful next actions. Treat these as hardening work before new product features:
 
 - add property-based or fuzz-style tests around token staged writes, master sync, imports, and deletes
-- expand Argon2id support with compatibility fixtures, config validation, migration guidance, and explicit release notes
+- expand Argon2id support with compatibility fixtures, config validation, and explicit release notes
+- keep the legacy sunset policy current as scrypt-based `MYMV` v2, `MYMV` v1, and headerless legacy support evolves
 - reduce token sync footguns: make stale staged token writes more visible, consider stricter doctor status, and evaluate whether manual reconciliation should become harder to ignore
 - add rollback `strict` or `block` mode with an explicit restore/accept command for legitimate older-vault restores
 - improve recovery freshness reporting with mutation/revision distance, not only file timestamp freshness

@@ -40,7 +40,7 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse saved vault: %v", err)
 	}
-	if parsed.Metadata.KDF != container.KDFArgon2id || parsed.Metadata.Argon2MemoryKiB != 19*1024 || parsed.Metadata.Argon2Time != 2 || parsed.Metadata.Argon2Threads != 1 {
+	if parsed.Metadata.KDF != container.KDFArgon2id || parsed.Metadata.Argon2MemoryKiB != 64*1024 || parsed.Metadata.Argon2Time != 3 || parsed.Metadata.Argon2Threads != 1 {
 		t.Fatalf("metadata = %+v, want argon2id defaults", parsed.Metadata)
 	}
 
@@ -741,8 +741,8 @@ func TestSaveReturnsEncryptionError(t *testing.T) {
 	opts.KDF = vaultcrypto.KDFConfig{
 		Name: container.KDFArgon2id,
 		Argon2id: vaultcrypto.Argon2idConfig{
-			MemoryKiB: 19 * 1024,
-			Time:      2,
+			MemoryKiB: 64 * 1024,
+			Time:      3,
 			Threads:   1,
 			KeySize:   31,
 		},

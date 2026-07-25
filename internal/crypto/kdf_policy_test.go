@@ -41,8 +41,8 @@ func TestKDFConfigForContainerAcceptsArgon2idMetadata(t *testing.T) {
 		Metadata: container.Metadata{
 			Algorithm:        container.AlgorithmAES256GCM,
 			KDF:              container.KDFArgon2id,
-			Argon2MemoryKiB:  19 * 1024,
-			Argon2Time:       2,
+			Argon2MemoryKiB:  64 * 1024,
+			Argon2Time:       3,
 			Argon2Threads:    1,
 			KeySize:          32,
 			SaltSize:         16,
@@ -56,7 +56,7 @@ func TestKDFConfigForContainerAcceptsArgon2idMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatalf("KDFConfigForContainer: %v", err)
 	}
-	if cfg.Name != container.KDFArgon2id || cfg.Argon2id.MemoryKiB != 19*1024 || cfg.Argon2id.Time != 2 || cfg.Argon2id.Threads != 1 || cfg.Argon2id.KeySize != 32 {
+	if cfg.Name != container.KDFArgon2id || cfg.Argon2id.MemoryKiB != 64*1024 || cfg.Argon2id.Time != 3 || cfg.Argon2id.Threads != 1 || cfg.Argon2id.KeySize != 32 {
 		t.Fatalf("config = %+v, want argon2id metadata config", cfg)
 	}
 }
@@ -110,8 +110,8 @@ func TestKDFConfigForContainerRejectsInvalidArgon2idMetadata(t *testing.T) {
 	base := container.Metadata{
 		Algorithm:        container.AlgorithmAES256GCM,
 		KDF:              container.KDFArgon2id,
-		Argon2MemoryKiB:  19 * 1024,
-		Argon2Time:       2,
+		Argon2MemoryKiB:  64 * 1024,
+		Argon2Time:       3,
 		Argon2Threads:    1,
 		KeySize:          32,
 		SaltSize:         16,
@@ -147,8 +147,8 @@ func TestKDFConfigForContainerRejectsUnsupportedMetadataFields(t *testing.T) {
 	base := container.Metadata{
 		Algorithm:        container.AlgorithmAES256GCM,
 		KDF:              container.KDFArgon2id,
-		Argon2MemoryKiB:  19 * 1024,
-		Argon2Time:       2,
+		Argon2MemoryKiB:  64 * 1024,
+		Argon2Time:       3,
 		Argon2Threads:    1,
 		KeySize:          32,
 		SaltSize:         16,

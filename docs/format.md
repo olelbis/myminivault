@@ -59,8 +59,8 @@ The v2 metadata JSON contains non-sensitive crypto and layout information:
 {
   "algorithm": "AES-256-GCM",
   "kdf": "argon2id",
-  "argon2_memory_kib": 19456,
-  "argon2_time": 2,
+  "argon2_memory_kib": 65536,
+  "argon2_time": 3,
   "argon2_threads": 1,
   "key_size": 32,
   "salt_size": 16,
@@ -84,14 +84,14 @@ Default parameters:
 
 | Parameter | Value |
 | --- | --- |
-| memory | `19456` KiB |
-| time | `2` |
+| memory | `65536` KiB |
+| time | `3` |
 | threads | `1` |
 | key size | `32` bytes |
+| salt size | `16` bytes |
 
 scrypt remains readable for older `MYMV` v2 files and for legacy fallback
 formats, but it is deprecated for newly written runtime files.
-| salt size | `16` bytes |
 
 Key inputs differ by file:
 
@@ -100,6 +100,25 @@ Key inputs differ by file:
 - `shared-token-vault.json`: 32-byte token master key from macOS Keychain or `vault-token.key`
 
 The derived 32-byte key is used directly as the AES-256-GCM key.
+
+The Argon2id loader accepts memory metadata from `19456` KiB through `262144`
+KiB. The lower bound keeps attacker-edited headers from weakening current files;
+the upper bound limits memory-amplification denial-of-service risk before key
+derivation starts. The current writer uses `65536` KiB as the default.
+
+## Legacy Sunset Policy
+
+Deprecated readable formats are compatibility bridges, not permanent targets.
+The intended sunset path is:
+
+- keep scrypt-based `MYMV` v2, `MYMV` v1, and headerless legacy files readable
+  during the experimental `0.x` series
+- keep normal authenticated saves rewriting readable deprecated files to the
+  current Argon2id-based `MYMV` v2 profile
+- before a future `1.0` release, decide whether deprecated formats remain
+  always-readable or require an explicit opt-in such as `--allow-legacy`
+- remove a deprecated read path only after the migration policy, fixtures,
+  changelog, and user manual document the removal window
 
 ## Ciphertext Layout
 

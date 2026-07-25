@@ -182,8 +182,8 @@ func DefaultMetadata(saltSize int) Metadata {
 	return Metadata{
 		Algorithm:        AlgorithmAES256GCM,
 		KDF:              KDFArgon2id,
-		Argon2MemoryKiB:  19 * 1024,
-		Argon2Time:       2,
+		Argon2MemoryKiB:  64 * 1024,
+		Argon2Time:       3,
 		Argon2Threads:    1,
 		KeySize:          32,
 		SaltSize:         saltSize,
