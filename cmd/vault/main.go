@@ -121,25 +121,20 @@ func runPasswordCommand(command, password string) error {
 	return runPasswordCommandBytes(command, passwordBytes)
 }
 
+type passwordCommandOutcome struct {
+	saveVault    bool
+	mirrorShared bool
+}
+
 func runPasswordCommandBytes(command string, password []byte) error {
 	defer clearCurrentRecoveryKey()
 	extendedVault, salt, err := loadAndDecryptExtendedVaultBytes(password)
 	if err != nil {
 		return fmt.Errorf("error loading vault: %w", err)
 	}
-	rollbackCheck := vaultrollback.Check(rollbackStateFile, extendedVault.Metadata)
-	if rollbackCheck.Status == "WARN" && !suppressRuntimeWarnings {
-		fmt.Fprintf(os.Stderr, "⚠️  Rollback warning: %s\n", rollbackCheck.Detail)
-	}
 
-	var tokenImportResult vaultsync.ImportResult
-	if !syncTokensDryRunRequested() {
-		var err error
-		tokenImportResult, err = importSharedVaultToMainVault(extendedVault)
-		if err != nil {
-			log.Printf("Warning: failed to sync from shared vault: %v", err)
-		}
-	}
+	warnOnRollbackState(extendedVault)
+	tokenImportResult := importTokenChangesBeforePasswordCommand(extendedVault)
 	tokenImportChanged := hasImportedTokenChanges(tokenImportResult)
 
 	if !syncTokensDryRunRequested() {
@@ -148,12 +143,7 @@ func runPasswordCommandBytes(command string, password []byte) error {
 		}
 	}
 
-	extendedVault.Metadata.LastAccess = time.Now()
-	extendedVault.Metadata.AccessCount++
-
-	if shouldLogAccessForCommand(command) {
-		logAccess(command)
-	}
+	recordPasswordCommandAccess(command, extendedVault)
 	saveImportedTokenChanges := func() error {
 		if !tokenImportChanged {
 			return nil
@@ -161,16 +151,66 @@ func runPasswordCommandBytes(command string, password []byte) error {
 		return saveExtendedVaultBytes(extendedVault, password, salt)
 	}
 
+	outcome, err := executePasswordCommand(command, extendedVault, salt, password, saveImportedTokenChanges)
+	if err != nil {
+		return err
+	}
+	if !outcome.saveVault {
+		return nil
+	}
+
+	if err := saveExtendedVaultBytes(extendedVault, password, salt); err != nil {
+		return fmt.Errorf("❌ Error saving vault: %w", err)
+	}
+
+	if outcome.mirrorShared {
+		if err := syncMainVaultToSharedVault(extendedVault); err != nil {
+			log.Printf("Warning: failed to mirror main vault to shared vault: %v", err)
+		}
+	}
+
+	return nil
+}
+
+func warnOnRollbackState(vault *ExtendedVault) {
+	rollbackCheck := vaultrollback.Check(rollbackStateFile, vault.Metadata)
+	if rollbackCheck.Status == "WARN" && !suppressRuntimeWarnings {
+		fmt.Fprintf(os.Stderr, "⚠️  Rollback warning: %s\n", rollbackCheck.Detail)
+	}
+}
+
+func importTokenChangesBeforePasswordCommand(vault *ExtendedVault) vaultsync.ImportResult {
+	if syncTokensDryRunRequested() {
+		return vaultsync.ImportResult{}
+	}
+	result, err := importSharedVaultToMainVault(vault)
+	if err != nil {
+		log.Printf("Warning: failed to sync from shared vault: %v", err)
+		return vaultsync.ImportResult{}
+	}
+	return result
+}
+
+func recordPasswordCommandAccess(command string, vault *ExtendedVault) {
+	vault.Metadata.LastAccess = time.Now()
+	vault.Metadata.AccessCount++
+
+	if shouldLogAccessForCommand(command) {
+		logAccess(command)
+	}
+}
+
+func executePasswordCommand(command string, extendedVault *ExtendedVault, salt, password []byte, saveImportedTokenChanges func() error) (passwordCommandOutcome, error) {
 	switch command {
 	case "set":
 		if updatedKey, ok := handleSetCommand(extendedVault.Data); ok {
 			markKeyUpdated(extendedVault, updatedKey)
 		} else {
-			return saveImportedTokenChanges()
+			return passwordCommandOutcome{}, saveImportedTokenChanges()
 		}
 	case "get":
 		handleGetCommand(extendedVault.Data)
-		return saveImportedTokenChanges()
+		return passwordCommandOutcome{}, saveImportedTokenChanges()
 	case "delete":
 		deletedKey := ""
 		if len(os.Args) == 3 {
@@ -184,16 +224,16 @@ func runPasswordCommandBytes(command string, password []byte) error {
 		}
 	case "export":
 		handleExportCommand(extendedVault.Data)
-		return saveImportedTokenChanges()
+		return passwordCommandOutcome{}, saveImportedTokenChanges()
 	case "copy":
 		handleCopyCommand(extendedVault.Data)
-		return saveImportedTokenChanges()
+		return passwordCommandOutcome{}, saveImportedTokenChanges()
 	case "list":
 		handleListCommand(extendedVault.Data)
-		return saveImportedTokenChanges()
+		return passwordCommandOutcome{}, saveImportedTokenChanges()
 	case "search":
 		handleSearchCommand(extendedVault.Data)
-		return saveImportedTokenChanges()
+		return passwordCommandOutcome{}, saveImportedTokenChanges()
 	case "clear":
 		deletedKeys := make([]string, 0, len(extendedVault.Data))
 		for key := range extendedVault.Data {
@@ -212,32 +252,32 @@ func runPasswordCommandBytes(command string, password []byte) error {
 		} else {
 			fmt.Println("✅ Manual backup created successfully")
 		}
-		return saveImportedTokenChanges()
+		return passwordCommandOutcome{}, saveImportedTokenChanges()
 	case "stats":
 		showStats(extendedVault)
-		return saveImportedTokenChanges()
+		return passwordCommandOutcome{}, saveImportedTokenChanges()
 
 	case "setup-recovery":
 		handleSetupRecovery(extendedVault)
 	case "test-recovery":
 		handleTestRecovery(extendedVault)
-		return saveImportedTokenChanges()
+		return passwordCommandOutcome{}, saveImportedTokenChanges()
 	case "change-password":
 		handleChangePassword(extendedVault, salt)
-		return nil
+		return passwordCommandOutcome{}, nil
 	case "refresh-recovery":
-		return handleRefreshRecovery(extendedVault, salt, password)
+		return passwordCommandOutcome{}, handleRefreshRecovery(extendedVault, salt, password)
 
 	case "create-token":
 		handleCreateToken(extendedVault)
 	case "list-tokens":
 		handleListTokens(extendedVault)
-		return saveImportedTokenChanges()
+		return passwordCommandOutcome{}, saveImportedTokenChanges()
 	case "revoke-token":
 		handleRevokeToken(extendedVault)
 	case "token-info":
 		handleTokenInfo(extendedVault)
-		return saveImportedTokenChanges()
+		return passwordCommandOutcome{}, saveImportedTokenChanges()
 	case "cleanup-tokens":
 		if err := cleanupExpiredTokens(extendedVault); err != nil {
 			fmt.Printf("❌ Cleanup failed: %v\n", err)
@@ -253,30 +293,23 @@ func runPasswordCommandBytes(command string, password []byte) error {
 			}
 		}
 		if syncTokensDryRunRequested() {
-			return nil
+			return passwordCommandOutcome{}, nil
 		}
 
 	case "security-audit":
 		handleSecurityAudit(extendedVault)
-		return saveImportedTokenChanges()
+		return passwordCommandOutcome{}, saveImportedTokenChanges()
 
 	default:
 		fmt.Printf("❌ Unknown command: %s\n", command)
 		showUsage()
-		return nil
+		return passwordCommandOutcome{}, nil
 	}
 
-	if err := saveExtendedVaultBytes(extendedVault, password, salt); err != nil {
-		return fmt.Errorf("❌ Error saving vault: %w", err)
-	}
-
-	if shouldMirrorMainVaultToShared(command) {
-		if err := syncMainVaultToSharedVault(extendedVault); err != nil {
-			log.Printf("Warning: failed to mirror main vault to shared vault: %v", err)
-		}
-	}
-
-	return nil
+	return passwordCommandOutcome{
+		saveVault:    true,
+		mirrorShared: shouldMirrorMainVaultToShared(command),
+	}, nil
 }
 
 func showUsage() {

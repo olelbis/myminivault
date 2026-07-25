@@ -5,6 +5,7 @@
 ### Changed
 
 - Updated CLI help text to describe Argon2id as the default KDF for new vaults, with scrypt kept for legacy compatibility.
+- Refactored password-command orchestration to separate rollback warnings, token import, access metadata, command dispatch, and final save/mirror decisions.
 - Added focused coverage for `internal/token`, `internal/recovery`, `internal/rollback`, and `internal/paths`, bringing each package above the `80.0%` package-level target.
 - Updated local coverage baselines to `47.0%` full repository and `84.6%` internal packages.
 
