@@ -182,6 +182,29 @@ func TestWriteFileCheckedRejectsSymlink(t *testing.T) {
 	}
 }
 
+func TestWriteFileCheckedCreatesAndTruncatesFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "secret")
+
+	if err := WriteFileChecked(path, []byte("first"), 0600); err != nil {
+		t.Fatalf("WriteFileChecked create: %v", err)
+	}
+	if err := WriteFileChecked(path, []byte("second"), 0600); err != nil {
+		t.Fatalf("WriteFileChecked truncate: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read file: %v", err)
+	}
+	if string(data) != "second" {
+		t.Fatalf("data = %q, want second", data)
+	}
+	if info, err := os.Stat(path); err != nil {
+		t.Fatalf("stat file: %v", err)
+	} else if info.Mode().Perm() != 0600 {
+		t.Fatalf("mode = %04o, want 0600", info.Mode().Perm())
+	}
+}
+
 func TestWriteFileCreateExclusiveCheckedRejectsExistingFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "marker")
 	if err := os.WriteFile(path, []byte("existing"), 0600); err != nil {
@@ -197,6 +220,26 @@ func TestWriteFileCreateExclusiveCheckedRejectsExistingFile(t *testing.T) {
 	}
 	if string(data) != "existing" {
 		t.Fatalf("existing file was modified: %q", data)
+	}
+}
+
+func TestWriteFileCreateExclusiveCheckedCreatesNewFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "marker")
+
+	if err := WriteFileCreateExclusiveChecked(path, []byte("new"), 0600); err != nil {
+		t.Fatalf("WriteFileCreateExclusiveChecked: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read file: %v", err)
+	}
+	if string(data) != "new" {
+		t.Fatalf("data = %q, want new", data)
+	}
+	if info, err := os.Stat(path); err != nil {
+		t.Fatalf("stat file: %v", err)
+	} else if info.Mode().Perm() != 0600 {
+		t.Fatalf("mode = %04o, want 0600", info.Mode().Perm())
 	}
 }
 

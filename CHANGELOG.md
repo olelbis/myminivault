@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Added focused coverage for `internal/token`, `internal/recovery`, `internal/rollback`, and `internal/paths`, bringing each package above the `80.0%` package-level target.
+- Updated local coverage baselines to `47.0%` full repository and `84.6%` internal packages.
+
 ## [v0.13.1] - 2026-07-25
 
 ### Changed
