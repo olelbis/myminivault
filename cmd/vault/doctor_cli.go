@@ -125,26 +125,11 @@ func checkTokenKeyStorageHealth() doctorCheck {
 }
 
 func checkRuntimeFileHealth() []doctorCheck {
-	specs := []struct {
-		name     string
-		path     string
-		required bool
-		mode     os.FileMode
-	}{
-		{name: "main vault", path: vaultFile, required: false, mode: 0600},
-		{name: "main vault backup", path: vaultFile + ".bak", required: false, mode: 0600},
-		{name: "recovery snapshot", path: vaultFile + ".recovery", required: false, mode: 0600},
-		{name: "token master key", path: tokenKeyFile, required: false, mode: 0600},
-		{name: "shared token vault", path: sharedTokenVault, required: false, mode: 0600},
-		{name: "token registry", path: tokenRegistry, required: false, mode: 0600},
-		{name: "rollback state", path: rollbackStateFile, required: false, mode: 0600},
-		{name: "audit log", path: logFile, required: false, mode: 0600},
-	}
-
+	specs := runtimeHealthFileSpecs()
 	checks := make([]doctorCheck, 0, len(specs))
 	for _, spec := range specs {
 		check := checkFileMode(spec.path, spec.mode, spec.required)
-		check.name = spec.name
+		check.name = runtimeHealthCheckName(spec.name)
 		if check.detail != "not present" {
 			if detail := encryptedRuntimeFormat(filepath.Base(spec.path), spec.path); detail != "" {
 				check.detail += ", " + detail
@@ -153,6 +138,29 @@ func checkRuntimeFileHealth() []doctorCheck {
 		checks = append(checks, check)
 	}
 	return checks
+}
+
+func runtimeHealthCheckName(name string) string {
+	switch name {
+	case vaultFileName:
+		return "main vault"
+	case vaultFileName + ".bak":
+		return "main vault backup"
+	case vaultFileName + ".recovery":
+		return "recovery snapshot"
+	case tokenKeyFileName:
+		return "token master key"
+	case sharedTokenVaultName:
+		return "shared token vault"
+	case tokenRegistryName:
+		return "token registry"
+	case rollbackStateName:
+		return "rollback state"
+	case logFileName:
+		return "audit log"
+	default:
+		return name
+	}
 }
 
 func checkFileMode(path string, want os.FileMode, required bool) doctorCheck {

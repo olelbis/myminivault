@@ -16,8 +16,10 @@ import (
 )
 
 type runtimeFileSpec struct {
-	name string
-	path string
+	name     string
+	path     string
+	required bool
+	mode     os.FileMode
 }
 
 func handleInspectRuntimeCommand() {
@@ -94,17 +96,24 @@ func runtimeHomeSource() string {
 }
 
 func runtimeFileSpecs() []runtimeFileSpec {
+	specs := append([]runtimeFileSpec{}, runtimeHealthFileSpecs()...)
+	specs = append(specs,
+		runtimeFileSpec{name: configFileName, path: configFile},
+		runtimeFileSpec{name: lockFileName, path: vaultLockFile},
+	)
+	return specs
+}
+
+func runtimeHealthFileSpecs() []runtimeFileSpec {
 	return []runtimeFileSpec{
-		{name: vaultFileName, path: vaultFile},
-		{name: vaultFileName + ".bak", path: vaultFile + ".bak"},
-		{name: vaultFileName + ".recovery", path: vaultFile + ".recovery"},
-		{name: configFileName, path: configFile},
-		{name: logFileName, path: logFile},
-		{name: tokenRegistryName, path: tokenRegistry},
-		{name: tokenKeyFileName, path: tokenKeyFile},
-		{name: sharedTokenVaultName, path: sharedTokenVault},
-		{name: rollbackStateName, path: rollbackStateFile},
-		{name: lockFileName, path: vaultLockFile},
+		{name: vaultFileName, path: vaultFile, mode: 0600},
+		{name: vaultFileName + ".bak", path: vaultFile + ".bak", mode: 0600},
+		{name: vaultFileName + ".recovery", path: vaultFile + ".recovery", mode: 0600},
+		{name: tokenKeyFileName, path: tokenKeyFile, mode: 0600},
+		{name: sharedTokenVaultName, path: sharedTokenVault, mode: 0600},
+		{name: tokenRegistryName, path: tokenRegistry, mode: 0600},
+		{name: rollbackStateName, path: rollbackStateFile, mode: 0600},
+		{name: logFileName, path: logFile, mode: 0600},
 	}
 }
 
