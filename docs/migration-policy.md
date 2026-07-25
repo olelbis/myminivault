@@ -16,6 +16,24 @@ removed.
 
 Current saves always write `MYMV` v2 with Argon2id metadata.
 
+## Legacy Sunset Policy
+
+Deprecated read support is kept to protect existing users, but every readable
+format remains parser surface. During the experimental `0.x` series,
+myminivault keeps scrypt-based `MYMV` v2, `MYMV` v1, and headerless legacy files
+readable by default. Before a future `1.0`, the project should decide whether
+deprecated formats remain always-readable or require an explicit opt-in such as
+`--allow-legacy`.
+
+Any future removal must be staged:
+
+- announce the target format and release window in this document, the user
+  manual, and the changelog
+- keep fixtures for the deprecated format until the removal release
+- provide a non-mutating `vault migrate --dry-run` result that identifies files
+  requiring user action
+- remove the read path only after a documented migration window
+
 ## Compatibility Fixtures
 
 The compatibility fixture corpus lives in

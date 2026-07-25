@@ -238,7 +238,7 @@ func TestEncryptedVaultRoundTripAndChecksumFailure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse shared vault: %v", err)
 	}
-	if parsed.Metadata.KDF != container.KDFArgon2id || parsed.Metadata.Argon2MemoryKiB != 19*1024 || parsed.Metadata.Argon2Time != 2 || parsed.Metadata.Argon2Threads != 1 {
+	if parsed.Metadata.KDF != container.KDFArgon2id || parsed.Metadata.Argon2MemoryKiB != 64*1024 || parsed.Metadata.Argon2Time != 3 || parsed.Metadata.Argon2Threads != 1 {
 		t.Fatalf("metadata = %+v, want argon2id defaults", parsed.Metadata)
 	}
 	raw[len(raw)-1] ^= 0xff

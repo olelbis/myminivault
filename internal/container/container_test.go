@@ -136,7 +136,7 @@ func TestReadFileAndDescription(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)
 	}
-	if got := Description(parsed); got != "MYMV v2 recovery-vault AES-256-GCM/argon2id argon2id=19456KiB/t2/p1" {
+	if got := Description(parsed); got != "MYMV v2 recovery-vault AES-256-GCM/argon2id argon2id=65536KiB/t3/p1" {
 		t.Fatalf("description = %q", got)
 	}
 }

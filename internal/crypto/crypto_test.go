@@ -119,8 +119,8 @@ func TestDeriveKeyWithConfigSupportsScryptAndArgon2id(t *testing.T) {
 	argonKey, err := DeriveKeyWithConfig(password, salt, KDFConfig{
 		Name: "argon2id",
 		Argon2id: Argon2idConfig{
-			MemoryKiB: 19 * 1024,
-			Time:      2,
+			MemoryKiB: 64 * 1024,
+			Time:      3,
 			Threads:   1,
 			KeySize:   32,
 		},

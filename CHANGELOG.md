@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [v0.13.1] - 2026-07-25
+
+### Changed
+
+- Raised the Argon2id default for new `MYMV v2` saves to `65536` KiB memory and `time=3`.
+- Documented why Argon2id metadata is capped at `256` MiB during loading.
+- Added a legacy format sunset policy and documented the container parser fuzz target.
+
 ## [v0.13.0] - 2026-07-23
 
 ### Changed
