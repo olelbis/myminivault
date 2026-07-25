@@ -351,7 +351,7 @@ SECURITY:
 
 ENTERPRISE FEATURES:
   🔒 AES-256-GCM encryption for all data
-  🔑 Scrypt key derivation (32768 iterations)
+  🔑 Argon2id key derivation for new vaults, with scrypt legacy compatibility
   🎫 Compact tokens with shared vault architecture
   🔄 Automatic token-write import into master workflows
   ⏰ Automatic cleanup of expired tokens
