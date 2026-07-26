@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: clone or open the repository root, for example `/tmp/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.13.3`
+- Current baseline release: `v0.13.4`
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -15,7 +15,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `8.6 / 10` under the practical project-readiness model after `v0.13.3`.
+Current assessment score: `8.6 / 10` under the practical project-readiness model after `v0.13.4`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, macOS Keychain support for token master-key material, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -64,10 +64,10 @@ Use this section first when resuming work. The detailed backlog below explains e
 
 ### Immediate Next Work
 
-1. **Secret Input And Runtime Path Hardening**
-   - Status: partial progress through `v0.12.19` with `vault set KEY --stdin`, `vault use-token --stdin`, `vault use-token --token-file`, `vault use-token --token-fd`, `vault sync-tokens --dry-run`, `vault migrate --dry-run`, portable symlink rejection, Unix no-follow opens for checked sensitive runtime helpers, exclusive creation for main-vault transaction markers plus main/recovery/shared-token temp files, and warn-mode rollback-state checks.
-   - Goal: reduce direct secret/token exposure in process arguments, keep sensitive runtime symlinks rejected, and keep reducing runtime file race windows.
-   - Suggested branch: `secret-input-path-hardening`.
+1. **Review Follow-Up Hardening**
+   - Status: next recommended branch after `v0.13.4`.
+   - Goal: turn the external-style review notes into focused hardening work: token sync fuzz/property tests, rollback strict-mode design, static analysis follow-up, SECURITY contact verification, legacy migration policy, and compatibility fixtures.
+   - Suggested branch: `review-follow-up-hardening`.
 
 ### Near-Term Hardening
 
@@ -87,14 +87,10 @@ Use this section first when resuming work. The detailed backlog below explains e
    - Goal: evolve monotonic encrypted vault revisions plus local trusted-state checks without breaking backup and recovery workflows.
    - Suggested branch: `rollback-policy`.
 
-5. **Review Follow-Up Hardening**
-   - Goal: turn the external-style review notes into focused work: token sync fuzz/property tests, rollback strict mode, static analysis, SECURITY contact verification, legacy migration policy, and compatibility fixtures.
-   - Suggested branch: `review-follow-up-hardening`.
-
-6. **Token Execution And Runtime Health Refactor**
-   - Goal: continue reducing `cmd/vault` orchestration by separating token command parsing/rendering and sharing runtime-file health specs between `doctor` and `inspect-runtime`.
-   - Status: password-command orchestration was split in `v0.13.3`; token execution and runtime health sharing are the next cleanup targets.
-   - Suggested branch: `cli-refactor-followup`.
+5. **Secret Input And Runtime Path Hardening**
+   - Status: partial progress through `v0.13.4` with stdin/file/fd token input, explicit plaintext-output gates, portable symlink rejection, Unix no-follow opens for checked sensitive runtime helpers, exclusive creation for temp/transaction files, and warn-mode rollback-state checks.
+   - Goal: keep reducing direct secret/token exposure, sensitive runtime symlink risk, and runtime file race windows.
+   - Suggested branch: `secret-input-path-hardening`.
 
 ### Completed Hardening Milestones
 
@@ -110,6 +106,7 @@ Use this section first when resuming work. The detailed backlog below explains e
 10. **Dedicated recovery salt**: completed in `v0.12.0`; new recovery snapshots use a dedicated random salt while legacy shared-salt snapshots remain readable and are refreshed on the next recovery rewrite.
 11. **Coverage follow-up**: completed in `v0.13.2`; `internal/token`, `internal/recovery`, `internal/rollback`, and `internal/paths` are all above the `80.0%` package-level target.
 12. **Password-command orchestration refactor**: completed in `v0.13.3`; rollback warnings, token import, access metadata, command dispatch, and final save/mirror decisions are separated and covered by focused tests.
+13. **Token execution and runtime health refactor**: completed in `v0.13.4`; token command request parsing is centralized and `doctor`/`inspect-runtime` share sensitive runtime-file specs to reduce drift.
 
 ### Later Product Ideas
 
@@ -484,7 +481,7 @@ Current CI runs formatting, `go vet`, `go test ./...`, full coverage reporting, 
 
 Next actions:
 
-- keep `./internal/...` coverage at or above the current `80.0%` floor, with `81.6%` as the latest local baseline
+- keep `./internal/...` coverage at or above the current `80.0%` floor, with `84.6%` as the latest local baseline
 - raise `cmd/vault` coverage with focused unit tests or further extraction of command-independent logic where it improves clarity
 
 Suggested branch:
