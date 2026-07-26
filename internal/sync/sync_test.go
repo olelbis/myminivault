@@ -237,6 +237,81 @@ func TestPreviewSharedVaultReportsLegacyDecisionKeys(t *testing.T) {
 	}
 }
 
+func TestPreviewMatchesImportResultAcrossPolicyScenarios(t *testing.T) {
+	base := time.Date(2026, 7, 26, 10, 0, 0, 0, time.UTC)
+	tests := map[string]struct {
+		main   *model.ExtendedVault
+		shared *model.ExtendedVault
+	}{
+		"newer shared update and older conflict": {
+			main: &model.ExtendedVault{
+				Data: map[string]string{"A": "main", "B": "main"},
+				Sync: &model.SyncMetadata{UpdatedAt: map[string]time.Time{
+					"A": base,
+					"B": base,
+				}},
+			},
+			shared: &model.ExtendedVault{
+				Data: map[string]string{"A": "shared", "B": "shared"},
+				Sync: &model.SyncMetadata{UpdatedAt: map[string]time.Time{
+					"A": base.Add(time.Minute),
+					"B": base.Add(-time.Minute),
+				}},
+			},
+		},
+		"delete beats older main update": {
+			main: &model.ExtendedVault{
+				Data: map[string]string{"A": "main"},
+				Sync: &model.SyncMetadata{UpdatedAt: map[string]time.Time{
+					"A": base,
+				}},
+			},
+			shared: &model.ExtendedVault{
+				Data: map[string]string{},
+				Sync: &model.SyncMetadata{DeletedAt: map[string]time.Time{
+					"A": base.Add(time.Minute),
+				}},
+			},
+		},
+		"legacy import and delete": {
+			main: &model.ExtendedVault{Data: map[string]string{"A": "main", "B": "main"}},
+			shared: &model.ExtendedVault{
+				Data: map[string]string{"A": "shared"},
+				Sync: &model.SyncMetadata{
+					UpdatedAt: map[string]time.Time{"A": base},
+					DeletedAt: map[string]time.Time{"B": base},
+				},
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			mainForPreview := cloneVault(tt.main)
+			sharedForPreview := cloneVault(tt.shared)
+			mainBeforePreview := cloneVault(mainForPreview)
+			sharedBeforePreview := cloneVault(sharedForPreview)
+
+			preview := PreviewSharedVault(mainForPreview, sharedForPreview)
+			if !reflect.DeepEqual(mainForPreview, mainBeforePreview) {
+				t.Fatal("preview mutated main vault")
+			}
+			if !reflect.DeepEqual(sharedForPreview, sharedBeforePreview) {
+				t.Fatal("preview mutated shared vault")
+			}
+
+			mainForImport := cloneVault(tt.main)
+			result := ImportSharedVault(mainForImport, cloneVault(tt.shared), base.Add(2*time.Minute))
+			if result.Imported != len(preview.ImportKeys) ||
+				result.Deleted != len(preview.DeleteKeys) ||
+				result.SkippedConflicts != len(preview.ConflictKeys) ||
+				result.LegacyDecisions != len(preview.LegacyDecisionKeys) {
+				t.Fatalf("import result = %+v, preview = %+v", result, preview)
+			}
+		})
+	}
+}
+
 func TestCopyVaultDataReturnsIndependentMap(t *testing.T) {
 	original := map[string]string{"A": "one"}
 	copied := CopyVaultData(original)
@@ -245,4 +320,31 @@ func TestCopyVaultDataReturnsIndependentMap(t *testing.T) {
 	if original["A"] != "one" {
 		t.Fatalf("original changed to %q", original["A"])
 	}
+}
+
+func cloneVault(vault *model.ExtendedVault) *model.ExtendedVault {
+	if vault == nil {
+		return nil
+	}
+	cloned := &model.ExtendedVault{
+		Data: CopyVaultData(vault.Data),
+	}
+	if vault.Sync != nil {
+		cloned.Sync = &model.SyncMetadata{
+			UpdatedAt: cloneTimeMap(vault.Sync.UpdatedAt),
+			DeletedAt: cloneTimeMap(vault.Sync.DeletedAt),
+		}
+	}
+	return cloned
+}
+
+func cloneTimeMap(values map[string]time.Time) map[string]time.Time {
+	if values == nil {
+		return nil
+	}
+	cloned := make(map[string]time.Time, len(values))
+	for key, value := range values {
+		cloned[key] = value
+	}
+	return cloned
 }

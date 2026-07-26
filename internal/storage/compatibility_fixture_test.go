@@ -15,6 +15,22 @@ import (
 
 var compatScrypt = vaultcrypto.ScryptConfig{N: 2, R: 1, P: 1, KeySize: 32}
 
+func TestCompatibilityFixtureCorpusInventory(t *testing.T) {
+	fixtures := []string{
+		"legacy-salt-ciphertext-main.b64",
+		"mymv-v1-main.b64",
+		"mymv-v2-main.b64",
+		"mymv-v2-recovery.b64",
+		"mymv-v2-shared-token.b64",
+	}
+
+	for _, fixture := range fixtures {
+		if _, err := os.Stat(filepath.Join("testdata", "compat", fixture)); err != nil {
+			t.Fatalf("fixture %s missing or unreadable: %v", fixture, err)
+		}
+	}
+}
+
 func TestCompatibilityFixtureCorpusMainVaults(t *testing.T) {
 	tests := []struct {
 		name        string
