@@ -15,6 +15,13 @@ import (
 
 const StateFileName = "rollback-state.json"
 
+type Mode string
+
+const (
+	ModeWarn  Mode = "warn"
+	ModeBlock Mode = "block"
+)
+
 type State struct {
 	VaultID         string    `json:"vault_id"`
 	HighestRevision int64     `json:"highest_revision"`
@@ -61,26 +68,38 @@ func PrepareNextRevision(meta *model.VaultMetadata, state *State) error {
 }
 
 func Check(path string, meta model.VaultMetadata) CheckResult {
+	return CheckWithMode(path, meta, ModeWarn)
+}
+
+func CheckWithMode(path string, meta model.VaultMetadata, mode Mode) CheckResult {
 	state, err := LoadState(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			if meta.VaultID == "" || meta.Revision == 0 {
 				return CheckResult{Status: "OK", Detail: "legacy vault; rollback state will be initialized on next save"}
 			}
-			return CheckResult{Status: "WARN", Detail: fmt.Sprintf("rollback state missing; current vault revision %d", meta.Revision)}
+			return rollbackCheckResult(mode, fmt.Sprintf("rollback state missing; current vault revision %d", meta.Revision), nil)
 		}
-		return CheckResult{Status: "WARN", Detail: "rollback state unreadable: " + err.Error()}
+		return rollbackCheckResult(mode, "rollback state unreadable: "+err.Error(), nil)
 	}
 	if meta.VaultID == "" || meta.Revision == 0 {
-		return CheckResult{Status: "WARN", Detail: "trusted state exists but vault has legacy revision metadata", State: state}
+		return rollbackCheckResult(mode, "trusted state exists but vault has legacy revision metadata", state)
 	}
 	if state.VaultID != meta.VaultID {
-		return CheckResult{Status: "WARN", Detail: fmt.Sprintf("vault id mismatch; state=%s vault=%s", state.VaultID, meta.VaultID), State: state}
+		return rollbackCheckResult(mode, fmt.Sprintf("vault id mismatch; state=%s vault=%s", state.VaultID, meta.VaultID), state)
 	}
 	if meta.Revision < state.HighestRevision {
-		return CheckResult{Status: "WARN", Detail: fmt.Sprintf("possible rollback: vault revision %d below trusted %d", meta.Revision, state.HighestRevision), State: state}
+		return rollbackCheckResult(mode, fmt.Sprintf("possible rollback: vault revision %d below trusted %d", meta.Revision, state.HighestRevision), state)
 	}
 	return CheckResult{Status: "OK", Detail: fmt.Sprintf("revision %d, trusted %d", meta.Revision, state.HighestRevision), State: state}
+}
+
+func rollbackCheckResult(mode Mode, detail string, state *State) CheckResult {
+	status := "WARN"
+	if mode == ModeBlock {
+		status = "FAIL"
+	}
+	return CheckResult{Status: status, Detail: detail, State: state}
 }
 
 func LoadState(path string) (*State, error) {

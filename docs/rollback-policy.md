@@ -150,14 +150,19 @@ explicit rollback/restore handling first.
 
 ## Modes
 
-The initial implementation behaves like `warn`. Future modes may include:
+The default CLI behavior is currently equivalent to `warn`. The internal
+rollback checker also exposes a block-capable mode for tests and future command
+wiring:
 
 - `off`: do not check rollback state; useful for debugging and legacy recovery
 - `warn`: report suspicious rollback but allow read-only commands
-- `strict`: block commands until the user accepts or repairs the state
+- `strict` / `block`: report suspicious rollback as a failure until the user
+  accepts or repairs the state
 
-After the behavior matures and restore workflows are documented, `strict` can be
-considered for mutating commands.
+The CLI does not enable strict blocking yet because legitimate restore workflows
+need an explicit accept/repair command first. The internal `CheckWithMode`
+helper keeps the policy testable while preserving the current warn-by-default
+behavior.
 
 ## Doctor And Inspect Output
 

@@ -104,7 +104,7 @@ A modified executable becomes dangerous when a user runs it and provides credent
 
 The CLI process is trusted while it runs. Plaintext secrets, passwords, derived keys, and decrypted vault data may exist in process memory during command execution.
 
-The CLI disables core dumps on supported Unix-like systems as a best-effort mitigation, but this is not a sandbox and not a defense against same-user process inspection. Core storage APIs accept byte-slice passwords so callers can wipe their local password buffers after use; this reduces avoidable immutable string copies in the storage layer but does not guarantee full memory erasure in Go.
+The CLI disables core dumps on supported Unix-like systems as a best-effort mitigation, but this is not a sandbox and not a defense against same-user process inspection. Core storage APIs accept byte-slice passwords so callers can wipe their local password buffers after use; this reduces avoidable immutable string copies in the storage layer but does not guarantee full memory erasure in Go. Future memory-hardening work should keep following this pattern: prefer byte slices for secret input paths, wipe best-effort buffers after use, and avoid promising protections Go and a normal desktop process cannot enforce.
 
 Secret values passed directly to `vault set KEY value` and compact tokens passed directly to `vault use-token <token>` are command-line arguments. Depending on the operating system and execution environment, process arguments may be visible to process inspection, monitoring, shell history, wrappers, or crash diagnostics. Prefer `vault set KEY --stdin` for real secrets and `vault use-token --stdin ...`, `vault use-token --token-file ...`, or `vault use-token --token-fd ...` for compact tokens. Token files must still be protected with restrictive permissions and removed when no longer needed. Avoid placing commands containing secrets or compact tokens in persistent scripts or recorded shells.
 
@@ -365,7 +365,8 @@ Recommended next steps:
 - keep extending migration coverage around bounded KDF metadata loading and legacy compatibility
 - sync runtime directories after atomic renames where supported and document the remaining crash-consistency limits
 - continue the rollback detection work in [Rollback Policy](rollback-policy.md) with explicit restore acceptance and possible strict mode
+- keep token sync protected with scenario/property-style tests so preview, import, update, delete, conflict, and legacy fallback behavior stay aligned
 - keep macOS Keychain support current and reconsider Linux Secret Service storage only with a reliable desktop/headless policy
-- keep CodeQL and `govulncheck` results triaged, then evaluate signed tags/checksums and platform signing before stronger supply-chain claims
+- keep CodeQL and `govulncheck` results triaged, evaluate `staticcheck` and `gosec`, then evaluate signed tags/checksums and platform signing before stronger supply-chain claims
 - consider signed tags, signed checksum manifests, or platform-specific package signing later in the release process
 - avoid claiming production security without an external audit

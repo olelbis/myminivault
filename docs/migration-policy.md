@@ -47,6 +47,16 @@ Current fixture coverage:
 - `MYMV` v2 recovery vault
 - `MYMV` v2 shared token vault
 
+Fixture policy:
+
+- keep every historical format fixture until the corresponding read path is
+  removed
+- add a fixture before changing parser behavior for legacy, v1, v2, recovery,
+  or shared-token vault payloads
+- include at least one negative/tamper test when metadata authentication or KDF
+  bounds change
+- keep fixture passwords and KDF parameters clearly test-only
+
 Some fixtures use intentionally weak test-only scrypt parameters so they run
 quickly in unit tests. They are compatibility fixtures, not production examples.
 

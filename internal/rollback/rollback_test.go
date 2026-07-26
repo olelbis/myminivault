@@ -82,6 +82,26 @@ func TestCheckWarnsOnLowerRevision(t *testing.T) {
 	}
 }
 
+func TestCheckWithModeBlocksRollbackFindings(t *testing.T) {
+	path := filepath.Join(t.TempDir(), StateFileName)
+	if err := SaveState(path, model.VaultMetadata{VaultID: "vault-a", Revision: 5}); err != nil {
+		t.Fatalf("save state: %v", err)
+	}
+
+	warn := CheckWithMode(path, model.VaultMetadata{VaultID: "vault-a", Revision: 3}, ModeWarn)
+	if warn.Status != "WARN" {
+		t.Fatalf("warn status = %q, want WARN", warn.Status)
+	}
+
+	block := CheckWithMode(path, model.VaultMetadata{VaultID: "vault-a", Revision: 3}, ModeBlock)
+	if block.Status != "FAIL" {
+		t.Fatalf("block status = %q, want FAIL", block.Status)
+	}
+	if !strings.Contains(block.Detail, "possible rollback") {
+		t.Fatalf("detail = %q, want rollback detail", block.Detail)
+	}
+}
+
 func TestCheckWarnsOnVaultIDMismatch(t *testing.T) {
 	path := filepath.Join(t.TempDir(), StateFileName)
 	if err := SaveState(path, model.VaultMetadata{VaultID: "vault-a", Revision: 5}); err != nil {

@@ -107,6 +107,7 @@ Use this section first when resuming work. The detailed backlog below explains e
 11. **Coverage follow-up**: completed in `v0.13.2`; `internal/token`, `internal/recovery`, `internal/rollback`, and `internal/paths` are all above the `80.0%` package-level target.
 12. **Password-command orchestration refactor**: completed in `v0.13.3`; rollback warnings, token import, access metadata, command dispatch, and final save/mirror decisions are separated and covered by focused tests.
 13. **Token execution and runtime health refactor**: completed in `v0.13.4`; token command request parsing is centralized and `doctor`/`inspect-runtime` share sensitive runtime-file specs to reduce drift.
+14. **Review follow-up hardening pass**: completed after `v0.13.4`; added token sync scenario/property-style tests, rollback block-mode checks, static-analysis tracking, SECURITY updates, migration fixture policy, fixture inventory coverage, and clearer memory-hardening limits.
 
 ### Later Product Ideas
 
@@ -446,18 +447,14 @@ git switch -c review-follow-up-hardening
 
 Priority: high.
 
-The July 2026 external-style review produced useful next actions. Treat these as hardening work before new product features:
+The first July 2026 review follow-up pass is complete. Remaining follow-up work:
 
-- add property-based or fuzz-style tests around token staged writes, master sync, imports, and deletes
-- expand Argon2id support with compatibility fixtures, config validation, and explicit release notes
-- keep the legacy sunset policy current as scrypt-based `MYMV` v2, `MYMV` v1, and headerless legacy support evolves
-- reduce token sync footguns: make stale staged token writes more visible, consider stricter doctor status, and evaluate whether manual reconciliation should become harder to ignore
-- add rollback `strict` or `block` mode with an explicit restore/accept command for legitimate older-vault restores
+- wire rollback strict/block mode into user-facing config only after explicit restore/accept commands exist
 - improve recovery freshness reporting with mutation/revision distance, not only file timestamp freshness
-- keep CodeQL and `govulncheck` results triaged, then evaluate `staticcheck` and `gosec`
+- keep CodeQL and `govulncheck` results triaged, then decide whether `staticcheck` and `gosec` should become CI gates
 - keep `SECURITY.md`, review request links, and the public focused-review issue current
 - expand the independent decryptor experiment beyond the initial Go/Python reference readers when useful
-- implement the real mutating `vault migrate` command once the dry-run behavior and migration policy have settled
+- implement the real mutating `vault migrate` command once dry-run behavior and migration policy have settled
 - expand the compatibility fixture corpus when new historical formats or payload layouts need long-term read coverage
 - keep memory hardening honest: avoid string conversions for secrets, keep byte wiping best-effort, and document Go limits instead of promising impossible guarantees
 

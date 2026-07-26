@@ -35,6 +35,9 @@ unless the reporter prefers to remain anonymous.
 - The encrypted file format is documented in `docs/format.md`.
 - The focused review scope is documented in `docs/crypto-review-scope.md`.
 - The ready-to-share review request is documented in `docs/review-request.md`.
+- CodeQL and `govulncheck` are run in GitHub Actions. Additional tools such as
+  `staticcheck` and `gosec` are tracked as hardening candidates, not yet as
+  mandatory release gates.
 
 ## Disclosure Expectations
 
