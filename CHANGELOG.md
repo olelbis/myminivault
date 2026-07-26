@@ -9,7 +9,7 @@
 - Refactored token command request parsing and shared runtime-file health specs between `doctor` and `inspect-runtime`.
 - Added review follow-up hardening around token sync policy tests, rollback block-mode checks, static-analysis tracking, migration fixture policy, and memory-hardening documentation.
 - Added focused coverage for `internal/token`, `internal/recovery`, `internal/rollback`, and `internal/paths`, bringing each package above the `80.0%` package-level target.
-- Updated local coverage baselines to `47.0%` full repository and `84.6%` internal packages.
+- Updated local coverage baselines to `47.8%` full repository and `84.7%` internal packages.
 
 ## [v0.13.1] - 2026-07-25
 
