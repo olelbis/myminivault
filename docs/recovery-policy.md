@@ -8,7 +8,7 @@ Recovery is snapshot-based.
 
 `vault recover` does not reconstruct the latest possible vault state from every runtime file. It decrypts the recovery-encrypted snapshot stored in `vault.db.recovery`, then saves that recovered snapshot with a new master password.
 
-Rollback detection is a separate future concern. See [Rollback Policy](rollback-policy.md) for the intended design around monotonic revisions, trusted local state, and explicit restore acceptance.
+Rollback detection is separate from recovery snapshot decryption. See [Rollback Policy](rollback-policy.md) for monotonic revisions, trusted local state, opt-in block mode, and explicit restore acceptance.
 
 ## Runtime Files
 

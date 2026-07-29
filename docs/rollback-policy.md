@@ -1,9 +1,8 @@
 # Rollback Policy
 
 This document describes the rollback-detection policy for `myminivault`.
-The initial implementation is warning-only: it detects suspicious local rollback
-conditions and reports them, but it does not yet block commands or provide an
-explicit restore-acceptance command.
+The default implementation is warning-only, but the CLI also supports an
+opt-in blocking mode and an explicit restore-acceptance command.
 
 ## Problem
 
@@ -23,7 +22,7 @@ reappear.
 - avoid silently breaking intentional backup restores
 - preserve snapshot-based recovery semantics
 - keep legacy vault files readable
-- make `doctor` and `inspect-runtime` useful before enforcing stricter behavior
+- make `doctor` and `inspect-runtime` useful before enabling stricter behavior
 
 ## Non-Goals
 
@@ -81,10 +80,10 @@ When loading `vault.db`:
    trusted state on the next successful save.
 3. If there is no trusted-state file, initialize it from the loaded vault after
    a successful password-authenticated load.
-4. If `vault_id` differs from trusted state, warn or require an explicit accept
-   command in a future strict mode.
+4. If `vault_id` differs from trusted state, warn by default or fail in block
+   mode until the current vault is explicitly accepted.
 5. If `revision` is lower than `highest_revision`, report a rollback warning or
-   warning.
+   fail in block mode.
 6. If `revision` is equal or higher, accept the vault and update trusted state
    after successful mutating saves.
 
@@ -97,30 +96,28 @@ On every successful main-vault mutation:
 3. Save the main vault atomically.
 4. Update trusted state only after the main vault save succeeds.
 
-If trusted-state update fails after the vault save succeeds, the command should
-report a clear warning or error. The safest default is to fail the command after
-the save has completed and tell the user to run `vault doctor` or a future
-`vault rollback-state repair` command.
+If trusted-state update fails after the vault save succeeds, the command reports
+a clear save error so the user can inspect the runtime state with `vault doctor`
+or `vault inspect-runtime`.
 
 ## Restore Policy
 
-Intentional restore should become explicit before strict blocking is enabled.
-
-Opening an older backup does not silently lower trusted state. A future command
-should make this action deliberate, for example:
-
-```bash
-vault accept-rollback --from vault.db.20260718-120000.bak
-```
-
-or, if a restore command is added later:
+Opening an older backup does not silently lower trusted state. Restore is still a
+manual file operation today: copy the intended backup over `vault.db`, unlock it,
+verify that it is really the vault you wanted, and then explicitly accept its
+rollback metadata:
 
 ```bash
-vault restore vault.db.20260718-120000.bak --accept-older-revision
+vault rollback-accept
 ```
 
-The command should print the current trusted revision, the candidate vault
-revision, timestamps, and the consequence of accepting the older state.
+`rollback-accept` requires the master password because it must decrypt the
+current vault before trusting its encrypted `vault_id` and `revision`. It updates
+`rollback-state.json` to the current vault metadata and prints the accepted
+revision. Only use it after verifying that the current restore is intentional.
+
+A future `vault restore <backup>` command may combine backup selection,
+inspection, replacement, and acceptance in one safer flow.
 
 ## Recovery Policy
 
@@ -150,19 +147,23 @@ explicit rollback/restore handling first.
 
 ## Modes
 
-The default CLI behavior is currently equivalent to `warn`. The internal
-rollback checker also exposes a block-capable mode for tests and future command
-wiring:
+`vault-config.json` supports these `rollback_mode` values:
 
 - `off`: do not check rollback state; useful for debugging and legacy recovery
 - `warn`: report suspicious rollback but allow read-only commands
-- `strict` / `block`: report suspicious rollback as a failure until the user
-  accepts or repairs the state
+- `block`: report suspicious rollback as a failure until the user accepts the
+  current vault with `vault rollback-accept`
 
-The CLI does not enable strict blocking yet because legitimate restore workflows
-need an explicit accept/repair command first. The internal `CheckWithMode`
-helper keeps the policy testable while preserving the current warn-by-default
-behavior.
+Example:
+
+```json
+{
+  "rollback_mode": "block"
+}
+```
+
+Rollback checks run before token sync import so an older main vault does not
+silently absorb newer staged token writes.
 
 ## Doctor And Inspect Output
 
@@ -204,10 +205,10 @@ another trust anchor outside the runtime directory.
 
 ## Remaining Implementation Plan
 
-1. Add an explicit accept/repair command before introducing strict blocking.
-2. Add a restore command that can deliberately accept an older revision.
-3. Add config support for `off`, `warn`, and `strict` modes.
-4. Add stronger smoke coverage for rollback warning output across full CLI
+1. Add a safer `vault restore <backup>` command that previews candidate metadata
+   before replacing `vault.db`.
+2. Add smoke coverage for intentional restore acceptance.
+3. Add stronger smoke coverage for rollback warning output across full CLI
    backup/restore simulations.
-5. Evaluate OS-backed trusted state for platforms that provide a better trust
+4. Evaluate OS-backed trusted state for platforms that provide a better trust
    anchor than a file in the runtime directory.

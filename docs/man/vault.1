@@ -165,6 +165,9 @@ Encrypted shared vault used by token commands.
 .B ~/.myminivault/vault-tokens.json
 Token registry metadata.
 .TP
+.B ~/.myminivault/rollback-state.json
+Local trusted high-water revision used for rollback detection.
+.TP
 .B ~/.myminivault/vault.log
 Redacted audit log.
 .TP
@@ -180,6 +183,18 @@ may remain in terminal scrollback or logs. Prefer
 for one secret. Use
 .B export --output
 only when a persistent plaintext artifact is intentional.
+
+Rollback checks warn by default when an older valid main vault appears to have
+replaced the trusted local state. Set
+.B rollback_mode
+to
+.B block
+in
+.B vault-config.json
+to fail protected password commands until the current vault is explicitly
+accepted with
+.B vault rollback-accept
+after an intentional restore.
 
 Release artifacts include SPDX JSON SBOMs, SHA-256 checksums, an aggregate SHA256SUMS manifest, and GitHub artifact attestations
 when built by the release workflow. Verify release assets before installing

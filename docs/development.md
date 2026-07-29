@@ -67,7 +67,7 @@ docs/
   development.md        architecture, test, and release workflow notes
   security.md           security model, assumptions, limits, and compromise guidance
   recovery-policy.md    recovery snapshot, verifier, divergence, and rotation policy
-  rollback-policy.md    rollback detection behavior and future strict-mode design
+  rollback-policy.md    rollback detection behavior and opt-in block-mode design
   token-sync-policy.md  main/shared token vault sync policy and deferred decisions
 ```
 

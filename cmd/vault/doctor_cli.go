@@ -96,7 +96,7 @@ func checkConfigHealth() doctorCheck {
 		check.name = "config permissions"
 		return check
 	}
-	return doctorCheck{name: "config", status: "OK", detail: fmt.Sprintf("valid, max_backups=%d, audit_log=%t, token_key_storage=%s", cfg.MaxBackups, cfg.AuditLog, cfg.TokenKeyStorage)}
+	return doctorCheck{name: "config", status: "OK", detail: fmt.Sprintf("valid, max_backups=%d, audit_log=%t, token_key_storage=%s, rollback_mode=%s", cfg.MaxBackups, cfg.AuditLog, cfg.TokenKeyStorage, cfg.RollbackMode)}
 }
 
 func checkTokenKeyStorageHealth() doctorCheck {

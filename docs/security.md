@@ -167,7 +167,7 @@ Security notes for `MYMINIVAULT_HOME`:
 | `vault-token.key` | Critical | Token system compromise | Restrictive writes, `regenerate-token-key`, macOS Keychain support with file fallback |
 | `shared-token-vault.json` and `.bak` | High | Token-access vault exposure | Encrypted current and previous shared vault, token master key |
 | `vault-tokens.json` | Medium | Token registry metadata leakage | Restrictive writes |
-| `rollback-state.json` | Medium | Trusted revision confusion | Restrictive writes, symlink rejection, warning-only rollback checks |
+| `rollback-state.json` | Medium | Trusted revision confusion | Restrictive writes, symlink rejection, warning-by-default rollback checks with opt-in blocking |
 | `vault.log` | Medium | Operational metadata leakage | Redacted key/token identifiers, optional logging |
 | `vault-config.json` | Low/Medium | Unsafe runtime configuration | Validation on load |
 | `.myminivault.lock` | Low | Write coordination confusion | Advisory lock only |
@@ -288,7 +288,7 @@ Current mitigations:
 | Terminal capture | Out of scope once plaintext is printed |
 | Clipboard capture | Partially mitigated by TTL clearing, but not prevented |
 | Runtime file tampering | Partially mitigated by authenticated encryption and checksums |
-| Replacement with an older valid vault | Warned when encrypted vault revision falls below local trusted rollback state; not blocked yet |
+| Replacement with an older valid vault | Warned by default when encrypted vault revision falls below local trusted rollback state; can be blocked with `rollback_mode="block"` |
 | Supply-chain compromise | Partially mitigated by CI, CodeQL, `govulncheck`, pinned Actions, SBOMs, checksums, and GitHub artifact attestations; still not a full external audit or platform signing process |
 
 ## Operational Guidance
@@ -364,7 +364,7 @@ Recommended next steps:
 - keep expanding crash-consistency tests around directory sync and interrupted writes
 - keep extending migration coverage around bounded KDF metadata loading and legacy compatibility
 - sync runtime directories after atomic renames where supported and document the remaining crash-consistency limits
-- continue the rollback detection work in [Rollback Policy](rollback-policy.md) with explicit restore acceptance and possible strict mode
+- continue the rollback detection work in [Rollback Policy](rollback-policy.md) with safer restore tooling and possible OS-backed trusted state
 - keep token sync protected with scenario/property-style tests so preview, import, update, delete, conflict, and legacy fallback behavior stay aligned
 - keep macOS Keychain support current and reconsider Linux Secret Service storage only with a reliable desktop/headless policy
 - keep CodeQL and `govulncheck` results triaged, evaluate `staticcheck` and `gosec`, then evaluate signed tags/checksums and platform signing before stronger supply-chain claims
