@@ -14,6 +14,9 @@ const (
 	TokenKeyStorageAuto     = "auto"
 	TokenKeyStorageFile     = "file"
 	TokenKeyStorageKeychain = "keychain"
+	RollbackModeOff         = "off"
+	RollbackModeWarn        = "warn"
+	RollbackModeBlock       = "block"
 )
 
 // Config contains user-tunable runtime and encryption settings.
@@ -25,6 +28,7 @@ type Config struct {
 	MaxBackups      int    `json:"max_backups"`
 	AuditLog        bool   `json:"audit_log"`
 	TokenKeyStorage string `json:"token_key_storage"`
+	RollbackMode    string `json:"rollback_mode"`
 }
 
 // Default is the baseline configuration used when vault-config.json is absent.
@@ -36,6 +40,7 @@ var Default = Config{
 	MaxBackups:      5,
 	AuditLog:        true,
 	TokenKeyStorage: TokenKeyStorageAuto,
+	RollbackMode:    RollbackModeWarn,
 }
 
 // Load returns defaults when the config file is absent, but rejects malformed
@@ -92,6 +97,11 @@ func Validate(cfg Config) error {
 	case TokenKeyStorageAuto, TokenKeyStorageFile, TokenKeyStorageKeychain:
 	default:
 		return errors.New(`token_key_storage must be "auto", "file", or "keychain"`)
+	}
+	switch cfg.RollbackMode {
+	case RollbackModeOff, RollbackModeWarn, RollbackModeBlock:
+	default:
+		return errors.New(`rollback_mode must be "off", "warn", or "block"`)
 	}
 	return nil
 }

@@ -551,6 +551,7 @@ Default values:
 | `max_backups` | `5` |
 | `audit_log` | `true` |
 | `token_key_storage` | `auto` |
+| `rollback_mode` | `warn` |
 
 The program loads `vault-config.json` from the runtime directory.
 
@@ -566,6 +567,7 @@ Config validation:
 - `key_size` must be `16`, `24`, or `32`
 - `max_backups` must be between `1` and `100`
 - `token_key_storage` must be `auto`, `file`, or `keychain`
+- `rollback_mode` must be `off`, `warn`, or `block`
 
 Manual timestamped backups keep only the newest `max_backups` files.
 
@@ -578,6 +580,28 @@ If `vault-config.json` is malformed or unsafe, the CLI stops with a config error
 - `keychain` requires an implemented OS keychain backend and fails clearly when unavailable
 
 On first token use, `auto` can migrate an existing macOS `vault-token.key` into macOS Keychain and then remove the old file. On Linux, token key storage is file-based by design for now. `vault doctor` checks for both a DBus session and `secret-tool` before reporting Secret Service as available, but Linux still uses the file fallback. Other OS stores remain future work.
+
+`rollback_mode` controls how the CLI reacts when the encrypted vault revision appears older than the local trusted `rollback-state.json` high-water mark:
+
+- `warn` is the default; commands continue but print a rollback warning
+- `block` fails protected password-based commands before token sync import runs
+- `off` disables the check for controlled debugging or legacy recovery work
+
+Example strict setting:
+
+```json
+{
+  "rollback_mode": "block"
+}
+```
+
+After an intentional manual restore of a verified older `vault.db`, unlock the vault and accept the restored revision explicitly:
+
+```bash
+vault rollback-accept
+```
+
+Only run `rollback-accept` after confirming that the current vault file is the one you meant to restore.
 
 Audit logging is enabled by default but intentionally avoids key names and token identifiers. To disable audit logging:
 
@@ -653,7 +677,7 @@ Important behavior:
 | `vault-config.json` | Optional config override |
 | `.myminivault.lock` | Inter-process lock file |
 
-Current encrypted runtime files include a small cleartext `MYMV v2` container header with the container format version, file kind, and non-sensitive crypto metadata. New saves use Argon2id metadata. This helps `vault doctor` and `vault inspect-runtime` identify file format information without decrypting secrets. The v2 cleartext context is authenticated with AES-GCM AAD, so header or metadata tampering makes decryption fail. Mutating password-based saves also keep encrypted vault rollback metadata and update `rollback-state.json`; if a later command sees an older valid vault revision, it warns instead of silently lowering trusted local state. scrypt-based `MYMV v2`, older `MYMV v1`, and salt-plus-ciphertext files remain readable but are deprecated and are upgraded to the current Argon2id-based profile when rewritten.
+Current encrypted runtime files include a small cleartext `MYMV v2` container header with the container format version, file kind, and non-sensitive crypto metadata. New saves use Argon2id metadata. This helps `vault doctor` and `vault inspect-runtime` identify file format information without decrypting secrets. The v2 cleartext context is authenticated with AES-GCM AAD, so header or metadata tampering makes decryption fail. Mutating password-based saves also keep encrypted vault rollback metadata and update `rollback-state.json`; if a later command sees an older valid vault revision, it warns by default or blocks when `rollback_mode` is `block`. scrypt-based `MYMV v2`, older `MYMV v1`, and salt-plus-ciphertext files remain readable but are deprecated and are upgraded to the current Argon2id-based profile when rewritten.
 
 These files are ignored by Git because they may contain encrypted secrets, keys, logs, or local runtime state.
 

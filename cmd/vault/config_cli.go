@@ -50,6 +50,7 @@ func showConfig() {
 	fmt.Printf("  max_backups: %d\n", config.MaxBackups)
 	fmt.Printf("  audit_log: %t\n", config.AuditLog)
 	fmt.Printf("  token_key_storage: %s\n", config.TokenKeyStorage)
+	fmt.Printf("  rollback_mode: %s\n", config.RollbackMode)
 }
 
 func handleConfigCommand() error {

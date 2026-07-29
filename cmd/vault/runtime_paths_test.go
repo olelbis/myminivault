@@ -250,3 +250,27 @@ func captureStdout(t *testing.T, fn func()) string {
 	}
 	return buffer.String()
 }
+
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+
+	original := os.Stderr
+	readEnd, writeEnd, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	os.Stderr = writeEnd
+
+	fn()
+
+	if err := writeEnd.Close(); err != nil {
+		t.Fatalf("close stderr pipe writer: %v", err)
+	}
+	os.Stderr = original
+
+	var buffer bytes.Buffer
+	if _, err := buffer.ReadFrom(readEnd); err != nil {
+		t.Fatalf("read stderr pipe: %v", err)
+	}
+	return buffer.String()
+}

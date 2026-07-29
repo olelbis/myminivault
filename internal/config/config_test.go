@@ -22,6 +22,7 @@ func TestValidateRejectsUnsafeValues(t *testing.T) {
 		"max_backups too low":  withConfigChange(func(cfg Config) Config { cfg.MaxBackups = 0; return cfg }),
 		"max_backups too high": withConfigChange(func(cfg Config) Config { cfg.MaxBackups = 101; return cfg }),
 		"token key storage":    withConfigChange(func(cfg Config) Config { cfg.TokenKeyStorage = "sometimes"; return cfg }),
+		"rollback mode":        withConfigChange(func(cfg Config) Config { cfg.RollbackMode = "panic"; return cfg }),
 	}
 
 	for name, cfg := range tests {
@@ -58,9 +59,23 @@ func TestLoadAppliesValidOverride(t *testing.T) {
 			t.Fatalf("Load: %v", err)
 		}
 
-		want := Config{ScryptN: 65536, ScryptR: 8, ScryptP: 2, KeySize: 24, MaxBackups: 10, AuditLog: true, TokenKeyStorage: TokenKeyStorageAuto}
+		want := Config{ScryptN: 65536, ScryptR: 8, ScryptP: 2, KeySize: 24, MaxBackups: 10, AuditLog: true, TokenKeyStorage: TokenKeyStorageAuto, RollbackMode: RollbackModeWarn}
 		if cfg != want {
 			t.Fatalf("config = %+v, want %+v", cfg, want)
+		}
+	})
+}
+
+func TestLoadAppliesRollbackModeOverride(t *testing.T) {
+	withTempWorkingDir(t, func() {
+		writeConfigFile(t, `{"rollback_mode":"block"}`)
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		if cfg.RollbackMode != RollbackModeBlock {
+			t.Fatalf("rollback_mode = %q, want %q", cfg.RollbackMode, RollbackModeBlock)
 		}
 	})
 }

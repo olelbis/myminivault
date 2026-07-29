@@ -133,7 +133,12 @@ func runPasswordCommandBytes(command string, password []byte) error {
 		return fmt.Errorf("error loading vault: %w", err)
 	}
 
-	warnOnRollbackState(extendedVault)
+	if command == "rollback-accept" {
+		return acceptRollbackState(extendedVault)
+	}
+	if err := enforceRollbackState(extendedVault); err != nil {
+		return err
+	}
 	tokenImportResult := importTokenChangesBeforePasswordCommand(extendedVault)
 	tokenImportChanged := hasImportedTokenChanges(tokenImportResult)
 
@@ -172,11 +177,31 @@ func runPasswordCommandBytes(command string, password []byte) error {
 	return nil
 }
 
-func warnOnRollbackState(vault *ExtendedVault) {
-	rollbackCheck := vaultrollback.Check(rollbackStateFile, vault.Metadata)
-	if rollbackCheck.Status == "WARN" && !suppressRuntimeWarnings {
-		fmt.Fprintf(os.Stderr, "⚠️  Rollback warning: %s\n", rollbackCheck.Detail)
+func enforceRollbackState(vault *ExtendedVault) error {
+	switch config.RollbackMode {
+	case "off":
+		return nil
+	case "block":
+		rollbackCheck := vaultrollback.CheckWithMode(rollbackStateFile, vault.Metadata, vaultrollback.ModeBlock)
+		if rollbackCheck.Status == "FAIL" {
+			return fmt.Errorf("rollback check failed: %s\nRun 'vault rollback-accept' only if this vault restore is intentional.", rollbackCheck.Detail)
+		}
+	default:
+		rollbackCheck := vaultrollback.CheckWithMode(rollbackStateFile, vault.Metadata, vaultrollback.ModeWarn)
+		if rollbackCheck.Status == "WARN" && !suppressRuntimeWarnings {
+			fmt.Fprintf(os.Stderr, "⚠️  Rollback warning: %s\n", rollbackCheck.Detail)
+		}
 	}
+	return nil
+}
+
+func acceptRollbackState(vault *ExtendedVault) error {
+	if err := vaultrollback.SaveState(rollbackStateFile, vault.Metadata); err != nil {
+		return fmt.Errorf("failed to accept rollback state: %w", err)
+	}
+	fmt.Printf("✅ Rollback state accepted: vault_id=%s revision=%d\n", vault.Metadata.VaultID, vault.Metadata.Revision)
+	fmt.Println("⚠️  Only use this after verifying that the current vault restore is intentional.")
+	return nil
 }
 
 func importTokenChangesBeforePasswordCommand(vault *ExtendedVault) vaultsync.ImportResult {
@@ -318,7 +343,7 @@ func showUsage() {
 	fmt.Println("Recovery: setup-recovery, refresh-recovery, recover, test-recovery, change-password")
 	fmt.Println("Tokens: create-token, list-tokens, revoke-token, use-token, token-info, cleanup-tokens")
 	fmt.Println("Sync: sync-tokens [--dry-run]")
-	fmt.Println("Security: security-audit, doctor, inspect-runtime, migrate, config, regenerate-token-key, help")
+	fmt.Println("Security: security-audit, doctor, inspect-runtime, migrate, rollback-accept, config, regenerate-token-key, help")
 }
 
 func showHelp() {
@@ -379,6 +404,7 @@ SECURITY:
   doctor                Check runtime file permissions and local health
   inspect-runtime       List active and legacy runtime files without decrypting
   migrate --dry-run     Preview encrypted runtime file format migration
+  rollback-accept       Accept current vault metadata after an intentional restore
   config                Show configuration
   regenerate-token-key  Generate new token master key
 

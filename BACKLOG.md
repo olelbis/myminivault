@@ -48,8 +48,8 @@ Main risks:
 - `cmd/vault` still contains orchestration that may deserve future extraction when it produces a clearer command boundary
 - the security model is clearer, but it is still self-reviewed and not an external audit
 - direct `vault set KEY value` and `vault use-token <token>` remain available for non-sensitive/demo use, but stdin alternatives now exist for both secret values and compact tokens
-- sensitive runtime helpers now reject symlinks, use OS-specific no-follow opens on Unix-like systems, create key temp/transaction files exclusively, and warn on many older-valid-vault rollback cases
-- authenticated containers detect tampering, and initial rollback-state warnings now detect many older-valid-vault replacements; strict blocking and explicit restore acceptance remain future work
+- sensitive runtime helpers now reject symlinks, use OS-specific no-follow opens on Unix-like systems, create key temp/transaction files exclusively, and warn or optionally block many older-valid-vault rollback cases
+- authenticated containers detect tampering, and rollback-state checks now detect many older-valid-vault replacements; the remaining rollback workflow gap is a safer guided restore command
 
 Strategic guidance:
 
@@ -83,12 +83,12 @@ Use this section first when resuming work. The detailed backlog below explains e
    - Suggested branch: `supply-chain-hardening`.
 
 4. **Rollback Policy**
-   - Status: initial warn-mode implementation completed in `v0.12.17`; strict blocking and explicit restore/accept commands remain future work.
-   - Goal: evolve monotonic encrypted vault revisions plus local trusted-state checks without breaking backup and recovery workflows.
+   - Status: warn-mode implementation completed in `v0.12.17`; opt-in `rollback_mode="block"` and `vault rollback-accept` implemented after `v0.13.5`.
+   - Goal: add a safer guided `vault restore <backup>` workflow without breaking backup and recovery semantics.
    - Suggested branch: `rollback-policy`.
 
 5. **Secret Input And Runtime Path Hardening**
-   - Status: partial progress through `v0.13.4` with stdin/file/fd token input, explicit plaintext-output gates, portable symlink rejection, Unix no-follow opens for checked sensitive runtime helpers, exclusive creation for temp/transaction files, and warn-mode rollback-state checks.
+   - Status: partial progress through `v0.13.4` with stdin/file/fd token input, explicit plaintext-output gates, portable symlink rejection, Unix no-follow opens for checked sensitive runtime helpers, exclusive creation for temp/transaction files, and rollback-state checks with warn/block modes.
    - Goal: keep reducing direct secret/token exposure, sensitive runtime symlink risk, and runtime file race windows.
    - Suggested branch: `secret-input-path-hardening`.
 
@@ -425,15 +425,15 @@ Recommended order:
 2. expand compatibility fixtures around the Argon2id default and deprecated scrypt/v1 profiles
 3. keep fuzzing `internal/container.FuzzParse` after format or metadata parser changes
 4. add property-style tests for staged token writes/import/delete invariants
-4. harden token sync UX and policy so staged token writes are less likely to remain unreconciled
-5. implement rollback strict mode with an explicit restore/accept command before blocking by default
-6. keep CodeQL and `govulncheck` results triaged, then evaluate `staticcheck` and possibly `gosec` with a documented triage policy
-7. implement real `vault migrate` based on the migration policy and existing `vault migrate --dry-run` preview
-8. keep rollback and broader same-user file-replacement race hardening moving after no-follow opens, directory fsync, exclusive temp/marker creation, and warn-mode revision checks
-9. continue migration coverage around authenticated KDF metadata and crash-consistency behavior
-10. evaluate signed tags/checksums and platform signing after SBOM and immutable Action pinning
-11. keep Linux token key storage file-backed until a reliable desktop/headless Secret Service strategy emerges
-12. keep the internal coverage floor healthy and reduce `cmd/vault` orchestration only when tests protect the boundary
+5. harden token sync UX and policy so staged token writes are less likely to remain unreconciled
+6. add a guided `vault restore <backup>` command that previews candidate metadata before replacement and acceptance
+7. keep CodeQL and `govulncheck` results triaged, then evaluate `staticcheck` and possibly `gosec` with a documented triage policy
+8. implement real `vault migrate` based on the migration policy and existing `vault migrate --dry-run` preview
+9. keep rollback and broader same-user file-replacement race hardening moving after no-follow opens, directory fsync, exclusive temp/marker creation, and rollback warn/block checks
+10. continue migration coverage around authenticated KDF metadata and crash-consistency behavior
+11. evaluate signed tags/checksums and platform signing after SBOM and immutable Action pinning
+12. keep Linux token key storage file-backed until a reliable desktop/headless Secret Service strategy emerges
+13. keep the internal coverage floor healthy and reduce `cmd/vault` orchestration only when tests protect the boundary
 
 Suggested branches:
 
@@ -449,7 +449,7 @@ Priority: high.
 
 The first July 2026 review follow-up pass is complete. Remaining follow-up work:
 
-- wire rollback strict/block mode into user-facing config only after explicit restore/accept commands exist
+- add a guided `vault restore <backup>` command with preview and explicit acceptance
 - improve recovery freshness reporting with mutation/revision distance, not only file timestamp freshness
 - keep CodeQL and `govulncheck` results triaged, then decide whether `staticcheck` and `gosec` should become CI gates
 - keep `SECURITY.md`, review request links, and the public focused-review issue current

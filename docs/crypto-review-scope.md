@@ -103,7 +103,7 @@ Reviewers should focus on whether:
 
 - Go cannot guarantee full memory wiping of all secret copies.
 - Current Linux token key storage is file-backed; macOS can use Keychain.
-- Rollback detection is warning-based, not strict blocking.
+- Rollback detection warns by default and can block password-based commands when `rollback_mode` is `block`.
 - Local sync metadata is best-effort and not a distributed merge model.
 - Export and terminal display commands intentionally expose plaintext only when
   explicit flags are used.
