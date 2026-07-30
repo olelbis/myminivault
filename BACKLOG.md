@@ -22,7 +22,7 @@ Current assessment score: `8.6 / 10` under the practical project-readiness model
 Main strengths:
 
 - release discipline with Git tags, GitHub releases, and a changelog
-- GitHub CI for formatting, vetting, automated tests across Linux and macOS, CodeQL, and `govulncheck`
+- GitHub CI for formatting, vetting, `staticcheck`, automated tests across Linux and macOS, CodeQL, and `govulncheck`
 - release package automation for Linux amd64, Linux arm64, and macOS arm64, including archives, `.deb`, `.rpm`, `.pkg`, checksums, and GitHub artifact attestations
 - dedicated runtime directory under `~/.myminivault/` with `MYMINIVAULT_HOME` override
 - CI coverage reporting with downloadable artifacts and documented baseline coverage
@@ -427,7 +427,7 @@ Recommended order:
 4. add property-style tests for staged token writes/import/delete invariants
 5. harden token sync UX and policy so staged token writes are less likely to remain unreconciled
 6. add a guided `vault restore <backup>` command that previews candidate metadata before replacement and acceptance
-7. keep CodeQL and `govulncheck` results triaged, then evaluate `staticcheck` and possibly `gosec` with a documented triage policy
+7. keep `staticcheck`, CodeQL, and `govulncheck` results triaged, then evaluate `gosec` with a documented triage policy
 8. implement real `vault migrate` based on the migration policy and existing `vault migrate --dry-run` preview
 9. keep rollback and broader same-user file-replacement race hardening moving after no-follow opens, directory fsync, exclusive temp/marker creation, and rollback warn/block checks
 10. continue migration coverage around authenticated KDF metadata and crash-consistency behavior
@@ -450,8 +450,7 @@ Priority: high.
 The first July 2026 review follow-up pass is complete. Remaining follow-up work:
 
 - add a guided `vault restore <backup>` command with preview and explicit acceptance
-- improve recovery freshness reporting with mutation/revision distance, not only file timestamp freshness
-- keep CodeQL and `govulncheck` results triaged, then decide whether `staticcheck` and `gosec` should become CI gates
+- keep `staticcheck`, CodeQL, and `govulncheck` results triaged, then decide whether `gosec` should become a CI gate
 - keep `SECURITY.md`, review request links, and the public focused-review issue current
 - expand the independent decryptor experiment beyond the initial Go/Python reference readers when useful
 - implement the real mutating `vault migrate` command once dry-run behavior and migration policy have settled
@@ -474,7 +473,7 @@ The early project history intentionally used many tiny releases while stabilizin
 
 Priority: medium.
 
-Current CI runs formatting, `go vet`, `go test ./...`, full coverage reporting, and an enforced internal package coverage floor.
+Current CI runs formatting, `go vet`, `staticcheck`, `go test ./...`, full coverage reporting, and an enforced internal package coverage floor.
 
 Next actions:
 

@@ -140,7 +140,7 @@ This is a local convenience model, not distributed synchronization. Per-key time
 
 ### Release Boundary
 
-GitHub Releases publish source tags, binary archives, and installable packages. Per-target SPDX JSON SBOMs document Go module dependencies for each release target. Per-target checksum files and the aggregate `SHA256SUMS` manifest help detect accidental corruption or mismatched downloads. Release workflow artifacts also receive GitHub artifact attestations, which provide signed build provenance for assets produced by GitHub Actions. GitHub Actions are pinned to immutable commit SHAs in workflows to reduce tag-retargeting risk. CodeQL and `govulncheck` run in GitHub Actions to catch common static-analysis findings and known Go vulnerabilities, but they are automated checks rather than an external security audit.
+GitHub Releases publish source tags, binary archives, and installable packages. Per-target SPDX JSON SBOMs document Go module dependencies for each release target. Per-target checksum files and the aggregate `SHA256SUMS` manifest help detect accidental corruption or mismatched downloads. Release workflow artifacts also receive GitHub artifact attestations, which provide signed build provenance for assets produced by GitHub Actions. GitHub Actions are pinned to immutable commit SHAs in workflows to reduce tag-retargeting risk. `staticcheck`, CodeQL, and `govulncheck` run in GitHub Actions to catch common static-analysis findings and known Go vulnerabilities, but they are automated checks rather than an external security audit.
 
 The project does not currently require manually signed commits or tags, and release packages are not notarized or signed with platform-specific installer certificates.
 
@@ -289,7 +289,7 @@ Current mitigations:
 | Clipboard capture | Partially mitigated by TTL clearing, but not prevented |
 | Runtime file tampering | Partially mitigated by authenticated encryption and checksums |
 | Replacement with an older valid vault | Warned by default when encrypted vault revision falls below local trusted rollback state; can be blocked with `rollback_mode="block"` |
-| Supply-chain compromise | Partially mitigated by CI, CodeQL, `govulncheck`, pinned Actions, SBOMs, checksums, and GitHub artifact attestations; still not a full external audit or platform signing process |
+| Supply-chain compromise | Partially mitigated by CI, `staticcheck`, CodeQL, `govulncheck`, pinned Actions, SBOMs, checksums, and GitHub artifact attestations; still not a full external audit or platform signing process |
 
 ## Operational Guidance
 
@@ -367,6 +367,6 @@ Recommended next steps:
 - continue the rollback detection work in [Rollback Policy](rollback-policy.md) with safer restore tooling and possible OS-backed trusted state
 - keep token sync protected with scenario/property-style tests so preview, import, update, delete, conflict, and legacy fallback behavior stay aligned
 - keep macOS Keychain support current and reconsider Linux Secret Service storage only with a reliable desktop/headless policy
-- keep CodeQL and `govulncheck` results triaged, evaluate `staticcheck` and `gosec`, then evaluate signed tags/checksums and platform signing before stronger supply-chain claims
+- keep `staticcheck`, CodeQL, and `govulncheck` results triaged, evaluate `gosec`, then evaluate signed tags/checksums and platform signing before stronger supply-chain claims
 - consider signed tags, signed checksum manifests, or platform-specific package signing later in the release process
 - avoid claiming production security without an external audit
