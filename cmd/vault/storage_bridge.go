@@ -1,26 +1,16 @@
 package main
 
 import (
+	"time"
+
 	"github.com/olelbis/myminivault/internal/container"
 	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
 	vaultrollback "github.com/olelbis/myminivault/internal/rollback"
 	vaultstorage "github.com/olelbis/myminivault/internal/storage"
 )
 
-func loadAndDecryptExtendedVault(password string) (*ExtendedVault, []byte, error) {
-	passwordBytes := []byte(password)
-	defer wipeBytes(passwordBytes)
-	return loadAndDecryptExtendedVaultBytes(passwordBytes)
-}
-
 func loadAndDecryptExtendedVaultBytes(password []byte) (*ExtendedVault, []byte, error) {
 	return vaultstorage.LoadBytes(password, storageOptions())
-}
-
-func saveExtendedVault(vault *ExtendedVault, password string, salt []byte) error {
-	passwordBytes := []byte(password)
-	defer wipeBytes(passwordBytes)
-	return saveExtendedVaultBytes(vault, passwordBytes, salt)
 }
 
 func saveExtendedVaultBytes(vault *ExtendedVault, password []byte, salt []byte) error {
@@ -28,20 +18,30 @@ func saveExtendedVaultBytes(vault *ExtendedVault, password []byte, salt []byte) 
 	if err := vaultrollback.PrepareNextRevision(&vault.Metadata, state); err != nil {
 		return err
 	}
+	markRecoverySnapshotRevision(vault)
 	if err := vaultstorage.SaveBytes(vault, password, salt, storageOptions()); err != nil {
 		return err
 	}
 	return vaultrollback.SaveState(rollbackStateFile, vault.Metadata)
 }
 
+func markRecoverySnapshotRevision(vault *ExtendedVault) {
+	if vault.Recovery == nil || !recoverySnapshotWillRefresh() {
+		return
+	}
+	vault.Recovery.SnapshotVaultID = vault.Metadata.VaultID
+	vault.Recovery.SnapshotRevision = vault.Metadata.Revision
+	vault.Recovery.SnapshotAt = time.Now().UTC()
+}
+
+func recoverySnapshotWillRefresh() bool {
+	return currentRecoveryKey != "" || len(currentRecoveryKeyBytes) > 0
+}
+
 func wipeBytes(data []byte) {
 	for i := range data {
 		data[i] = 0
 	}
-}
-
-func tryLoad(file string) ([]byte, []byte, error) {
-	return vaultstorage.TryLoad(file, saltSize)
 }
 
 func tryLoadParsed(file string) (container.Parsed, error) {

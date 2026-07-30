@@ -235,9 +235,9 @@ The normal save path also keeps `vault.db.bak` as the previous version of the va
 ./bin/vault doctor
 ```
 
-Checks local runtime health without asking for the master password. It reports config validity, runtime file permissions, timestamped backup presence, lock-file presence, recovery freshness and compatibility, token files, and log file status.
+Checks local runtime health without asking for the master password. It reports config validity, runtime file permissions, timestamped backup presence, lock-file presence, timestamp-based recovery freshness and compatibility, token files, and log file status.
 
-Sensitive runtime files should normally be readable only by the local user. Startup rejects symlinked sensitive runtime paths and tightens file permissions when possible. `vault doctor` warns when files such as `vault.db`, backups, recovery snapshots, token files, or logs are group/world-readable, and reports symlinked sensitive files as failures. It also warns when `vault.db.recovery` appears older than the main vault, has an unexpected container kind, or was written with crypto parameters that differ from the current config.
+Sensitive runtime files should normally be readable only by the local user. Startup rejects symlinked sensitive runtime paths and tightens file permissions when possible. `vault doctor` warns when files such as `vault.db`, backups, recovery snapshots, token files, or logs are group/world-readable, and reports symlinked sensitive files as failures. It also warns when `vault.db.recovery` appears older than the main vault, has an unexpected container kind, or was written with crypto parameters that differ from the current config. Because `doctor` does not decrypt secrets, revision-based recovery freshness is shown after unlock in `vault stats` and `vault security-audit`.
 
 ## Runtime Inspection
 

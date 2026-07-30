@@ -293,21 +293,8 @@ func handleImportCommand(vault map[string]string) []string {
 	return importedKeys
 }
 
-func readSecurePassword() (string, error) {
-	return readPasswordPrompt("🔐 Password: ")
-}
-
 func readSecurePasswordBytes() ([]byte, error) {
 	return readPasswordPromptBytes("🔐 Password: ")
-}
-
-func readPasswordPrompt(prompt string) (string, error) {
-	password, err := readPasswordPromptBytes(prompt)
-	if err != nil {
-		return "", err
-	}
-	defer wipeBytes(password)
-	return string(password), nil
 }
 
 func readPasswordPromptBytes(prompt string) ([]byte, error) {
@@ -327,15 +314,6 @@ func readPasswordPromptBytes(prompt string) ([]byte, error) {
 		}
 	}
 	return readLinePromptBytes(prompt)
-}
-
-func readLinePrompt(prompt string) (string, error) {
-	line, err := readLinePromptBytes(prompt)
-	if err != nil {
-		return "", err
-	}
-	defer wipeBytes(line)
-	return string(line), nil
 }
 
 func readLinePromptBytes(prompt string) ([]byte, error) {
@@ -446,6 +424,7 @@ func showStats(vault *ExtendedVault) {
 
 	if vault.Recovery != nil {
 		fmt.Printf("  Recovery: configured (%d uses)\n", vault.Recovery.UseCount)
+		fmt.Printf("  Recovery freshness: %s\n", recoveryRevisionFreshness(vault))
 	} else {
 		fmt.Printf("  Recovery: not configured\n")
 	}

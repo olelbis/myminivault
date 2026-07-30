@@ -312,6 +312,7 @@ func handleSecurityAudit(vault *ExtendedVault) {
 	} else {
 		fmt.Println("✅ Recovery key configured")
 		fmt.Printf("   Use count: %d\n", vault.Recovery.UseCount)
+		fmt.Printf("   Freshness: %s\n", recoveryRevisionFreshness(vault))
 	}
 
 	if vault.TokenManager == nil || len(vault.TokenManager.Tokens) == 0 {

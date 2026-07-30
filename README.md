@@ -183,12 +183,12 @@ Token writes are staged in `shared-token-vault.json` and imported into the main 
 ## Trust Status
 
 myminivault is experimental and unaudited. Current trust signals are project
-hygiene, not a security audit: automated tests, CI, CodeQL, `govulncheck`,
-release checksums, SBOMs, and GitHub artifact attestations. The encrypted file
-format, focused crypto review scope, and standalone Go/Python reference
-decryptors are documented so external review can be targeted at the small set of
-files that handle keys, encryption, containers, recovery, and token vault
-storage.
+hygiene, not a security audit: automated tests, CI, `staticcheck`, CodeQL,
+`govulncheck`, release checksums, SBOMs, and GitHub artifact attestations. The
+encrypted file format, focused crypto review scope, and standalone Go/Python
+reference decryptors are documented so external review can be targeted at the
+small set of files that handle keys, encryption, containers, recovery, and token
+vault storage.
 
 Security reports and review feedback are welcome through the process described
 in [SECURITY.md](SECURITY.md). Valid security findings can be credited publicly
@@ -239,7 +239,7 @@ vault inspect-runtime
 MYMINIVAULT_HOME=/tmp/myminivault-demo vault inspect-runtime
 ```
 
-The command prints active runtime files, legacy current-directory files, modified times, sizes, file modes, encrypted container format details where available, and a recovery/main-vault relationship summary. It never decrypts vault data or prints stored values.
+The command prints active runtime files, legacy current-directory files, modified times, sizes, file modes, encrypted container format details where available, and a non-decrypting recovery/main-vault relationship summary. It never decrypts vault data or prints stored values. After unlocking the vault, `vault stats` and `vault security-audit` can also report recovery freshness by encrypted vault revision, for example how many revisions the recovery snapshot lags behind the current main vault.
 
 Encrypted runtime files saved by current releases start with a small cleartext `MYMV` container header. Current saves write container format `v2`, which identifies the file kind and records non-sensitive crypto metadata such as algorithm, KDF, Argon2id parameters, salt size, nonce size, and payload layout. The `MYMV v2` header, metadata, and salt are authenticated with AES-GCM AAD, so tampering with that cleartext context makes decryption fail. Load paths validate supported KDF metadata and bounded parameters before deriving keys. It does not expose stored keys, values, recovery metadata, token contents, or encrypted vault metadata. New saves use Argon2id; older scrypt-based `MYMV v2`, `MYMV v1`, and salt-plus-ciphertext files remain readable but are deprecated and are reported as older/legacy formats until they are rewritten by a save operation.
 

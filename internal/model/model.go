@@ -5,10 +5,13 @@ import "time"
 // RecoveryData stores only the verifier metadata needed to validate a recovery
 // key; the recovery-encrypted vault snapshot lives in vault.db.recovery.
 type RecoveryData struct {
-	RecoveryKeyHash []byte    `json:"recovery_key_hash"`
-	CreatedAt       time.Time `json:"created_at"`
-	LastUsed        time.Time `json:"last_used,omitempty"`
-	UseCount        int       `json:"use_count"`
+	RecoveryKeyHash  []byte    `json:"recovery_key_hash"`
+	CreatedAt        time.Time `json:"created_at"`
+	LastUsed         time.Time `json:"last_used,omitempty"`
+	UseCount         int       `json:"use_count"`
+	SnapshotVaultID  string    `json:"snapshot_vault_id,omitempty"`
+	SnapshotRevision int64     `json:"snapshot_revision,omitempty"`
+	SnapshotAt       time.Time `json:"snapshot_at,omitempty"`
 }
 
 // AccessToken is persisted in the encrypted shared token vault, not in a plain

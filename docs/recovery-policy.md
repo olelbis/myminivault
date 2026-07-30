@@ -45,6 +45,14 @@ That currently happens when:
 
 Most normal master-password commands do not ask for the recovery key. They can update `vault.db` without updating `vault.db.recovery`.
 
+When a recovery snapshot is rewritten, the encrypted recovery metadata records
+the current `vault_id`, vault `revision`, and snapshot time. After the vault is
+unlocked, `vault stats` and `vault security-audit` use that metadata to report
+whether the recovery snapshot is current or behind the main vault by a concrete
+number of revisions. `vault doctor` and `vault inspect-runtime` remain
+non-decrypting commands, so they continue to report timestamp and container
+compatibility information without exposing encrypted revision metadata.
+
 ## Divergence Policy
 
 If `vault.db` and `vault.db.recovery` diverge, recovery follows `vault.db.recovery`.

@@ -115,12 +115,6 @@ func run() error {
 	})
 }
 
-func runPasswordCommand(command, password string) error {
-	passwordBytes := []byte(password)
-	defer wipeBytes(passwordBytes)
-	return runPasswordCommandBytes(command, passwordBytes)
-}
-
 type passwordCommandOutcome struct {
 	saveVault    bool
 	mirrorShared bool
@@ -184,7 +178,7 @@ func enforceRollbackState(vault *ExtendedVault) error {
 	case "block":
 		rollbackCheck := vaultrollback.CheckWithMode(rollbackStateFile, vault.Metadata, vaultrollback.ModeBlock)
 		if rollbackCheck.Status == "FAIL" {
-			return fmt.Errorf("rollback check failed: %s\nRun 'vault rollback-accept' only if this vault restore is intentional.", rollbackCheck.Detail)
+			return fmt.Errorf("rollback check failed: %s; run 'vault rollback-accept' only if this vault restore is intentional", rollbackCheck.Detail)
 		}
 	default:
 		rollbackCheck := vaultrollback.CheckWithMode(rollbackStateFile, vault.Metadata, vaultrollback.ModeWarn)
