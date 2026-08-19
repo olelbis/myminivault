@@ -13,13 +13,13 @@
   <img alt="Go" src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white">
   <img alt="Latest release" src="https://img.shields.io/github/v/release/olelbis/myminivault?sort=semver">
   <img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/olelbis/myminivault.svg">
-  <img alt="Internal coverage" src="https://img.shields.io/badge/internal_coverage-84.7%25-brightgreen">
+  <img alt="Internal coverage" src="https://img.shields.io/badge/internal_coverage-85.1%25-brightgreen">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
   <img alt="Status" src="https://img.shields.io/badge/status-experimental-orange">
   <img alt="CLI" src="https://img.shields.io/badge/interface-CLI-2f3337">
 </p>
 
-`myminivault` stores key/value secrets in an encrypted local vault file. It supports password recovery, temporary access tokens, backup/import/export utilities, and basic security auditing.
+`myminivault` stores key/value secrets in an encrypted local vault file. It supports password recovery, temporary access tokens, backup/import/export utilities, and basic security auditing. New password-based vault saves use Argon2id; high-entropy recovery and shared-token vault saves use HKDF-SHA256.
 
 > Experimental personal project. Not audited. Do not rely on it as a production password manager.
 
@@ -241,7 +241,7 @@ MYMINIVAULT_HOME=/tmp/myminivault-demo vault inspect-runtime
 
 The command prints active runtime files, legacy current-directory files, modified times, sizes, file modes, encrypted container format details where available, and a non-decrypting recovery/main-vault relationship summary. It never decrypts vault data or prints stored values. After unlocking the vault, `vault stats` and `vault security-audit` can also report recovery freshness by encrypted vault revision, for example how many revisions the recovery snapshot lags behind the current main vault.
 
-Encrypted runtime files saved by current releases start with a small cleartext `MYMV` container header. Current saves write container format `v2`, which identifies the file kind and records non-sensitive crypto metadata such as algorithm, KDF, Argon2id parameters, salt size, nonce size, and payload layout. The `MYMV v2` header, metadata, and salt are authenticated with AES-GCM AAD, so tampering with that cleartext context makes decryption fail. Load paths validate supported KDF metadata and bounded parameters before deriving keys. It does not expose stored keys, values, recovery metadata, token contents, or encrypted vault metadata. New saves use Argon2id; older scrypt-based `MYMV v2`, `MYMV v1`, and salt-plus-ciphertext files remain readable but are deprecated and are reported as older/legacy formats until they are rewritten by a save operation.
+Encrypted runtime files saved by current releases start with a small cleartext `MYMV` container header. Current saves write container format `v2`, which identifies the file kind and records non-sensitive crypto metadata such as algorithm, configured KDF, Argon2id, scrypt, or HKDF profile, salt size, nonce size, and payload layout. The `MYMV v2` header, metadata, and salt are authenticated with AES-GCM AAD, so tampering with that cleartext context makes decryption fail. Load paths validate supported KDF metadata and bounded parameters before deriving keys. It does not expose stored keys, values, recovery metadata, token contents, or encrypted vault metadata. New main-vault saves use `kdf="argon2id"` by default; new recovery and shared-token vault saves use HKDF-SHA256; older scrypt-based `MYMV v2`, `MYMV v1`, Argon2id recovery/shared-token files from earlier experimental releases, and salt-plus-ciphertext files remain readable but are deprecated and are reported as older/legacy formats until they are rewritten by a save operation.
 
 On normal startup, commands tighten existing runtime file permissions to `0600` when possible and reject symlinked sensitive runtime paths. Checked runtime opens use no-follow semantics where supported, and sensitive temp/transaction files are created exclusively so pre-existing paths fail instead of being reused. Mutating password-based saves maintain encrypted `vault_id`/`revision` metadata and a local `rollback-state.json` high-water mark. Older valid vaults warn by default instead of silently downgrading local state; setting `rollback_mode` to `block` in `vault-config.json` turns suspicious rollback findings into command failures until the current vault is explicitly accepted with `vault rollback-accept`. `doctor` and `inspect-runtime` remain non-mutating inspection commands, so they report the current state without auto-fixing it. `vault doctor` also reports symlinked sensitive files, recovery snapshot freshness, non-decrypting recovery container compatibility, and rollback-state health so stale or mismatched recovery/runtime files are easier to spot before an emergency.
 

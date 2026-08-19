@@ -29,6 +29,7 @@ const (
 	AlgorithmAES256GCM      = "AES-256-GCM"
 	KDFArgon2id             = "argon2id"
 	KDFScrypt               = "scrypt"
+	KDFHKDFSHA256           = "hkdf-sha256"
 	PayloadChecksumJSON     = "sha256-prefix-json"
 	CiphertextNoncePrefixed = "nonce-prefixed"
 )
@@ -130,6 +131,7 @@ func Parse(data []byte, saltSize int) (Parsed, error) {
 		payloadOffset := HeaderSize
 		meta := DefaultMetadata(saltSize)
 		if version == Version {
+			meta = Metadata{}
 			metaLen := int(binary.BigEndian.Uint16(data[6:8]))
 			if len(data) < HeaderSize+metaLen+saltSize {
 				return Parsed{}, errors.New("container data too short")
@@ -140,6 +142,7 @@ func Parse(data []byte, saltSize int) (Parsed, error) {
 					return Parsed{}, fmt.Errorf("invalid container metadata: %w", err)
 				}
 			}
+			meta = normalizeMetadata(meta, saltSize)
 			payloadOffset += metaLen
 		}
 

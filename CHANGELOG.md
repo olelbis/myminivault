@@ -11,8 +11,11 @@
 - Added user-facing rollback hardening with `rollback_mode` config (`off`, `warn`, `block`) and `vault rollback-accept` for intentional restores.
 - Added encrypted recovery snapshot revision metadata and unlock-time freshness reporting in `vault stats` and `vault security-audit`.
 - Added a CI `staticcheck` gate and removed stale unused CLI compatibility wrappers it reported.
+- Fixed KDF write-policy configuration so new vault, recovery, and shared-token saves populate authenticated container metadata from `vault-config.json` instead of silently falling back to container defaults.
+- Changed new recovery and shared-token vault encryption to HKDF-SHA256 because their inputs are generated high-entropy key material, while main-vault saves keep Argon2id by default for human passwords.
+- Added compact token v2 signatures that are verified with the local token master key before loading the shared token vault; legacy compact tokens remain readable through the compatibility path.
 - Added focused coverage for `internal/token`, `internal/recovery`, `internal/rollback`, and `internal/paths`, bringing each package above the `80.0%` package-level target.
-- Updated local coverage baselines to `48.2%` full repository and `84.7%` internal packages.
+- Updated local coverage baselines to `49.5%` full repository and `85.1%` internal packages.
 
 ## [v0.13.1] - 2026-07-25
 

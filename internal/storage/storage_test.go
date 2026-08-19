@@ -76,6 +76,40 @@ func TestSaveLoadBytesRoundTrip(t *testing.T) {
 	}
 }
 
+func TestSaveWritesConfiguredNonDefaultKDFMetadata(t *testing.T) {
+	opts := storageTestOptions(t.TempDir())
+	opts.KDF = vaultcrypto.KDFConfig{
+		Name:   container.KDFScrypt,
+		Scrypt: vaultcrypto.ScryptConfig{N: 4, R: 1, P: 1, KeySize: 24},
+	}
+	vault := &model.ExtendedVault{
+		Data: map[string]string{"API_KEY": "secret"},
+		Metadata: model.VaultMetadata{
+			Version:   opts.Version,
+			CreatedAt: time.Date(2026, 8, 19, 10, 0, 0, 0, time.UTC),
+		},
+	}
+
+	if err := Save(vault, "password", []byte("1234567890123456"), opts); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	raw, err := os.ReadFile(opts.VaultFile)
+	if err != nil {
+		t.Fatalf("read saved vault: %v", err)
+	}
+	parsed, err := container.Parse(raw, opts.SaltSize)
+	if err != nil {
+		t.Fatalf("parse saved vault: %v", err)
+	}
+	if parsed.Metadata.KDF != container.KDFScrypt || parsed.Metadata.ScryptN != 4 || parsed.Metadata.ScryptR != 1 || parsed.Metadata.ScryptP != 1 || parsed.Metadata.KeySize != 24 {
+		t.Fatalf("metadata = %+v, want configured scrypt", parsed.Metadata)
+	}
+	if parsed.Metadata.Argon2MemoryKiB != 0 || parsed.Metadata.Argon2Time != 0 || parsed.Metadata.Argon2Threads != 0 {
+		t.Fatalf("metadata = %+v, want no argon2 fields for scrypt", parsed.Metadata)
+	}
+}
+
 func TestLoadRejectsChecksumMismatch(t *testing.T) {
 	opts := storageTestOptions(t.TempDir())
 	writeEncryptedPlaintext(t, opts, []byte("password"), []byte("1234567890123456"), append(bytes.Repeat([]byte{0x01}, sha256.Size), []byte(`{"data":{"A":"B"}}`)...))
@@ -725,7 +759,7 @@ func TestSaveWritesRecoverySnapshotWhenConfigured(t *testing.T) {
 		AssociatedData: recoveryAAD,
 		Version:        container.Version,
 		Kind:           container.KindRecoveryVault,
-		Metadata:       containerMetadata(opts),
+		Metadata:       highEntropyContainerMetadata(opts.SaltSize),
 	}
 	loadedRecovery, err := recovery.DecryptParsedVault(parsedRecovery, []byte(recoveryKey), recovery.Options{Scrypt: opts.Scrypt})
 	if err != nil {

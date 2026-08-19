@@ -78,9 +78,10 @@ tokens, token secrets, or encrypted vault metadata.
 
 ## Key Derivation
 
-Current encrypted runtime files use Argon2id.
+Current main vault saves use Argon2id by default because the key material is a
+human-entered master password.
 
-Default parameters:
+Default main-vault parameters:
 
 | Parameter | Value |
 | --- | --- |
@@ -90,29 +91,42 @@ Default parameters:
 | key size | `32` bytes |
 | salt size | `16` bytes |
 
+Recovery snapshots and shared token vaults are different: their key material is
+generated high-entropy secret material, not a user password. Current saves for
+those files use `hkdf-sha256` with file-kind-specific context:
+
+| File | KDF context |
+| --- | --- |
+| `vault.db.recovery` | `myminivault:recovery-vault` |
+| `shared-token-vault.json` | `myminivault:shared-token-vault` |
+
 scrypt remains readable for older `MYMV` v2 files and for legacy fallback
-formats, but it is deprecated for newly written runtime files.
+formats. Argon2id remains readable for recovery and shared-token vaults written
+by older experimental releases. Deprecated formats are compatibility inputs, not
+the preferred write profile.
 
 Key inputs differ by file:
 
 - `vault.db`: UTF-8 bytes of the master password read by the CLI
-- `vault.db.recovery`: bytes of the recovery key entered by the user
+- `vault.db.recovery`: bytes of the generated recovery key entered by the user
 - `shared-token-vault.json`: 32-byte token master key from macOS Keychain or `vault-token.key`
 
 The derived 32-byte key is used directly as the AES-256-GCM key.
 
 The Argon2id loader accepts memory metadata from `19456` KiB through `262144`
-KiB. The lower bound keeps attacker-edited headers from weakening current files;
-the upper bound limits memory-amplification denial-of-service risk before key
-derivation starts. The current writer uses `65536` KiB as the default.
+KiB. The lower bound keeps attacker-edited headers from weakening current
+password-based files; the upper bound limits memory-amplification
+denial-of-service risk before key derivation starts. The current writer uses
+`65536` KiB as the default for main-vault saves.
 
 ## Legacy Sunset Policy
 
 Deprecated readable formats are compatibility bridges, not permanent targets.
 The intended sunset path is:
 
-- keep scrypt-based `MYMV` v2, `MYMV` v1, and headerless legacy files readable
-  during the experimental `0.x` series
+- keep scrypt-based `MYMV` v2, Argon2id recovery/shared-token vaults from older
+  experimental releases, `MYMV` v1, and headerless legacy files readable during
+  the experimental `0.x` series
 - keep normal authenticated saves rewriting readable deprecated files to the
   current Argon2id-based `MYMV` v2 profile
 - before a future `1.0` release, decide whether deprecated formats remain

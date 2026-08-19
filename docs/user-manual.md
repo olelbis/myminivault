@@ -548,6 +548,10 @@ Default values:
 | `scrypt_r` | `8` |
 | `scrypt_p` | `1` |
 | `key_size` | `32` |
+| `kdf` | `argon2id` |
+| `argon2_memory_kib` | `65536` |
+| `argon2_time` | `3` |
+| `argon2_threads` | `1` |
 | `max_backups` | `5` |
 | `audit_log` | `true` |
 | `token_key_storage` | `auto` |
@@ -555,9 +559,12 @@ Default values:
 
 The program loads `vault-config.json` from the runtime directory.
 
-The scrypt settings are retained as the compatibility fallback for deprecated
-legacy files. Newly written `MYMV v2` runtime files use the authenticated
-Argon2id metadata stored in the container header.
+Newly written main-vault `MYMV v2` files use `kdf="argon2id"` by default and
+store the selected KDF parameters in the authenticated container header.
+Recovery snapshots and shared-token vaults use HKDF-SHA256 for new saves because
+their inputs are generated high-entropy key material. The `scrypt_*` settings
+are retained as the compatibility fallback for deprecated legacy files and are
+used for new main-vault writes only when `kdf` is explicitly set to `scrypt`.
 
 Config validation:
 
@@ -565,6 +572,10 @@ Config validation:
 - `scrypt_r` must be between `1` and `16`
 - `scrypt_p` must be between `1` and `8`
 - `key_size` must be `16`, `24`, or `32`
+- `kdf` must be `argon2id` or `scrypt`
+- `argon2_memory_kib` must be between `19456` and `262144`
+- `argon2_time` must be between `1` and `8`
+- `argon2_threads` must be between `1` and `8`
 - `max_backups` must be between `1` and `100`
 - `token_key_storage` must be `auto`, `file`, or `keychain`
 - `rollback_mode` must be `off`, `warn`, or `block`
@@ -677,7 +688,7 @@ Important behavior:
 | `vault-config.json` | Optional config override |
 | `.myminivault.lock` | Inter-process lock file |
 
-Current encrypted runtime files include a small cleartext `MYMV v2` container header with the container format version, file kind, and non-sensitive crypto metadata. New saves use Argon2id metadata. This helps `vault doctor` and `vault inspect-runtime` identify file format information without decrypting secrets. The v2 cleartext context is authenticated with AES-GCM AAD, so header or metadata tampering makes decryption fail. Mutating password-based saves also keep encrypted vault rollback metadata and update `rollback-state.json`; if a later command sees an older valid vault revision, it warns by default or blocks when `rollback_mode` is `block`. scrypt-based `MYMV v2`, older `MYMV v1`, and salt-plus-ciphertext files remain readable but are deprecated and are upgraded to the current Argon2id-based profile when rewritten.
+Current encrypted runtime files include a small cleartext `MYMV v2` container header with the container format version, file kind, and non-sensitive crypto metadata. Main-vault saves use the configured KDF metadata, defaulting to Argon2id. Recovery snapshots and shared-token vaults use HKDF-SHA256 for new saves. This helps `vault doctor` and `vault inspect-runtime` identify file format information without decrypting secrets. The v2 cleartext context is authenticated with AES-GCM AAD, so header or metadata tampering makes decryption fail. Mutating password-based saves also keep encrypted vault rollback metadata and update `rollback-state.json`; if a later command sees an older valid vault revision, it warns by default or blocks when `rollback_mode` is `block`. scrypt-based `MYMV v2`, older `MYMV v1`, Argon2id recovery/shared-token vaults from older experimental releases, and salt-plus-ciphertext files remain readable but are deprecated and are upgraded to the current write profile when rewritten.
 
 These files are ignored by Git because they may contain encrypted secrets, keys, logs, or local runtime state.
 

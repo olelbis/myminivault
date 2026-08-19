@@ -4,9 +4,12 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"crypto/sha256"
 	"errors"
+	"io"
 
 	"golang.org/x/crypto/argon2"
+	"golang.org/x/crypto/hkdf"
 	"golang.org/x/crypto/scrypt"
 )
 
@@ -28,11 +31,19 @@ type Argon2idConfig struct {
 	KeySize   uint32
 }
 
+// HKDFConfig contains the key derivation parameters for high-entropy key
+// material that does not need password hardening.
+type HKDFConfig struct {
+	Info    string
+	KeySize uint32
+}
+
 // KDFConfig identifies a supported password-based key derivation function.
 type KDFConfig struct {
 	Name     string
 	Scrypt   ScryptConfig
 	Argon2id Argon2idConfig
+	HKDF     HKDFConfig
 }
 
 // DeriveKey is the only password-to-key boundary for vault encryption.
@@ -47,9 +58,20 @@ func DeriveKeyWithConfig(password, salt []byte, cfg KDFConfig) ([]byte, error) {
 		return DeriveKey(password, salt, cfg.Scrypt)
 	case "argon2id":
 		return argon2.IDKey(password, salt, cfg.Argon2id.Time, cfg.Argon2id.MemoryKiB, cfg.Argon2id.Threads, cfg.Argon2id.KeySize), nil
+	case "hkdf-sha256":
+		key := make([]byte, cfg.HKDF.KeySize)
+		if _, err := io.ReadFull(hkdf.New(sha256.New, password, salt, []byte(cfg.HKDF.Info)), key); err != nil {
+			return nil, err
+		}
+		return key, nil
 	default:
 		return nil, errors.New("unsupported KDF")
 	}
+}
+
+// HKDFSHA256Config returns a KDF profile for uniformly random key material.
+func HKDFSHA256Config(info string, keySize uint32) KDFConfig {
+	return KDFConfig{Name: "hkdf-sha256", HKDF: HKDFConfig{Info: info, KeySize: keySize}}
 }
 
 // Encrypt prefixes the random GCM nonce to the ciphertext so Decrypt can

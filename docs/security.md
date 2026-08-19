@@ -17,7 +17,8 @@ The encrypted runtime file format is documented separately in [Encrypted File Fo
 `myminivault` aims to:
 
 - keep vault values encrypted at rest in local runtime files
-- derive encryption keys from a master password using Argon2id for new saves, while keeping scrypt readable for deprecated compatibility formats
+- derive main-vault encryption keys from a master password using Argon2id for new password-based saves, while keeping scrypt readable for deprecated compatibility formats
+- derive recovery and shared-token vault encryption keys with HKDF-SHA256 when the input is generated high-entropy key material
 - authenticate encrypted payloads with AES-GCM
 - support recovery without storing the master password
 - support temporary token access with key-pattern, permission, expiry, and max-use limits
@@ -116,7 +117,7 @@ File permissions are an important local mitigation, not a complete security boun
 
 Sensitive runtime paths are checked with portable symlink rejection before important reads and writes, and checked opens use OS-level no-follow flags where supported. Main-vault transaction markers plus main-vault, recovery, and shared-token-vault temp files are created with exclusive-create semantics, so a pre-existing temp or marker path causes the command to fail instead of truncating or reusing that path. A runtime directory controlled by another process under the same account, or an intentionally unsafe `MYMINIVAULT_HOME`, may still expose file-replacement and rollback races outside those checked opens. Use a private local runtime directory and do not treat `0700`/`0600` modes as protection from the same OS user.
 
-Newly saved encrypted runtime files include a small cleartext `MYMV` container header with a container format version, file kind, and non-sensitive crypto metadata. Current `MYMV v2` saves record details such as `AES-256-GCM`, `argon2id`, Argon2id parameters, salt size, nonce size, and payload layout. The `MYMV v2` header, metadata, and salt are authenticated as AES-GCM additional authenticated data, so tampering with that cleartext context makes decryption fail. Load paths validate supported algorithm, KDF, payload, ciphertext layout, nonce size, and bounded KDF parameters before deriving keys from MYMV v2 metadata. The Argon2id metadata policy accepts memory from 19 MiB through 256 MiB: the lower bound prevents attacker-edited headers from weakening current files, while the upper bound prevents hostile headers from forcing excessive memory allocation before authentication can complete. scrypt-based `MYMV v2`, legacy, and MYMV v1 files remain readable for compatibility but are deprecated and rewritten with Argon2id after normal authenticated save operations. This supports safer inspection and future migrations without decrypting secrets. The header reveals that a file is a myminivault encrypted container and whether it is a main, recovery, or shared-token vault file; it does not reveal key names, values, recovery metadata, token contents, or encrypted vault metadata.
+Newly saved encrypted runtime files include a small cleartext `MYMV` container header with a container format version, file kind, and non-sensitive crypto metadata. Current `MYMV v2` saves record details such as `AES-256-GCM`, the selected KDF, salt size, nonce size, and payload layout. Password-based main-vault saves use the configured `kdf` policy, defaulting to Argon2id with validated parameters from `vault-config.json`. Recovery snapshots and shared-token vaults use HKDF-SHA256 for new saves because their inputs are generated high-entropy key material. The `MYMV v2` header, metadata, and salt are authenticated as AES-GCM additional authenticated data, so tampering with that cleartext context makes decryption fail. Load paths validate supported algorithm, KDF, payload, ciphertext layout, nonce size, and bounded KDF parameters before deriving keys from MYMV v2 metadata. scrypt remains available for explicit compatibility testing and legacy fallback. The Argon2id metadata policy accepts memory from 19 MiB through 256 MiB: the lower bound prevents attacker-edited headers from weakening current password-based files, while the upper bound prevents hostile headers from forcing excessive memory allocation before authentication can complete. scrypt-based `MYMV v2`, Argon2id recovery/shared-token vaults from older experimental releases, legacy, and MYMV v1 files remain readable for compatibility but are deprecated and rewritten with the current write profile after normal authenticated save operations. This supports safer inspection and future migrations without decrypting secrets. The header reveals that a file is a myminivault encrypted container and whether it is a main, recovery, or shared-token vault file; it does not reveal key names, values, recovery metadata, token contents, or encrypted vault metadata.
 
 ### Terminal Boundary
 
@@ -160,12 +161,12 @@ Security notes for `MYMINIVAULT_HOME`:
 
 | File | Sensitivity | Primary Risk | Current Mitigation |
 | --- | --- | --- | --- |
-| `vault.db` | High | Offline password guessing, copied encrypted secrets | AES-GCM encryption, Argon2id for new saves, restrictive writes |
+| `vault.db` | High | Offline password guessing, copied encrypted secrets | AES-GCM encryption, Argon2id for new password-based saves, restrictive writes |
 | `vault.db.bak` | High | Historical encrypted secrets | Same encrypted format, restrictive writes |
 | `vault.db.transaction` | Low | Interrupted-save state confusion | Temporary marker; used only to restore a valid backup or report a clear startup error |
-| `vault.db.recovery` | High | Recovery-encrypted snapshot exposure | High-entropy recovery key, restrictive writes |
+| `vault.db.recovery` | High | Recovery-encrypted snapshot exposure | High-entropy recovery key, HKDF-SHA256 for new saves, restrictive writes |
 | `vault-token.key` | Critical | Token system compromise | Restrictive writes, `regenerate-token-key`, macOS Keychain support with file fallback |
-| `shared-token-vault.json` and `.bak` | High | Token-access vault exposure | Encrypted current and previous shared vault, token master key |
+| `shared-token-vault.json` and `.bak` | High | Token-access vault exposure | Encrypted current and previous shared vault, HKDF-SHA256 from token master key |
 | `vault-tokens.json` | Medium | Token registry metadata leakage | Restrictive writes |
 | `rollback-state.json` | Medium | Trusted revision confusion | Restrictive writes, symlink rejection, warning-by-default rollback checks with opt-in blocking |
 | `vault.log` | Medium | Operational metadata leakage | Redacted key/token identifiers, optional logging |
@@ -174,7 +175,7 @@ Security notes for `MYMINIVAULT_HOME`:
 
 Runtime files should stay out of Git and should normally be readable only by the local user. Legacy runtime files in the current working directory are migrated into the runtime directory when possible, unless the target file already exists.
 
-Legacy encrypted files without a `MYMV` header remain readable as salt-plus-ciphertext files. `MYMV v1` files and scrypt-based `MYMV v2` files also remain readable but are deprecated. Once an older main, recovery, or shared token vault is saved again, the rewritten file uses the current Argon2id-based `MYMV v2` profile.
+Legacy encrypted files without a `MYMV` header remain readable as salt-plus-ciphertext files. `MYMV v1` files, scrypt-based `MYMV v2` files, and Argon2id recovery/shared-token vaults from earlier experimental releases also remain readable but are deprecated. Once an older main, recovery, or shared token vault is saved again, the rewritten file uses the current `MYMV v2` write profile: configured Argon2id by default for the main vault, HKDF-SHA256 for high-entropy recovery and shared-token vaults.
 
 `token_key_storage` can be set to `auto`, `file`, or `keychain`. On macOS, `auto` prefers macOS Keychain for token master-key material when the `security` tool is available, and can migrate an existing `vault-token.key` into Keychain on first token use. `file` keeps the portable restrictive-file behavior. `keychain` requires an implemented OS backend and fails clearly when unavailable instead of silently writing `vault-token.key`. On Linux, token key storage is file-based by design for now; readiness detection requires both a DBus session and `secret-tool`, but Secret Service storage is not part of the supported behavior yet.
 
@@ -200,7 +201,7 @@ Primary risks:
 
 Current mitigations:
 
-- Argon2id key derivation for new saves, with scrypt compatibility reads for deprecated files
+- Argon2id key derivation for new password-based main-vault saves, with scrypt compatibility reads for deprecated files
 - AES-GCM authenticated encryption
 - checksum verification around serialized vault payloads
 - atomic writes with file sync and backup behavior
@@ -248,7 +249,8 @@ Primary risks:
 Current mitigations:
 
 - token expiry and max-use limits
-- HMAC token signatures
+- v2 HMAC token signatures verified with the local token master key before shared-vault loading
+- legacy HMAC token signature compatibility after shared-vault loading
 - key-pattern and permission checks
 - encrypted shared token vault
 - usage-count persistence
@@ -277,7 +279,7 @@ Current mitigations:
 
 | Threat | Current Posture |
 | --- | --- |
-| Copied encrypted vault file | Mitigated by Argon2id and AES-GCM for new saves, but weak passwords remain risky |
+| Copied encrypted vault file | Mitigated by Argon2id and AES-GCM for new password-based main-vault saves, but weak passwords remain risky |
 | Copied plaintext export | Not mitigated after export; rotate exposed secrets |
 | Stolen compact token | Limited by expiry, max uses, scope, and revocation |
 | Stolen `vault-token.key` | Serious; regenerate token key and treat tokens as compromised |

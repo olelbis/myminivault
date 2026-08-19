@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/olelbis/myminivault/internal/container"
-	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
 	vaultrollback "github.com/olelbis/myminivault/internal/rollback"
 	vaultstorage "github.com/olelbis/myminivault/internal/storage"
 )
@@ -55,12 +54,8 @@ func storageOptions() vaultstorage.Options {
 		Version:          vaultVersion,
 		RecoveryKey:      getCurrentRecoveryKey(),
 		RecoveryKeyBytes: getCurrentRecoveryKeyBytes(),
-		Scrypt: vaultcrypto.ScryptConfig{
-			N:       config.ScryptN,
-			R:       config.ScryptR,
-			P:       config.ScryptP,
-			KeySize: config.KeySize,
-		},
+		Scrypt:           config.ScryptConfig(),
+		KDF:              config.KDFConfig(),
 		SaveRecoveryFile: saveRecoveryFile,
 	}
 }
