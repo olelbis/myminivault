@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+
+	"github.com/olelbis/myminivault/internal/container"
+	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
 )
 
 // FileName is the optional configuration file name.
@@ -17,6 +20,8 @@ const (
 	RollbackModeOff         = "off"
 	RollbackModeWarn        = "warn"
 	RollbackModeBlock       = "block"
+	KDFArgon2id             = container.KDFArgon2id
+	KDFScrypt               = container.KDFScrypt
 )
 
 // Config contains user-tunable runtime and encryption settings.
@@ -25,6 +30,10 @@ type Config struct {
 	ScryptR         int    `json:"scrypt_r"`
 	ScryptP         int    `json:"scrypt_p"`
 	KeySize         int    `json:"key_size"`
+	KDF             string `json:"kdf"`
+	Argon2MemoryKiB uint32 `json:"argon2_memory_kib"`
+	Argon2Time      uint32 `json:"argon2_time"`
+	Argon2Threads   uint8  `json:"argon2_threads"`
 	MaxBackups      int    `json:"max_backups"`
 	AuditLog        bool   `json:"audit_log"`
 	TokenKeyStorage string `json:"token_key_storage"`
@@ -37,6 +46,10 @@ var Default = Config{
 	ScryptR:         8,
 	ScryptP:         1,
 	KeySize:         32,
+	KDF:             KDFArgon2id,
+	Argon2MemoryKiB: 64 * 1024,
+	Argon2Time:      3,
+	Argon2Threads:   1,
 	MaxBackups:      5,
 	AuditLog:        true,
 	TokenKeyStorage: TokenKeyStorageAuto,
@@ -90,6 +103,21 @@ func Validate(cfg Config) error {
 	if cfg.KeySize != 16 && cfg.KeySize != 24 && cfg.KeySize != 32 {
 		return errors.New("key_size must be 16, 24, or 32")
 	}
+	switch cfg.KDF {
+	case KDFArgon2id:
+		if cfg.Argon2MemoryKiB < 19*1024 || cfg.Argon2MemoryKiB > 256*1024 {
+			return errors.New("argon2_memory_kib must be between 19456 and 262144")
+		}
+		if cfg.Argon2Time < 1 || cfg.Argon2Time > 8 {
+			return errors.New("argon2_time must be between 1 and 8")
+		}
+		if cfg.Argon2Threads < 1 || cfg.Argon2Threads > 8 {
+			return errors.New("argon2_threads must be between 1 and 8")
+		}
+	case KDFScrypt:
+	default:
+		return errors.New(`kdf must be "argon2id" or "scrypt"`)
+	}
 	if cfg.MaxBackups < 1 || cfg.MaxBackups > 100 {
 		return errors.New("max_backups must be between 1 and 100")
 	}
@@ -109,4 +137,30 @@ func Validate(cfg Config) error {
 // IsPowerOfTwo reports whether value is a positive power of two.
 func IsPowerOfTwo(value int) bool {
 	return value > 0 && value&(value-1) == 0
+}
+
+// ScryptConfig returns the legacy/fallback scrypt parameters.
+func (cfg Config) ScryptConfig() vaultcrypto.ScryptConfig {
+	return vaultcrypto.ScryptConfig{
+		N:       cfg.ScryptN,
+		R:       cfg.ScryptR,
+		P:       cfg.ScryptP,
+		KeySize: cfg.KeySize,
+	}
+}
+
+// KDFConfig returns the configured KDF profile used for new writes.
+func (cfg Config) KDFConfig() vaultcrypto.KDFConfig {
+	if cfg.KDF == KDFScrypt {
+		return vaultcrypto.KDFConfig{Name: container.KDFScrypt, Scrypt: cfg.ScryptConfig()}
+	}
+	return vaultcrypto.KDFConfig{
+		Name: container.KDFArgon2id,
+		Argon2id: vaultcrypto.Argon2idConfig{
+			MemoryKiB: cfg.Argon2MemoryKiB,
+			Time:      cfg.Argon2Time,
+			Threads:   cfg.Argon2Threads,
+			KeySize:   uint32(cfg.KeySize),
+		},
+	}
 }

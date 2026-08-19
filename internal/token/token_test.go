@@ -238,8 +238,11 @@ func TestEncryptedVaultRoundTripAndChecksumFailure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse shared vault: %v", err)
 	}
-	if parsed.Metadata.KDF != container.KDFArgon2id || parsed.Metadata.Argon2MemoryKiB != 64*1024 || parsed.Metadata.Argon2Time != 3 || parsed.Metadata.Argon2Threads != 1 {
-		t.Fatalf("metadata = %+v, want argon2id defaults", parsed.Metadata)
+	if parsed.Metadata.KDF != container.KDFHKDFSHA256 || parsed.Metadata.KeySize != 32 {
+		t.Fatalf("metadata = %+v, want hkdf-sha256 token vault profile", parsed.Metadata)
+	}
+	if parsed.Metadata.Argon2MemoryKiB != 0 || parsed.Metadata.Argon2Time != 0 || parsed.Metadata.Argon2Threads != 0 || parsed.Metadata.ScryptN != 0 || parsed.Metadata.ScryptR != 0 || parsed.Metadata.ScryptP != 0 {
+		t.Fatalf("metadata = %+v, want no password KDF parameters", parsed.Metadata)
 	}
 	raw[len(raw)-1] ^= 0xff
 	if err := os.WriteFile(sharedVault, raw, 0600); err != nil {
@@ -571,6 +574,32 @@ func TestParseAndValidateProductionTokenRejectsForgeryWithoutPersistingUsage(t *
 	forged := forgeTokenSignature(t, signedToken, "not-the-real-signature")
 	if _, _, err := ParseAndValidateProductionToken(forged, sharedVault, opts); err == nil {
 		t.Fatal("expected forged token to be rejected")
+	}
+}
+
+func TestParseAndValidateProductionTokenV2RejectsForgeryBeforeSharedVaultLoad(t *testing.T) {
+	opts := tokenTestOptions(bytesOf(0x11, 32))
+	accessToken := model.AccessToken{
+		TokenID:     "token-id",
+		KeyPattern:  "API_*",
+		ExpiresAt:   time.Now().Add(time.Hour),
+		Permissions: []string{"read"},
+		MaxUses:     3,
+		CreatedAt:   time.Now(),
+	}
+
+	signedToken, err := CreateShortSignedTokenV2(accessToken, bytesOf(0x22, 32))
+	if err != nil {
+		t.Fatalf("CreateShortSignedTokenV2: %v", err)
+	}
+	forged := forgeTokenSignature(t, signedToken, "not-the-real-signature")
+
+	_, _, err = ParseAndValidateProductionToken(forged, filepath.Join(t.TempDir(), "missing-shared-vault.json"), opts)
+	if err == nil {
+		t.Fatal("expected forged v2 token to be rejected")
+	}
+	if !strings.Contains(err.Error(), "invalid token signature") {
+		t.Fatalf("error = %v, want signature failure before shared vault load", err)
 	}
 }
 
@@ -917,9 +946,9 @@ func forgeTokenSignature(t *testing.T, tokenStr, signature string) string {
 		t.Fatalf("decode token: %v", err)
 	}
 	parts := strings.Split(string(decoded), ":")
-	if len(parts) != 6 {
-		t.Fatalf("token parts = %d, want 6", len(parts))
+	if len(parts) < 2 {
+		t.Fatalf("token parts = %d, want at least 2", len(parts))
 	}
-	parts[5] = signature
+	parts[len(parts)-1] = signature
 	return strings.TrimRight(base64.URLEncoding.EncodeToString([]byte(strings.Join(parts, ":"))), "=")
 }

@@ -104,7 +104,7 @@ func TestDecryptRejectsShortCiphertext(t *testing.T) {
 	}
 }
 
-func TestDeriveKeyWithConfigSupportsScryptAndArgon2id(t *testing.T) {
+func TestDeriveKeyWithConfigSupportsScryptArgon2idAndHKDF(t *testing.T) {
 	password := []byte("password")
 	salt := []byte("1234567890123456")
 
@@ -133,6 +133,24 @@ func TestDeriveKeyWithConfigSupportsScryptAndArgon2id(t *testing.T) {
 	}
 	if bytes.Equal(scryptKey, argonKey) {
 		t.Fatal("different KDFs should not derive the same key for the same input")
+	}
+
+	hkdfKey, err := DeriveKeyWithConfig(password, salt, HKDFSHA256Config("test-context", 32))
+	if err != nil {
+		t.Fatalf("DeriveKeyWithConfig hkdf: %v", err)
+	}
+	if len(hkdfKey) != 32 {
+		t.Fatalf("hkdf key length = %d", len(hkdfKey))
+	}
+	repeatedHKDFKey, err := DeriveKeyWithConfig(password, salt, HKDFSHA256Config("test-context", 32))
+	if err != nil {
+		t.Fatalf("DeriveKeyWithConfig repeated hkdf: %v", err)
+	}
+	if !bytes.Equal(hkdfKey, repeatedHKDFKey) {
+		t.Fatal("hkdf should be deterministic for the same key, salt, and context")
+	}
+	if bytes.Equal(hkdfKey, argonKey) {
+		t.Fatal("hkdf and argon2id should not derive the same key for the same input")
 	}
 }
 

@@ -226,11 +226,6 @@ func saveRecoveryFile(salt, recoveryCiphertext []byte, metadata ...container.Met
 
 func recoveryOptions() vaultrecovery.Options {
 	return vaultrecovery.Options{
-		Scrypt: vaultcrypto.ScryptConfig{
-			N:       config.ScryptN,
-			R:       config.ScryptR,
-			P:       config.ScryptP,
-			KeySize: config.KeySize,
-		},
+		Scrypt: config.ScryptConfig(),
 	}
 }

@@ -7,8 +7,10 @@ possible in a short sitting.
 ## Suggested Review Question
 
 Is the current local encrypted-vault design sound for an experimental
-single-user CLI that uses Argon2id-derived AES-256-GCM keys for new saves, authenticated
-cleartext container metadata, local recovery snapshots, and local token access?
+single-user CLI that uses Argon2id-derived AES-256-GCM keys for password-based
+main-vault saves, HKDF-SHA256-derived AES-256-GCM keys for high-entropy recovery
+and shared-token vault saves, authenticated cleartext container metadata, local
+recovery snapshots, and local token access?
 
 In particular, review:
 
@@ -54,7 +56,8 @@ Supporting files:
 ## Current Design Summary
 
 - Master vault data is encrypted with AES-256-GCM.
-- Encryption keys for new saves are derived with Argon2id; scrypt remains readable for deprecated compatibility files.
+- Main-vault encryption keys for new password-based saves are derived with Argon2id; scrypt remains readable for deprecated compatibility files.
+- Recovery and shared-token vault encryption keys for new high-entropy-key saves are derived with HKDF-SHA256.
 - Current encrypted files use a cleartext `MYMV` v2 header.
 - The `MYMV` v2 header, metadata JSON, and salt are authenticated as AES-GCM
   additional authenticated data.
@@ -63,6 +66,7 @@ Supporting files:
 - Recovery uses a separate encrypted recovery snapshot and a dedicated random
   recovery salt.
 - Token commands use a local token master key to encrypt the shared token vault.
+- New compact tokens are v2 tokens signed with the local token master key, so malformed or forged v2 tokens can be rejected before the shared token vault is loaded.
 - Token writes are staged in `shared-token-vault.json` and imported into
   `vault.db` by master-password commands or `vault sync-tokens`.
 - Standalone Go and Python reference decryptors plus a compatibility fixture are
@@ -85,7 +89,7 @@ The project does not claim protection from:
 
 Reviewers should focus on whether:
 
-- Argon2id and scrypt compatibility metadata bounds are reasonable
+- Argon2id, HKDF-SHA256, and scrypt compatibility metadata bounds are reasonable
 - all AES-GCM decryptions use the same AAD that was authenticated at encryption
   time
 - nonce generation is random and nonce reuse is unlikely under current save
@@ -116,8 +120,7 @@ Suggested short post:
 I am looking for focused review of the crypto/file-format layer of an
 experimental local Go CLI vault.
 
-Scope: Argon2id/scrypt-compatibility + AES-256-GCM, MYMV v2 header authenticated as AAD, recovery
-snapshot encryption, and shared token vault encryption.
+Scope: Argon2id for password-based main vaults, HKDF-SHA256 for high-entropy recovery/shared-token vaults, scrypt compatibility + AES-256-GCM, MYMV v2 header authenticated as AAD, recovery snapshot encryption, and shared token vault encryption.
 
 Review docs:
 - docs/format.md
@@ -132,5 +135,6 @@ Primary code:
 - internal/token
 
 I am especially interested in mistakes around AAD, KDF metadata validation,
-legacy compatibility, recovery semantics, and interrupted-save behavior.
+HKDF context separation, legacy compatibility, recovery semantics, token
+signature validation order, and interrupted-save behavior.
 ```

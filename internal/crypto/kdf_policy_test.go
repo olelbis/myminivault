@@ -61,6 +61,30 @@ func TestKDFConfigForContainerAcceptsArgon2idMetadata(t *testing.T) {
 	}
 }
 
+func TestKDFConfigForContainerAcceptsHKDFMetadata(t *testing.T) {
+	parsed := container.Parsed{
+		Version: container.Version,
+		Kind:    container.KindSharedTokenVault,
+		Metadata: container.Metadata{
+			Algorithm:        container.AlgorithmAES256GCM,
+			KDF:              container.KDFHKDFSHA256,
+			KeySize:          32,
+			SaltSize:         16,
+			NonceSize:        12,
+			Payload:          container.PayloadChecksumJSON,
+			CiphertextLayout: container.CiphertextNoncePrefixed,
+		},
+	}
+
+	cfg, err := KDFConfigForContainer(parsed, ScryptConfig{N: 2, R: 1, P: 1, KeySize: 32})
+	if err != nil {
+		t.Fatalf("KDFConfigForContainer: %v", err)
+	}
+	if cfg.Name != container.KDFHKDFSHA256 || cfg.HKDF.Info != "myminivault:shared-token-vault" || cfg.HKDF.KeySize != 32 {
+		t.Fatalf("config = %+v, want hkdf metadata config", cfg)
+	}
+}
+
 func TestKDFConfigForContainerRejectsUnsupportedKDF(t *testing.T) {
 	parsed := container.Parsed{
 		Version: container.Version,

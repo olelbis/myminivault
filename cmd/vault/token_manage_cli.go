@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
 	vaulttoken "github.com/olelbis/myminivault/internal/token"
 )
 
@@ -154,7 +153,14 @@ func handleCreateToken(vault *ExtendedVault) {
 		return
 	}
 
-	signedToken, err := createShortSignedToken(token, vault.TokenManager.SecretKey)
+	tokenMasterKey, err := getOrCreateTokenMasterKey()
+	if err != nil {
+		fmt.Printf("❌ Failed to load token master key: %v\n", err)
+		return
+	}
+	defer wipeBytes(tokenMasterKey)
+
+	signedToken, err := createShortSignedToken(token, tokenMasterKey)
 	if err != nil {
 		fmt.Printf("❌ Failed to create signed token: %v\n", err)
 		return
@@ -176,7 +182,7 @@ func generateShortRandomID() string {
 }
 
 func createShortSignedToken(token AccessToken, secretKey []byte) (string, error) {
-	return vaulttoken.CreateShortSignedToken(token, secretKey)
+	return vaulttoken.CreateShortSignedTokenV2(token, secretKey)
 }
 
 func handleRevokeToken(vault *ExtendedVault) {
@@ -219,12 +225,8 @@ func tokenOptions() vaulttoken.Options {
 		TokenKeyFile: tokenKeyFile,
 		SaltSize:     saltSize,
 		MasterKey:    getOrCreateTokenMasterKey,
-		Scrypt: vaultcrypto.ScryptConfig{
-			N:       config.ScryptN,
-			R:       config.ScryptR,
-			P:       config.ScryptP,
-			KeySize: config.KeySize,
-		},
+		Scrypt:       config.ScryptConfig(),
+		KDF:          vaulttoken.SharedVaultKDFConfig(),
 	}
 }
 

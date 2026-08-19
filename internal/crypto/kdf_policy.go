@@ -59,6 +59,11 @@ func KDFConfigForContainer(parsed container.Parsed, fallback ScryptConfig) (KDFC
 			return KDFConfig{}, err
 		}
 		return KDFConfig{Name: container.KDFArgon2id, Argon2id: cfg}, nil
+	case container.KDFHKDFSHA256:
+		if meta.KeySize <= 0 || meta.KeySize > maxArgon2KeySize {
+			return KDFConfig{}, fmt.Errorf("hkdf key size %d outside allowed range 1..%d", meta.KeySize, maxArgon2KeySize)
+		}
+		return HKDFSHA256Config("myminivault:"+container.KindName(parsed.Kind), uint32(meta.KeySize)), nil
 	default:
 		return KDFConfig{}, fmt.Errorf("unsupported container KDF %q", meta.KDF)
 	}

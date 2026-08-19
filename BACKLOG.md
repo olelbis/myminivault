@@ -35,7 +35,7 @@ Main strengths:
 - tested `internal/clipboard` package for backend selection and clear-if-unchanged behavior
 - tested `internal/export` package for shell export rendering and restrictive file writes
 - tested `internal/health` package for non-decrypting runtime metadata compatibility checks
-- internal package coverage at `84.7%`, above the enforced `80.0%` floor
+- internal package coverage at `85.1%`, above the enforced `80.0%` floor
 - automated CLI smoke coverage for critical workflows in the top-level `tests` package
 - explicit handling for recovery, token sync, locking, backups, export, and password changes
 - a handoff backlog that can restart work from a fresh chat
@@ -73,7 +73,7 @@ Use this section first when resuming work. The detailed backlog below explains e
 
 2. **Container KDF And Crash Consistency**
    - Goal: continue migration tests and broader rollback/file-replacement race hardening after the first crash-consistency and exclusive-create passes.
-   - KDF status: bounded MYMV v2 KDF metadata loading policy implemented; new saves use Argon2id, while scrypt-based MYMV v2, MYMV v1, and legacy salt+ciphertext files remain readable but deprecated.
+   - KDF status: bounded MYMV v2 KDF metadata loading policy implemented; new main-vault saves use Argon2id by default, new recovery/shared-token vault saves use HKDF-SHA256, while scrypt-based MYMV v2, Argon2id recovery/shared-token vaults from older experimental releases, MYMV v1, and legacy salt+ciphertext files remain readable but deprecated.
    - Crash-consistency status: parent directories are synced after atomic runtime-file renames and legacy runtime migration moves where supported.
    - Suggested branch: `container-runtime-hardening`.
 
@@ -421,19 +421,21 @@ These items are the most direct path beyond the current `9.9 / 10` ordinary asse
 
 Recommended order:
 
-1. keep explicit process-argument warnings current and continue reducing argument exposure where practical
-2. expand compatibility fixtures around the Argon2id default and deprecated scrypt/v1 profiles
-3. keep fuzzing `internal/container.FuzzParse` after format or metadata parser changes
-4. add property-style tests for staged token writes/import/delete invariants
-5. harden token sync UX and policy so staged token writes are less likely to remain unreconciled
-6. add a guided `vault restore <backup>` command that previews candidate metadata before replacement and acceptance
-7. keep `staticcheck`, CodeQL, and `govulncheck` results triaged, then evaluate `gosec` with a documented triage policy
-8. implement real `vault migrate` based on the migration policy and existing `vault migrate --dry-run` preview
-9. keep rollback and broader same-user file-replacement race hardening moving after no-follow opens, directory fsync, exclusive temp/marker creation, and rollback warn/block checks
-10. continue migration coverage around authenticated KDF metadata and crash-consistency behavior
-11. evaluate signed tags/checksums and platform signing after SBOM and immutable Action pinning
-12. keep Linux token key storage file-backed until a reliable desktop/headless Secret Service strategy emerges
-13. keep the internal coverage floor healthy and reduce `cmd/vault` orchestration only when tests protect the boundary
+1. decide Windows support explicitly: either add a Windows lock implementation and CI matrix entry, or document Unix-only support and remove orphan Windows-specific path code
+2. keep explicit process-argument warnings current and continue reducing argument exposure where practical
+3. expand compatibility fixtures around configurable KDF metadata, HKDF recovery/shared-token saves, Argon2id defaults, and deprecated scrypt/v1 profiles
+4. keep fuzzing `internal/container.FuzzParse` after format or metadata parser changes
+5. add property-style tests for staged token writes/import/delete invariants
+6. harden token sync UX and policy so staged token writes are less likely to remain unreconciled
+7. add a guided `vault restore <backup>` command that previews candidate metadata before replacement and acceptance
+8. keep `staticcheck`, CodeQL, and `govulncheck` results triaged, then evaluate `gosec` with a documented triage policy
+9. implement real `vault migrate` based on the migration policy and existing `vault migrate --dry-run` preview
+10. consolidate duplicated checksum/wipe helpers into a focused internal package and remove legacy compatibility traps with tests
+11. keep rollback and broader same-user file-replacement race hardening moving after no-follow opens, directory fsync, exclusive temp/marker creation, and rollback warn/block checks
+12. continue migration coverage around authenticated KDF metadata and crash-consistency behavior
+13. evaluate signed tags/checksums and platform signing after SBOM and immutable Action pinning
+14. keep Linux token key storage file-backed until a reliable desktop/headless Secret Service strategy emerges
+15. keep the internal coverage floor healthy and reduce `cmd/vault` orchestration only when tests protect the boundary
 
 Suggested branches:
 
@@ -450,11 +452,12 @@ Priority: high.
 The first July 2026 review follow-up pass is complete. Remaining follow-up work:
 
 - add a guided `vault restore <backup>` command with preview and explicit acceptance
+- decide and document Windows support before adding Windows CI
 - keep `staticcheck`, CodeQL, and `govulncheck` results triaged, then decide whether `gosec` should become a CI gate
 - keep `SECURITY.md`, review request links, and the public focused-review issue current
 - expand the independent decryptor experiment beyond the initial Go/Python reference readers when useful
 - implement the real mutating `vault migrate` command once dry-run behavior and migration policy have settled
-- expand the compatibility fixture corpus when new historical formats or payload layouts need long-term read coverage
+- expand the compatibility fixture corpus when new historical formats, HKDF recovery/shared-token profiles, or payload layouts need long-term read coverage
 - keep memory hardening honest: avoid string conversions for secrets, keep byte wiping best-effort, and document Go limits instead of promising impossible guarantees
 
 ### Next: Release Cadence Cleanup
@@ -477,7 +480,7 @@ Current CI runs formatting, `go vet`, `staticcheck`, `go test ./...`, full cover
 
 Next actions:
 
-- keep `./internal/...` coverage at or above the current `80.0%` floor, with `84.7%` as the latest local baseline
+- keep `./internal/...` coverage at or above the current `80.0%` floor, with `85.1%` as the latest local baseline
 - raise `cmd/vault` coverage with focused unit tests or further extraction of command-independent logic where it improves clarity
 
 Suggested branch:

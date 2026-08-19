@@ -205,12 +205,13 @@ func SaveBytes(vault *model.ExtendedVault, password []byte, salt []byte, opts Op
 	recoveryKey := recoveryKeyBytes(opts)
 	if vault.Recovery != nil && len(recoveryKey) > 0 && opts.SaveRecoveryFile != nil {
 		recoverySalt := vaultcrypto.Random(opts.SaltSize)
-		recoveryKeyDerived, err := vaultcrypto.DeriveKeyWithConfig(recoveryKey, recoverySalt, kdfConfigFromMetadata(meta, opts.Scrypt))
+		recoveryMeta := highEntropyContainerMetadata(opts.SaltSize)
+		recoveryKeyDerived, err := vaultcrypto.DeriveKeyWithConfig(recoveryKey, recoverySalt, kdfConfigFromMetadata(recoveryMeta, opts.Scrypt))
 		if err != nil {
 			return err
 		}
 		defer wipeBytes(recoveryKeyDerived)
-		recoveryAAD, err := container.AssociatedData(container.KindRecoveryVault, recoverySalt, meta)
+		recoveryAAD, err := container.AssociatedData(container.KindRecoveryVault, recoverySalt, recoveryMeta)
 		if err != nil {
 			return err
 		}
@@ -218,7 +219,7 @@ func SaveBytes(vault *model.ExtendedVault, password []byte, salt []byte, opts Op
 		if err != nil {
 			return err
 		}
-		if err := opts.SaveRecoveryFile(recoverySalt, recoveryCiphertext, meta); err != nil {
+		if err := opts.SaveRecoveryFile(recoverySalt, recoveryCiphertext, recoveryMeta); err != nil {
 			return err
 		}
 	}
@@ -401,6 +402,19 @@ func containerMetadata(opts Options) container.Metadata {
 	return meta
 }
 
+func highEntropyContainerMetadata(saltSize int) container.Metadata {
+	meta := container.DefaultMetadata(saltSize)
+	meta.KDF = container.KDFHKDFSHA256
+	meta.ScryptN = 0
+	meta.ScryptR = 0
+	meta.ScryptP = 0
+	meta.Argon2MemoryKiB = 0
+	meta.Argon2Time = 0
+	meta.Argon2Threads = 0
+	meta.KeySize = 32
+	return meta
+}
+
 func kdfConfigFromMetadata(meta container.Metadata, fallback vaultcrypto.ScryptConfig) vaultcrypto.KDFConfig {
 	if meta.KDF == container.KDFArgon2id {
 		return vaultcrypto.KDFConfig{
@@ -412,6 +426,9 @@ func kdfConfigFromMetadata(meta container.Metadata, fallback vaultcrypto.ScryptC
 				KeySize:   uint32(meta.KeySize),
 			},
 		}
+	}
+	if meta.KDF == container.KDFHKDFSHA256 {
+		return vaultcrypto.HKDFSHA256Config("myminivault:"+container.KindName(container.KindRecoveryVault), uint32(meta.KeySize))
 	}
 	return vaultcrypto.KDFConfig{Name: container.KDFScrypt, Scrypt: fallback}
 }

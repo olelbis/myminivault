@@ -227,10 +227,10 @@ func TestCreateShortSignedTokenRoundTrip(t *testing.T) {
 		t.Fatalf("decode signed token: %v", err)
 	}
 	parts := strings.Split(decoded, ":")
-	if len(parts) != 6 {
-		t.Fatalf("decoded token has %d parts, want 6: %q", len(parts), decoded)
+	if len(parts) != 7 {
+		t.Fatalf("decoded token has %d parts, want 7: %q", len(parts), decoded)
 	}
-	if parts[0] != token.TokenID || parts[1] != token.KeyPattern || parts[3] != "read,write" || parts[4] != "3" {
+	if parts[0] != "v2" || parts[1] != token.TokenID || parts[2] != token.KeyPattern || parts[4] != "read,write" || parts[5] != "3" {
 		t.Fatalf("decoded token payload mismatch: %q", decoded)
 	}
 }
