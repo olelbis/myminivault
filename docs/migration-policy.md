@@ -12,9 +12,13 @@ removed.
 | legacy salt-plus-ciphertext | yes | no | Rewritten as `MYMV` v2 after a normal save. |
 | `MYMV` v1 | yes | no | Older headered format without structured metadata. |
 | `MYMV` v2 with scrypt | yes | no | Deprecated KDF profile; readable for compatibility and rewritten with Argon2id on save. |
-| `MYMV` v2 with Argon2id | yes | yes | Current format with authenticated metadata and salt as AES-GCM AAD. |
+| `MYMV` v2 main vault with Argon2id | yes | yes | Current password-based main-vault format with authenticated metadata and salt as AES-GCM AAD. |
+| `MYMV` v2 recovery/shared-token vault with HKDF-SHA256 | yes | yes | Current high-entropy-key format for generated recovery keys and token master keys. |
+| `MYMV` v2 recovery/shared-token vault with Argon2id | yes | no | Deprecated experimental profile; readable for compatibility and rewritten with HKDF-SHA256 on save. |
 
-Current saves always write `MYMV` v2 with Argon2id metadata.
+Current saves always write `MYMV` v2. Main-vault saves use Argon2id by default;
+recovery and shared-token vault saves use HKDF-SHA256 because their keys are
+generated high-entropy material.
 
 ## Legacy Sunset Policy
 
@@ -43,9 +47,12 @@ Current fixture coverage:
 
 - legacy salt-plus-ciphertext main vault
 - `MYMV` v1 main vault
-- `MYMV` v2 main vault
-- `MYMV` v2 recovery vault
-- `MYMV` v2 shared token vault
+- `MYMV` v2 main vault with deprecated scrypt metadata
+- `MYMV` v2 main vault with current Argon2id metadata
+- `MYMV` v2 recovery vault with deprecated Argon2id metadata
+- `MYMV` v2 recovery vault with current HKDF-SHA256 metadata
+- `MYMV` v2 shared token vault with deprecated Argon2id metadata
+- `MYMV` v2 shared token vault with current HKDF-SHA256 metadata
 
 Fixture policy:
 

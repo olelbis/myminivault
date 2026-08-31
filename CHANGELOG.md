@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Expanded the compatibility fixture corpus with current Argon2id main-vault and HKDF-SHA256 recovery/shared-token vault fixtures.
+- Updated migration and development documentation for the current KDF-specific write profiles.
+
 ## [v0.13.8] - 2026-08-31
 
 ### Changed
