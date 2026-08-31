@@ -96,7 +96,7 @@ docs/
 
 The project still keeps command-line parsing, prompts, output, and top-level orchestration in `cmd/vault`. Future extractions should happen only when tests cover the behavior well enough.
 
-Encrypted runtime file framing lives in `internal/container`. Current saves write a cleartext `MYMV v2` container header containing the container version, file kind, and non-sensitive crypto metadata before the existing salt+ciphertext payload. New saves use Argon2id metadata; scrypt-based `MYMV v2`, legacy salt+ciphertext files, and earlier `MYMV v1` files remain readable but deprecated. That v2 cleartext context is authenticated with AES-GCM AAD, so header or metadata tampering fails during decryption. `vault doctor` plus `vault inspect-runtime` use the header for non-decrypting format inspection.
+Encrypted runtime file framing lives in `internal/container`. Current saves write a cleartext `MYMV v2` container header containing the container version, file kind, and non-sensitive crypto metadata before the existing salt+ciphertext payload. Main-vault saves use Argon2id metadata by default; recovery and shared-token vault saves use HKDF-SHA256 metadata because their keys are generated high-entropy material. scrypt-based `MYMV v2`, Argon2id recovery/shared-token vaults from earlier experimental releases, legacy salt+ciphertext files, and earlier `MYMV v1` files remain readable but deprecated. That v2 cleartext context is authenticated with AES-GCM AAD, so header or metadata tampering fails during decryption. `vault doctor` plus `vault inspect-runtime` use the header for non-decrypting format inspection.
 
 ## Cryptography
 
@@ -104,7 +104,7 @@ The vault currently uses:
 
 - AES-GCM for authenticated encryption
 - AES-GCM AAD for current container header, metadata, and salt authentication
-- Argon2id for new key derivation, with scrypt kept for deprecated compatibility reads
+- Argon2id for new password-based main-vault key derivation, HKDF-SHA256 for new recovery/shared-token vault saves, and scrypt kept for deprecated compatibility reads
 - SHA-256 checksums over serialized vault data
 - HMAC-SHA256 for token signatures
 - random salt per vault encryption

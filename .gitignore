@@ -8,3 +8,4 @@ vault.log
 bin/
 test.txt
 .myminivault.lock
+.DS_Store

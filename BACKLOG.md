@@ -457,7 +457,7 @@ The first July 2026 review follow-up pass is complete. Remaining follow-up work:
 - keep `SECURITY.md`, review request links, and the public focused-review issue current
 - expand the independent decryptor experiment beyond the initial Go/Python reference readers when useful
 - implement the real mutating `vault migrate` command once dry-run behavior and migration policy have settled
-- expand the compatibility fixture corpus when new historical formats, HKDF recovery/shared-token profiles, or payload layouts need long-term read coverage
+- keep expanding the compatibility fixture corpus when new historical formats, KDF profiles, or payload layouts need long-term read coverage; current Argon2id main-vault and HKDF recovery/shared-token fixtures are now covered
 - keep memory hardening honest: avoid string conversions for secrets, keep byte wiping best-effort, and document Go limits instead of promising impossible guarantees
 
 ### Next: Release Cadence Cleanup
