@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Added runtime `stderr` warnings for direct `vault set <key> <value>` and `vault use-token <token>` forms so users are nudged toward stdin, token-file, or token-fd inputs for real secret material.
 - Added token sync invariant coverage to keep `sync-tokens --dry-run` previews aligned with real imports, preserve newer main-vault conflicts, and verify import/delete metadata updates.
 - Added `vault restore <backup>` to decrypt and preview backup metadata, require explicit confirmation, preserve the current vault as a pre-restore backup, replace `vault.db`, and accept the restored rollback revision.
 - Documented macOS/Linux as the active support targets and moved Windows support to low-priority future work.

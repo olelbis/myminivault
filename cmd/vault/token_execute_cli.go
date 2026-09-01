@@ -19,6 +19,7 @@ type tokenCommandRequest struct {
 	token       string
 	command     string
 	commandArgs []string
+	tokenSource string
 	jsonOutput  bool
 	showOutput  bool
 }
@@ -97,13 +98,34 @@ func parseTokenCommandRequest(rawArgs []string) (tokenCommandRequest, bool, erro
 		return tokenCommandRequest{}, true, errors.New("usage: vault use-token (<token>|--stdin|--token-file <path>|--token-fd <fd>) <command> [args...]")
 	}
 
-	return tokenCommandRequest{
+	request := tokenCommandRequest{
 		token:       tokenStr,
 		command:     args[commandIndex],
 		commandArgs: args[commandIndex+1:],
+		tokenSource: tokenArgumentSource(args),
 		jsonOutput:  jsonOutput,
 		showOutput:  showOutput,
-	}, true, nil
+	}
+	if request.tokenSource == "argument" && !request.jsonOutput {
+		warnProcessArgumentSecret("vault use-token <token>", "vault use-token --stdin, --token-file, or --token-fd")
+	}
+	return request, true, nil
+}
+
+func tokenArgumentSource(args []string) string {
+	if len(args) < 3 {
+		return ""
+	}
+	switch args[2] {
+	case "--stdin":
+		return "stdin"
+	case "--token-file":
+		return "token file"
+	case "--token-fd":
+		return "token fd"
+	default:
+		return "argument"
+	}
 }
 
 func readTokenArgument(args []string) (string, int, error) {
