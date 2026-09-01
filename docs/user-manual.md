@@ -229,6 +229,14 @@ vault.db.2026-05-15_22-30-00.bak
 
 The normal save path also keeps `vault.db.bak` as the previous version of the vault. The loader uses `vault.db.bak` only when `vault.db` is missing, not as a fallback for wrong passwords.
 
+Restore a backup after previewing its metadata:
+
+```bash
+./bin/vault restore ~/.myminivault/vault.db.2026-05-15_22-30-00.bak
+```
+
+`restore` asks for the master password, decrypts the candidate backup first, and prints a preview with format, key count, vault version, vault ID, revision, and timestamps. It only proceeds when you type `yes`. Before replacing `vault.db`, it saves the current vault as `vault.db.pre-restore-<timestamp>.bak`, then updates rollback state to the restored vault revision.
+
 ## Local Health Check
 
 ```bash
@@ -606,7 +614,7 @@ Example strict setting:
 }
 ```
 
-After an intentional manual restore of a verified older `vault.db`, unlock the vault and accept the restored revision explicitly:
+After an intentional manual restore of a verified older `vault.db` outside the `restore` command, unlock the vault and accept the restored revision explicitly:
 
 ```bash
 vault rollback-accept

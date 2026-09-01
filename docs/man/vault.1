@@ -55,6 +55,9 @@ Import shell-style key/value entries.
 .B backup
 Create a timestamped backup of the current vault file.
 .TP
+.B restore <backup>
+Decrypt, preview, and restore a backup after explicit confirmation. The current vault is saved as a pre-restore backup before replacement, and rollback state is updated after a successful restore.
+.TP
 .B stats
 Print vault metadata and summary counts.
 .SH RECOVERY COMMANDS

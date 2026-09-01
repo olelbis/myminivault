@@ -121,6 +121,14 @@ Create a backup:
 ./bin/vault backup
 ```
 
+Restore a backup after previewing its metadata:
+
+```bash
+./bin/vault restore ~/.myminivault/vault.db.2026-08-31_10-00-00.bak
+```
+
+`restore` asks for the master password, verifies that the backup can be decrypted, shows non-secret metadata, saves the current `vault.db` as a pre-restore backup, replaces `vault.db`, and accepts the restored rollback revision.
+
 ## Common Commands
 
 | Command | Purpose |
@@ -133,6 +141,7 @@ Create a backup:
 | `list` | List key names |
 | `search <pattern> --show` | Search keys and print matching values intentionally |
 | `backup` | Create a timestamped backup |
+| `restore <backup>` | Preview and restore a backup after confirmation |
 | `export --output <file>` | Write shell-safe export lines to a restrictive plaintext file after confirmation |
 | `import <file>` | Import values from a file |
 | `setup-recovery` | Create a recovery key |

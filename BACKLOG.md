@@ -50,7 +50,7 @@ Main risks:
 - macOS and Linux are the active support targets; Windows is intentionally not fully supported until platform-specific locking, ACL, key-storage, packaging, and CI decisions are made
 - direct `vault set KEY value` and `vault use-token <token>` remain available for non-sensitive/demo use, but stdin alternatives now exist for both secret values and compact tokens
 - sensitive runtime helpers now reject symlinks, use OS-specific no-follow opens on Unix-like systems, create key temp/transaction files exclusively, and warn or optionally block many older-valid-vault rollback cases
-- authenticated containers detect tampering, and rollback-state checks now detect many older-valid-vault replacements; the remaining rollback workflow gap is a safer guided restore command
+- authenticated containers detect tampering, rollback-state checks detect many older-valid-vault replacements, and guided restore now previews and accepts intentional backup restores
 
 Strategic guidance:
 
@@ -422,21 +422,20 @@ These items are the most direct path beyond the current `9.9 / 10` ordinary asse
 
 Recommended order:
 
-1. add a guided `vault restore <backup>` command that previews candidate metadata before replacement and acceptance
-2. add property-style tests for staged token writes/import/delete invariants
-3. harden token sync UX and policy so staged token writes are less likely to remain unreconciled
-4. keep explicit process-argument warnings current and continue reducing argument exposure where practical
-5. keep fuzzing `internal/container.FuzzParse` after format or metadata parser changes
-6. implement real `vault migrate` based on the migration policy and existing `vault migrate --dry-run` preview
-7. consolidate duplicated checksum/wipe helpers into a focused internal package and remove legacy compatibility traps with tests
-8. keep rollback and broader same-user file-replacement race hardening moving after no-follow opens, directory fsync, exclusive temp/marker creation, and rollback warn/block checks
-9. keep `staticcheck`, CodeQL, and `govulncheck` results triaged, then evaluate `gosec` with a documented triage policy
-10. continue migration coverage around authenticated KDF metadata and crash-consistency behavior
-11. evaluate signed tags/checksums and platform signing after SBOM and immutable Action pinning
-12. keep Linux token key storage file-backed until a reliable desktop/headless Secret Service strategy emerges
-13. keep the internal coverage floor healthy and reduce `cmd/vault` orchestration only when tests protect the boundary
-14. keep expanding the compatibility fixture corpus when new historical formats, KDF profiles, or payload layouts need long-term read coverage
-15. keep Windows as a low-priority future target unless real user demand appears; it is currently documented as not fully supported
+1. add property-style tests for staged token writes/import/delete invariants
+2. harden token sync UX and policy so staged token writes are less likely to remain unreconciled
+3. keep explicit process-argument warnings current and continue reducing argument exposure where practical
+4. keep fuzzing `internal/container.FuzzParse` after format or metadata parser changes
+5. implement real `vault migrate` based on the migration policy and existing `vault migrate --dry-run` preview
+6. consolidate duplicated checksum/wipe helpers into a focused internal package and remove legacy compatibility traps with tests
+7. keep rollback and broader same-user file-replacement race hardening moving after no-follow opens, directory fsync, exclusive temp/marker creation, and rollback warn/block checks
+8. keep `staticcheck`, CodeQL, and `govulncheck` results triaged, then evaluate `gosec` with a documented triage policy
+9. continue migration coverage around authenticated KDF metadata and crash-consistency behavior
+10. evaluate signed tags/checksums and platform signing after SBOM and immutable Action pinning
+11. keep Linux token key storage file-backed until a reliable desktop/headless Secret Service strategy emerges
+12. keep the internal coverage floor healthy and reduce `cmd/vault` orchestration only when tests protect the boundary
+13. keep expanding the compatibility fixture corpus when new historical formats, KDF profiles, or payload layouts need long-term read coverage
+14. keep Windows as a low-priority future target unless real user demand appears; it is currently documented as not fully supported
 
 Suggested branches:
 
@@ -452,7 +451,6 @@ Priority: high.
 
 The first July 2026 review follow-up pass is complete. Remaining follow-up work:
 
-- add a guided `vault restore <backup>` command with preview and explicit acceptance
 - keep Windows support low priority unless real user demand appears; current docs state that macOS and Linux are the active supported targets
 - keep `staticcheck`, CodeQL, and `govulncheck` results triaged, then decide whether `gosec` should become a CI gate
 - keep `SECURITY.md`, review request links, and the public focused-review issue current

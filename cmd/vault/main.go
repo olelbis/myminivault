@@ -111,6 +111,9 @@ func run() error {
 	defer wipeBytes(password)
 
 	return withVaultLock(func() error {
+		if command == "restore" {
+			return handleRestoreCommand(password)
+		}
 		return runPasswordCommandBytes(command, password)
 	})
 }
@@ -333,7 +336,7 @@ func executePasswordCommand(command string, extendedVault *ExtendedVault, salt, 
 
 func showUsage() {
 	fmt.Println("Usage: vault <command> [args]")
-	fmt.Println("Basic: set, get, copy, delete, export, list, search, clear, import, backup, stats")
+	fmt.Println("Basic: set, get, copy, delete, export, list, search, clear, import, backup, restore, stats")
 	fmt.Println("Recovery: setup-recovery, refresh-recovery, recover, test-recovery, change-password")
 	fmt.Println("Tokens: create-token, list-tokens, revoke-token, use-token, token-info, cleanup-tokens")
 	fmt.Println("Sync: sync-tokens [--dry-run]")
@@ -358,7 +361,8 @@ BASIC COMMANDS:
   export --stdout       Print shell variables to stdout explicitly
   clear                 Clear all data
   import <file>         Import from file
-  backup                Create backup
+  backup                Create timestamped backup
+  restore <backup>      Preview and restore a backup after confirmation
   stats                 Show statistics
 
 RECOVERY COMMANDS:
@@ -398,7 +402,7 @@ SECURITY:
   doctor                Check runtime file permissions and local health
   inspect-runtime       List active and legacy runtime files without decrypting
   migrate --dry-run     Preview encrypted runtime file format migration
-  rollback-accept       Accept current vault metadata after an intentional restore
+  rollback-accept       Accept current vault metadata after a manual restore
   config                Show configuration
   regenerate-token-key  Generate new token master key
 
