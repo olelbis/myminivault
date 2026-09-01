@@ -64,6 +64,26 @@ func TestShortTokenID(t *testing.T) {
 	}
 }
 
+func TestTokenArgumentSource(t *testing.T) {
+	tests := map[string]struct {
+		args []string
+		want string
+	}{
+		"direct argument": {args: []string{"vault", "use-token", "token", "get", "API_KEY"}, want: "argument"},
+		"stdin":           {args: []string{"vault", "use-token", "--stdin", "get", "API_KEY"}, want: "stdin"},
+		"token file":      {args: []string{"vault", "use-token", "--token-file", "token.txt", "get", "API_KEY"}, want: "token file"},
+		"token fd":        {args: []string{"vault", "use-token", "--token-fd", "3", "get", "API_KEY"}, want: "token fd"},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			if got := tokenArgumentSource(tt.args); got != tt.want {
+				t.Fatalf("tokenArgumentSource = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestTokenJSONFlagParsing(t *testing.T) {
 	args := []string{"vault", "use-token", "token", "get", "API_KEY", "--json"}
 	if !tokenJSONRequested(args) {

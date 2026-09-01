@@ -48,6 +48,8 @@ func handleSetCommand(vault map[string]string) (string, bool) {
 			return "", false
 		}
 		value = stdinValue
+	} else {
+		warnProcessArgumentSecret("vault set <key> <value>", `printf '%s' "$SECRET" | vault set <key> --stdin`)
 	}
 
 	key := os.Args[2]

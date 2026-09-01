@@ -134,7 +134,7 @@ Restore a backup after previewing its metadata:
 | Command | Purpose |
 | --- | --- |
 | `set <key> --stdin` | Store a value read from stdin instead of process arguments |
-| `set <key> <value>` | Store a value from argv, mainly for demos or low-risk values |
+| `set <key> <value>` | Store a value from argv with a process-argument warning, mainly for demos or low-risk values |
 | `get <key> --show` | Print a stored value intentionally |
 | `copy <key>` | Copy a value to the clipboard without printing it |
 | `delete <key>` | Delete a key |
@@ -148,7 +148,7 @@ Restore a backup after previewing its metadata:
 | `refresh-recovery` | Rewrite the recovery snapshot |
 | `recover` | Reset the master password with the recovery key |
 | `create-token` | Create temporary token access |
-| `use-token` | Use a temporary token from an argument, stdin, file, or inherited fd |
+| `use-token` | Use a temporary token from stdin, file, inherited fd, or argv with a process-argument warning |
 | `security-audit` | Print local vault status |
 | `doctor` | Check runtime file permissions and local health |
 | `inspect-runtime` | List active and legacy runtime files without decrypting |
@@ -166,6 +166,8 @@ vault use-token --token-fd 3 get API_KEY --json
 ```json
 {"key":"API_KEY","value":"secret"}
 ```
+
+Direct `set <key> <value>` and human-readable direct `use-token <token>` forms print a `stderr` warning because secret material in process arguments may be exposed by shell history or process inspection. `use-token --json` keeps stdout parseable and suppresses that runtime warning. Prefer `set <key> --stdin` and `use-token --stdin`, `--token-file`, or `--token-fd` for real secrets.
 
 Token writes are staged in `shared-token-vault.json` and imported into the main vault by master-password commands or explicitly with `vault sync-tokens`. Use `vault sync-tokens --dry-run` to preview pending imports, deletes, skipped conflicts, and legacy metadata decisions without modifying runtime files. `vault doctor` warns when the shared token vault appears newer than the main vault, which usually means staged token writes should be synced.
 

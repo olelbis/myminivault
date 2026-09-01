@@ -48,7 +48,7 @@ Main risks:
 - `cmd/vault` still contains orchestration that may deserve future extraction when it produces a clearer command boundary
 - the security model is clearer, but it is still self-reviewed and not an external audit
 - macOS and Linux are the active support targets; Windows is intentionally not fully supported until platform-specific locking, ACL, key-storage, packaging, and CI decisions are made
-- direct `vault set KEY value` and `vault use-token <token>` remain available for non-sensitive/demo use, but stdin alternatives now exist for both secret values and compact tokens
+- direct `vault set KEY value` and `vault use-token <token>` remain available for non-sensitive/demo use, but they now warn on `stderr`; stdin/file/fd alternatives remain preferred for real secret values and compact tokens
 - sensitive runtime helpers now reject symlinks, use OS-specific no-follow opens on Unix-like systems, create key temp/transaction files exclusively, and warn or optionally block many older-valid-vault rollback cases
 - authenticated containers detect tampering, rollback-state checks detect many older-valid-vault replacements, guided restore now previews and accepts intentional backup restores, and token sync preview/import behavior has invariant coverage
 
@@ -424,7 +424,7 @@ Recommended order:
 
 1. add property-style tests for staged token writes/import/delete invariants
 2. harden token sync UX and policy so staged token writes are less likely to remain unreconciled
-3. keep explicit process-argument warnings current and continue reducing argument exposure where practical
+3. keep explicit process-argument warnings current and continue reducing argument exposure where practical; runtime warnings for direct secret/token argv forms are implemented
 4. keep fuzzing `internal/container.FuzzParse` after format or metadata parser changes
 5. implement real `vault migrate` based on the migration policy and existing `vault migrate --dry-run` preview
 6. consolidate duplicated checksum/wipe helpers into a focused internal package and remove legacy compatibility traps with tests

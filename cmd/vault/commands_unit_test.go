@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -8,6 +9,33 @@ import (
 	"testing"
 	"time"
 )
+
+func TestWarnProcessArgumentSecretWritesToStderrForCLI(t *testing.T) {
+	output := captureCommandWarningStderr(t, func() {
+		warnProcessArgumentSecret("vault set <key> <value>", "vault set <key> --stdin")
+	})
+	if !strings.Contains(output, "process arguments") || !strings.Contains(output, "--stdin") {
+		t.Fatalf("warning output = %q", output)
+	}
+}
+
+func captureCommandWarningStderr(t *testing.T, fn func()) string {
+	t.Helper()
+	original := os.Stderr
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe stderr: %v", err)
+	}
+	os.Stderr = writer
+	fn()
+	_ = writer.Close()
+	os.Stderr = original
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatalf("read stderr: %v", err)
+	}
+	return string(data)
+}
 
 func TestValidateKey(t *testing.T) {
 	validKeys := []string{"API_KEY", "prod.DB_PASSWORD", "service-token_1"}
