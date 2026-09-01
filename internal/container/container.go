@@ -218,9 +218,9 @@ func normalizeMetadata(meta Metadata, saltSize int) Metadata {
 	if meta.KeySize == 0 {
 		meta.KeySize = defaults.KeySize
 	}
-	if meta.SaltSize == 0 {
-		meta.SaltSize = saltSize
-	}
+	// The parsed salt length is authoritative; stale or inconsistent cleartext
+	// metadata must not override the actual payload boundary.
+	meta.SaltSize = saltSize
 	if meta.NonceSize == 0 {
 		meta.NonceSize = defaults.NonceSize
 	}
