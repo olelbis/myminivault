@@ -51,7 +51,7 @@ Main risks:
 - macOS and Linux are the active support targets; Windows is intentionally not fully supported until platform-specific locking, ACL, key-storage, packaging, and CI decisions are made
 - direct `vault set KEY value` and `vault use-token <token>` remain available for non-sensitive/demo use, but they now warn on `stderr`; stdin/file/fd alternatives remain preferred for real secret values and compact tokens
 - sensitive runtime helpers now reject symlinks, use OS-specific no-follow opens on Unix-like systems, create key temp/transaction files exclusively, and warn or optionally block many older-valid-vault rollback cases
-- authenticated containers detect tampering, rollback-state checks detect many older-valid-vault replacements, guided restore now previews and accepts intentional backup restores, and token sync preview/import behavior has invariant coverage
+- authenticated containers detect tampering, rollback-state checks detect many older-valid-vault replacements, guided restore now previews and accepts intentional backup restores with checked no-follow backup reads, and token sync preview/import behavior has invariant coverage
 
 Strategic guidance:
 

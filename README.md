@@ -127,7 +127,7 @@ Restore a backup after previewing its metadata:
 ./bin/vault restore ~/.myminivault/vault.db.2026-08-31_10-00-00.bak
 ```
 
-`restore` asks for the master password, verifies that the backup can be decrypted, shows non-secret metadata, saves the current `vault.db` as a pre-restore backup, replaces `vault.db`, and accepts the restored rollback revision.
+`restore` asks for the master password, reads the backup through checked no-follow opens, verifies that the exact backup bytes can be decrypted, shows non-secret metadata, saves the current `vault.db` as a pre-restore backup, replaces `vault.db`, and accepts the restored rollback revision.
 
 ## Common Commands
 

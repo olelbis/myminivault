@@ -235,7 +235,7 @@ Restore a backup after previewing its metadata:
 ./bin/vault restore ~/.myminivault/vault.db.2026-05-15_22-30-00.bak
 ```
 
-`restore` asks for the master password, decrypts the candidate backup first, and prints a preview with format, key count, vault version, vault ID, revision, and timestamps. It only proceeds when you type `yes`. Before replacing `vault.db`, it saves the current vault as `vault.db.pre-restore-<timestamp>.bak`, then updates rollback state to the restored vault revision.
+`restore` asks for the master password, reads the backup through checked no-follow opens, decrypts those exact candidate bytes first, and prints a preview with format, key count, vault version, vault ID, revision, and timestamps. It only proceeds when you type `yes`. Before replacing `vault.db`, it saves the current vault as `vault.db.pre-restore-<timestamp>.bak`, then updates rollback state to the restored vault revision.
 
 ## Local Health Check
 
