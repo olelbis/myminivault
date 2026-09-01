@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -309,6 +310,119 @@ func TestPreviewMatchesImportResultAcrossPolicyScenarios(t *testing.T) {
 				t.Fatalf("import result = %+v, preview = %+v", result, preview)
 			}
 		})
+	}
+}
+
+func TestPreviewImportInvariantAcrossGeneratedScenarios(t *testing.T) {
+	base := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+	values := []struct {
+		name         string
+		mainValue    string
+		sharedValue  string
+		hasMain      bool
+		hasShared    bool
+		mainOffset   int
+		sharedOffset int
+		deleteOffset int
+	}{
+		{name: "new shared key", sharedValue: "shared", hasShared: true, sharedOffset: 10},
+		{name: "newer shared update", mainValue: "main", sharedValue: "shared", hasMain: true, hasShared: true, mainOffset: 1, sharedOffset: 2},
+		{name: "older shared conflict", mainValue: "main", sharedValue: "shared", hasMain: true, hasShared: true, mainOffset: 3, sharedOffset: 2},
+		{name: "same value", mainValue: "same", sharedValue: "same", hasMain: true, hasShared: true, mainOffset: 3, sharedOffset: 4},
+		{name: "newer shared delete", mainValue: "main", hasMain: true, mainOffset: 1, deleteOffset: 2},
+		{name: "older shared delete", mainValue: "main", hasMain: true, mainOffset: 3, deleteOffset: 2},
+		{name: "legacy shared update", mainValue: "main", sharedValue: "shared", hasMain: true, hasShared: true},
+		{name: "legacy shared delete", mainValue: "main", hasMain: true, deleteOffset: 2},
+	}
+
+	for i, scenario := range values {
+		t.Run(fmt.Sprintf("%02d_%s", i, scenario.name), func(t *testing.T) {
+			key := "API_KEY"
+			mainVault := &model.ExtendedVault{Data: map[string]string{}}
+			sharedVault := &model.ExtendedVault{Data: map[string]string{}}
+
+			if scenario.hasMain {
+				mainVault.Data[key] = scenario.mainValue
+			}
+			if scenario.hasShared {
+				sharedVault.Data[key] = scenario.sharedValue
+			}
+			if scenario.mainOffset != 0 {
+				MarkKeyUpdatedAt(mainVault, key, base.Add(time.Duration(scenario.mainOffset)*time.Minute))
+			}
+			if scenario.sharedOffset != 0 {
+				MarkKeyUpdatedAt(sharedVault, key, base.Add(time.Duration(scenario.sharedOffset)*time.Minute))
+			}
+			if scenario.deleteOffset != 0 {
+				MarkKeyDeletedAt(sharedVault, key, base.Add(time.Duration(scenario.deleteOffset)*time.Minute))
+			}
+
+			mainForPreview := cloneVault(mainVault)
+			sharedForPreview := cloneVault(sharedVault)
+			mainBeforePreview := cloneVault(mainForPreview)
+			sharedBeforePreview := cloneVault(sharedForPreview)
+			preview := PreviewSharedVault(mainForPreview, sharedForPreview)
+
+			if !reflect.DeepEqual(mainForPreview, mainBeforePreview) {
+				t.Fatal("preview mutated main vault")
+			}
+			if !reflect.DeepEqual(sharedForPreview, sharedBeforePreview) {
+				t.Fatal("preview mutated shared vault")
+			}
+
+			mainForImport := cloneVault(mainVault)
+			importTime := base.Add(30 * time.Minute)
+			result := ImportSharedVault(mainForImport, cloneVault(sharedVault), importTime)
+			if result.Imported != len(preview.ImportKeys) ||
+				result.Deleted != len(preview.DeleteKeys) ||
+				result.SkippedConflicts != len(preview.ConflictKeys) ||
+				result.LegacyDecisions != len(preview.LegacyDecisionKeys) {
+				t.Fatalf("import result = %+v, preview = %+v", result, preview)
+			}
+
+			assertImportedKeysHaveFreshMetadata(t, mainForImport, preview.ImportKeys, importTime)
+			assertDeletedKeysHaveFreshMetadata(t, mainForImport, preview.DeleteKeys, importTime)
+			assertConflictKeysKeepMainValues(t, mainForImport, mainVault, preview.ConflictKeys)
+		})
+	}
+}
+
+func assertImportedKeysHaveFreshMetadata(t *testing.T, vault *model.ExtendedVault, keys []string, want time.Time) {
+	t.Helper()
+	for _, key := range keys {
+		if got := UpdatedAt(vault, key); !got.Equal(want) {
+			t.Fatalf("updated metadata for %s = %v, want %v", key, got, want)
+		}
+		if got := DeletedAt(vault, key); !got.IsZero() {
+			t.Fatalf("delete metadata for imported key %s = %v, want zero", key, got)
+		}
+	}
+}
+
+func assertDeletedKeysHaveFreshMetadata(t *testing.T, vault *model.ExtendedVault, keys []string, want time.Time) {
+	t.Helper()
+	for _, key := range keys {
+		if _, exists := vault.Data[key]; exists {
+			t.Fatalf("deleted key %s still exists in main vault", key)
+		}
+		if got := DeletedAt(vault, key); !got.Equal(want) {
+			t.Fatalf("deleted metadata for %s = %v, want %v", key, got, want)
+		}
+		if got := UpdatedAt(vault, key); !got.IsZero() {
+			t.Fatalf("update metadata for deleted key %s = %v, want zero", key, got)
+		}
+	}
+}
+
+func assertConflictKeysKeepMainValues(t *testing.T, got, want *model.ExtendedVault, keys []string) {
+	t.Helper()
+	for _, key := range keys {
+		if got.Data[key] != want.Data[key] {
+			t.Fatalf("conflict key %s = %q, want main value %q", key, got.Data[key], want.Data[key])
+		}
+		if !UpdatedAt(got, key).Equal(UpdatedAt(want, key)) {
+			t.Fatalf("conflict key %s update metadata changed", key)
+		}
 	}
 }
 

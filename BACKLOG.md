@@ -30,7 +30,7 @@ Main strengths:
 - focused `internal/...` packages for crypto, config, model, recovery, storage, and token logic
 - tested `internal/lock` package for advisory file locking
 - tested `internal/audit` package for redacted audit log formatting and writes
-- tested `internal/sync` package for local shared-vault import and metadata policy
+- tested `internal/sync` package for local shared-vault import, metadata policy, and preview/import invariants
 - tested `internal/commands` package for export/import/key validation helpers
 - tested `internal/clipboard` package for backend selection and clear-if-unchanged behavior
 - tested `internal/export` package for shell export rendering and restrictive file writes
@@ -43,14 +43,14 @@ Main strengths:
 Main risks:
 
 - the project handles real secrets, so the threat model must stay current as behavior changes
-- token/shared-vault synchronization is better guarded than before, but still conceptually complex
+- token/shared-vault synchronization is better guarded and more heavily tested than before, but still conceptually complex
 - package-level unit coverage is strong across the core internal packages, while `cmd/vault` remains intentionally measured through both focused tests and end-to-end CLI smoke tests
 - `cmd/vault` still contains orchestration that may deserve future extraction when it produces a clearer command boundary
 - the security model is clearer, but it is still self-reviewed and not an external audit
 - macOS and Linux are the active support targets; Windows is intentionally not fully supported until platform-specific locking, ACL, key-storage, packaging, and CI decisions are made
 - direct `vault set KEY value` and `vault use-token <token>` remain available for non-sensitive/demo use, but stdin alternatives now exist for both secret values and compact tokens
 - sensitive runtime helpers now reject symlinks, use OS-specific no-follow opens on Unix-like systems, create key temp/transaction files exclusively, and warn or optionally block many older-valid-vault rollback cases
-- authenticated containers detect tampering, rollback-state checks detect many older-valid-vault replacements, and guided restore now previews and accepts intentional backup restores
+- authenticated containers detect tampering, rollback-state checks detect many older-valid-vault replacements, guided restore now previews and accepts intentional backup restores, and token sync preview/import behavior has invariant coverage
 
 Strategic guidance:
 
