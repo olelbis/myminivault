@@ -17,6 +17,7 @@ import (
 	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
 	"github.com/olelbis/myminivault/internal/model"
 	vaultpaths "github.com/olelbis/myminivault/internal/paths"
+	vaultsensitive "github.com/olelbis/myminivault/internal/sensitive"
 )
 
 // Options groups the files, crypto parameters, and optional key provider used
@@ -105,13 +106,10 @@ func SaveRegistry(tokenRegistry string, registry *model.TokenRegistry) error {
 
 // SaveEncryptedVault encrypts and atomically stores the shared token vault.
 func SaveEncryptedVault(vault *model.ExtendedVault, tokenVaultPath string, opts Options) error {
-	serialized, err := json.MarshalIndent(vault, "", "  ")
+	dataWithChecksum, err := vaultsensitive.MarshalJSONWithChecksum(vault)
 	if err != nil {
 		return err
 	}
-
-	checksum := sha256.Sum256(serialized)
-	dataWithChecksum := append(checksum[:], serialized...)
 
 	tokenKey, err := masterKey(opts)
 	if err != nil {
@@ -364,26 +362,12 @@ func masterKey(opts Options) ([]byte, error) {
 }
 
 func wipeBytes(data []byte) {
-	for i := range data {
-		data[i] = 0
-	}
+	vaultsensitive.Wipe(data)
 }
 
 // StripChecksum verifies and removes the checksum prefix from token vault data.
 func StripChecksum(decrypted []byte) ([]byte, error) {
-	if len(decrypted) <= sha256.Size {
-		return nil, errors.New("data too short")
-	}
-
-	expectedChecksum := decrypted[:sha256.Size]
-	data := decrypted[sha256.Size:]
-	actualChecksum := sha256.Sum256(data)
-
-	if !hmac.Equal(expectedChecksum, actualChecksum[:]) {
-		return nil, errors.New("checksum verification failed")
-	}
-
-	return data, nil
+	return vaultsensitive.StripChecksum(decrypted, errors.New("data too short"), errors.New("checksum verification failed"))
 }
 
 // ParseAndValidateProductionToken verifies a compact token, loads the shared

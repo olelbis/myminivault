@@ -4,6 +4,8 @@
 
 ### Changed
 
+- Consolidated checksum-prefixed JSON payload and best-effort byte-wipe helpers into `internal/sensitive`, keeping stricter recovery/token checksum errors and main-vault legacy JSON compatibility.
+- Cleaned up backlog priorities so completed review-follow-up items no longer appear as the next active roadmap.
 - Reframed legacy encrypted-format handling around explicit deprecation and normal authenticated-save refreshes instead of planning a separate mutating `vault migrate` command.
 - Strengthened `internal/container.FuzzParse` with metadata edge-case seeds and normalized parsed container `salt_size` metadata to the actual salt boundary.
 - Added runtime `stderr` warnings for direct `vault set <key> <value>` and `vault use-token <token>` forms so users are nudged toward stdin, token-file, or token-fd inputs for real secret material.

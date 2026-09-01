@@ -14,6 +14,7 @@ import (
 	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
 	"github.com/olelbis/myminivault/internal/model"
 	vaultpaths "github.com/olelbis/myminivault/internal/paths"
+	vaultsensitive "github.com/olelbis/myminivault/internal/sensitive"
 )
 
 // KeyBytes is the amount of random entropy used to generate recovery keys.
@@ -134,9 +135,7 @@ func decryptVaultBytes(salt, encryptedData []byte, recoveryKey []byte, kdfConfig
 }
 
 func wipeBytes(data []byte) {
-	for i := range data {
-		data[i] = 0
-	}
+	vaultsensitive.Wipe(data)
 }
 
 // SaveFile writes the recovery-encrypted vault snapshot next to the main vault.
@@ -192,17 +191,5 @@ func SaveFile(vaultFile string, salt, recoveryCiphertext []byte, metadata ...con
 }
 
 func stripChecksum(decrypted []byte) ([]byte, error) {
-	if len(decrypted) <= sha256.Size {
-		return nil, errors.New("vault data too short")
-	}
-
-	expectedChecksum := decrypted[:sha256.Size]
-	data := decrypted[sha256.Size:]
-	actualChecksum := sha256.Sum256(data)
-
-	if !hmac.Equal(expectedChecksum, actualChecksum[:]) {
-		return nil, errors.New("data integrity check failed")
-	}
-
-	return data, nil
+	return vaultsensitive.StripChecksum(decrypted, errors.New("vault data too short"), errors.New("data integrity check failed"))
 }

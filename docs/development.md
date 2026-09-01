@@ -82,7 +82,8 @@ docs/
 - `internal/crypto`: Argon2id, scrypt compatibility reads, AES-GCM, secure random bytes
 - `internal/model`: persisted data structures
 - `internal/recovery`: recovery keys, verifier checks, recovery snapshot decrypt, recovery file write
-- `internal/storage`: main vault load/save, checksum, atomic writes, legacy payload parsing
+- `internal/storage`: main vault load/save, atomic writes, legacy payload parsing
+- `internal/sensitive`: checksum-prefixed payload helpers and best-effort byte wiping
 - `internal/token`: token signing, validation, registry, encrypted shared token vault
 - `internal/lock`: advisory file locking with timeout support for cooperating local CLI processes
 - `internal/audit`: redacted audit log formatting and writes
@@ -105,7 +106,7 @@ The vault currently uses:
 - AES-GCM for authenticated encryption
 - AES-GCM AAD for current container header, metadata, and salt authentication
 - Argon2id for new password-based main-vault key derivation, HKDF-SHA256 for new recovery/shared-token vault saves, and scrypt kept for deprecated compatibility reads
-- SHA-256 checksums over serialized vault data
+- SHA-256 checksums over serialized vault data via `internal/sensitive`
 - HMAC-SHA256 for token signatures
 - random salt per vault encryption
 - random nonce per AES-GCM encryption
