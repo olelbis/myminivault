@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Hardened guided restore so backup files are read through checked no-follow opens and the exact verified bytes are reused for replacement, reducing backup file-replacement race windows.
 - Consolidated checksum-prefixed JSON payload and best-effort byte-wipe helpers into `internal/sensitive`, keeping stricter recovery/token checksum errors and main-vault legacy JSON compatibility.
 - Cleaned up backlog priorities so completed review-follow-up items no longer appear as the next active roadmap.
 - Reframed legacy encrypted-format handling around explicit deprecation and normal authenticated-save refreshes instead of planning a separate mutating `vault migrate` command.

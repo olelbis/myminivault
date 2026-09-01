@@ -94,7 +94,17 @@ func LoadFileBytes(file string, password []byte, opts Options) (*model.ExtendedV
 	if err := vaultpaths.RejectSymlink(file); err != nil {
 		return nil, nil, err
 	}
-	parsed, err := tryLoadContainer(file, opts.SaltSize)
+	data, err := vaultpaths.ReadFileChecked(file)
+	if err != nil {
+		return nil, nil, err
+	}
+	return LoadBytesFromData(data, password, opts)
+}
+
+// LoadBytesFromData decrypts already-read vault file bytes. It lets callers
+// verify and then use the exact same backup bytes during sensitive workflows.
+func LoadBytesFromData(data, password []byte, opts Options) (*model.ExtendedVault, []byte, error) {
+	parsed, err := container.Parse(data, opts.SaltSize)
 	if err != nil {
 		return nil, nil, err
 	}

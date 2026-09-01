@@ -21,12 +21,17 @@ func handleRestoreCommand(password []byte) error {
 	}
 
 	backupPath := os.Args[2]
-	candidate, _, err := vaultstorage.LoadFileBytes(backupPath, password, storageOptions())
+	backupData, err := vaultpaths.ReadFileChecked(backupPath)
+	if err != nil {
+		return fmt.Errorf("backup cannot be read safely: %w", err)
+	}
+
+	candidate, _, err := vaultstorage.LoadBytesFromData(backupData, password, storageOptions())
 	if err != nil {
 		return fmt.Errorf("backup cannot be decrypted with the current password: %w", err)
 	}
 
-	parsed, parseErr := tryLoadParsed(backupPath)
+	parsed, parseErr := container.Parse(backupData, saltSize)
 	if parseErr != nil {
 		return fmt.Errorf("backup cannot be inspected: %w", parseErr)
 	}
@@ -41,7 +46,7 @@ func handleRestoreCommand(password []byte) error {
 	if err != nil {
 		return err
 	}
-	if err := replaceVaultWithBackup(backupPath); err != nil {
+	if err := replaceVaultWithBackupData(backupData); err != nil {
 		return err
 	}
 	if err := vaultrollback.SaveState(rollbackStateFile, candidate.Metadata); err != nil {
@@ -98,12 +103,12 @@ func createPreRestoreBackup() (string, error) {
 	return backupPath, nil
 }
 
-func replaceVaultWithBackup(backupPath string) error {
+func replaceVaultWithBackupData(backupData []byte) error {
 	tmpPath := vaultFile + ".restore.tmp"
 	if err := os.Remove(tmpPath); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove stale restore temp file: %w", err)
 	}
-	if err := copyFileExclusive(backupPath, tmpPath); err != nil {
+	if err := writeFileExclusive(tmpPath, backupData); err != nil {
 		_ = os.Remove(tmpPath)
 		return fmt.Errorf("failed to stage restored vault: %w", err)
 	}
@@ -117,20 +122,14 @@ func replaceVaultWithBackup(backupPath string) error {
 	return os.Chmod(vaultFile, 0600)
 }
 
-func copyFileExclusive(src, dst string) error {
-	source, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer source.Close()
-
-	destination, err := vaultpaths.OpenFileCreateExclusiveChecked(dst, 0600)
+func writeFileExclusive(path string, data []byte) error {
+	destination, err := vaultpaths.OpenFileCreateExclusiveChecked(path, 0600)
 	if err != nil {
 		return err
 	}
 	defer destination.Close()
 
-	if _, err := io.Copy(destination, source); err != nil {
+	if _, err := destination.Write(data); err != nil {
 		return err
 	}
 	return destination.Sync()

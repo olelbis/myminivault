@@ -159,6 +159,36 @@ func TestRejectSymlink(t *testing.T) {
 	}
 }
 
+func TestReadFileCheckedRejectsSymlink(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target")
+	link := filepath.Join(dir, "link")
+	if err := os.WriteFile(target, []byte("target"), 0600); err != nil {
+		t.Fatalf("write target: %v", err)
+	}
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+
+	if _, err := ReadFileChecked(link); err == nil {
+		t.Fatal("expected symlink read to be rejected")
+	}
+}
+
+func TestReadFileCheckedReadsRegularFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "secret")
+	if err := os.WriteFile(path, []byte("value"), 0600); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+	data, err := ReadFileChecked(path)
+	if err != nil {
+		t.Fatalf("ReadFileChecked: %v", err)
+	}
+	if string(data) != "value" {
+		t.Fatalf("data = %q, want value", data)
+	}
+}
+
 func TestWriteFileCheckedRejectsSymlink(t *testing.T) {
 	dir := t.TempDir()
 	target := filepath.Join(dir, "target")

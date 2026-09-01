@@ -88,6 +88,36 @@ func TestHandleRestoreCommandCancellationDoesNotReplaceVault(t *testing.T) {
 	}
 }
 
+func TestHandleRestoreCommandRejectsSymlinkBackup(t *testing.T) {
+	restore := useRestoreTestRuntime(t)
+	defer restore()
+
+	password := []byte("restore-password")
+	writeRestoreVault(t, vaultFile, password, "current", 5)
+	targetPath := filepath.Join(runtimeHome, "vault.db.target.bak")
+	writeRestoreVault(t, targetPath, password, "restored", 3)
+	linkPath := filepath.Join(runtimeHome, "vault.db.link.bak")
+	if err := os.Symlink(targetPath, linkPath); err != nil {
+		t.Fatalf("symlink backup: %v", err)
+	}
+
+	withStdin(t, "yes\n", func() {
+		os.Args = []string{"vault", "restore", linkPath}
+		err := handleRestoreCommand(password)
+		if err == nil || !strings.Contains(err.Error(), "backup cannot be read safely") {
+			t.Fatalf("error = %v, want safe read failure", err)
+		}
+	})
+
+	loaded, _, err := vaultstorage.LoadFileBytes(vaultFile, password, storageOptions())
+	if err != nil {
+		t.Fatalf("load current vault: %v", err)
+	}
+	if loaded.Data["SOURCE"] != "current" {
+		t.Fatalf("SOURCE = %q, want current", loaded.Data["SOURCE"])
+	}
+}
+
 func TestHandleRestoreCommandRejectsUndecryptableBackup(t *testing.T) {
 	restore := useRestoreTestRuntime(t)
 	defer restore()

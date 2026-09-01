@@ -2,6 +2,7 @@ package paths
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 )
@@ -79,6 +80,17 @@ func OpenFileChecked(path string, flag int, perm os.FileMode) (*os.File, error) 
 // fails if any filesystem entry already exists at that path.
 func OpenFileCreateExclusiveChecked(path string, perm os.FileMode) (*os.File, error) {
 	return OpenFileChecked(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, perm)
+}
+
+// ReadFileChecked rejects symlinks before reading a sensitive runtime file and
+// uses an OS-specific no-follow open where supported.
+func ReadFileChecked(path string) ([]byte, error) {
+	file, err := OpenFileChecked(path, os.O_RDONLY, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	return io.ReadAll(file)
 }
 
 // WriteFileChecked rejects an existing symlink before writing a sensitive
