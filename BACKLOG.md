@@ -27,7 +27,7 @@ Main strengths:
 - dedicated runtime directory under `~/.myminivault/` with `MYMINIVAULT_HOME` override
 - CI coverage reporting with downloadable artifacts and documented baseline coverage
 - formal threat model covering assets, attackers, trust boundaries, data flows, residual risks, and incident response
-- focused `internal/...` packages for crypto, config, model, recovery, storage, and token logic
+- focused `internal/...` packages for crypto, config, model, recovery, storage, container parsing, and token logic
 - tested `internal/lock` package for advisory file locking
 - tested `internal/audit` package for redacted audit log formatting and writes
 - tested `internal/sync` package for local shared-vault import, metadata policy, and preview/import invariants
@@ -425,7 +425,7 @@ Recommended order:
 1. add property-style tests for staged token writes/import/delete invariants
 2. harden token sync UX and policy so staged token writes are less likely to remain unreconciled
 3. keep explicit process-argument warnings current and continue reducing argument exposure where practical; runtime warnings for direct secret/token argv forms are implemented
-4. keep fuzzing `internal/container.FuzzParse` after format or metadata parser changes
+4. keep fuzzing `internal/container.FuzzParse` after format or metadata parser changes; current seed set covers v1, v2, HKDF metadata, empty metadata, invalid JSON, truncated metadata, max metadata length, and legacy salt+ciphertext
 5. implement real `vault migrate` based on the migration policy and existing `vault migrate --dry-run` preview
 6. consolidate duplicated checksum/wipe helpers into a focused internal package and remove legacy compatibility traps with tests
 7. keep rollback and broader same-user file-replacement race hardening moving after no-follow opens, directory fsync, exclusive temp/marker creation, and rollback warn/block checks

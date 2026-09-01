@@ -2,6 +2,7 @@ package container
 
 import (
 	"bytes"
+	"encoding/binary"
 	"os"
 	"path/filepath"
 	"strings"
@@ -73,6 +74,33 @@ func TestParseLegacySaltCiphertext(t *testing.T) {
 	}
 	if string(parsed.Salt) != "1234567890123456" || string(parsed.Ciphertext) != "encrypted" {
 		t.Fatalf("legacy parsed as salt=%q ciphertext=%q", parsed.Salt, parsed.Ciphertext)
+	}
+}
+
+func TestParseNormalizesInconsistentMetadataSaltSize(t *testing.T) {
+	salt := []byte("1234567890123456")
+	wrapped, err := Wrap(KindMainVault, salt, []byte("encrypted"), Metadata{
+		Algorithm:        AlgorithmAES256GCM,
+		KDF:              KDFArgon2id,
+		Argon2MemoryKiB:  64 * 1024,
+		Argon2Time:       3,
+		Argon2Threads:    1,
+		KeySize:          32,
+		SaltSize:         10,
+		NonceSize:        12,
+		Payload:          PayloadChecksumJSON,
+		CiphertextLayout: CiphertextNoncePrefixed,
+	})
+	if err != nil {
+		t.Fatalf("Wrap: %v", err)
+	}
+
+	parsed, err := Parse(wrapped, len(salt))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if parsed.Metadata.SaltSize != len(salt) {
+		t.Fatalf("metadata salt size = %d, want %d", parsed.Metadata.SaltSize, len(salt))
 	}
 }
 
@@ -184,11 +212,35 @@ func FuzzParse(f *testing.F) {
 	if err != nil {
 		f.Fatalf("Wrap seed: %v", err)
 	}
+	recovery, err := Wrap(KindRecoveryVault, salt, []byte("recovery-ciphertext"), Metadata{
+		Algorithm:        AlgorithmAES256GCM,
+		KDF:              KDFHKDFSHA256,
+		KeySize:          32,
+		SaltSize:         16,
+		NonceSize:        12,
+		Payload:          PayloadChecksumJSON,
+		CiphertextLayout: CiphertextNoncePrefixed,
+	})
+	if err != nil {
+		f.Fatalf("Wrap recovery seed: %v", err)
+	}
 	v1 := append([]byte{'M', 'Y', 'M', 'V', Version1, KindRecoveryVault, 0, 0}, salt...)
 	v1 = append(v1, []byte("ciphertext")...)
+	emptyMetadata := append([]byte{'M', 'Y', 'M', 'V', Version, KindSharedTokenVault, 0, 0}, salt...)
+	emptyMetadata = append(emptyMetadata, []byte("ciphertext")...)
+	invalidJSON := append([]byte{'M', 'Y', 'M', 'V', Version, KindMainVault, 0, 1, '{'}, salt...)
+	invalidJSON = append(invalidJSON, []byte("ciphertext")...)
+	truncatedMetadata := []byte{'M', 'Y', 'M', 'V', Version, KindMainVault, 0, 32, '{'}
+	maxMetadata := make([]byte, HeaderSize+4)
+	copy(maxMetadata, []byte{'M', 'Y', 'M', 'V', Version, KindMainVault, 0xff, 0xff})
 
 	f.Add(wrapped)
+	f.Add(recovery)
 	f.Add(v1)
+	f.Add(emptyMetadata)
+	f.Add(invalidJSON)
+	f.Add(truncatedMetadata)
+	f.Add(maxMetadata)
 	f.Add(append(append([]byte(nil), salt...), []byte("legacy-ciphertext")...))
 	f.Add([]byte("short"))
 	f.Add([]byte{'M', 'Y', 'M', 'V', Version, KindMainVault, 0xff, 0xff})
@@ -202,7 +254,7 @@ func FuzzParse(f *testing.F) {
 			t.Fatalf("salt length = %d, want 16", len(parsed.Salt))
 		}
 		if parsed.Legacy {
-			if parsed.Version != 0 || parsed.Kind != 0 || len(parsed.AssociatedData) != 0 {
+			if parsed.Version != 0 || parsed.Kind != 0 || len(parsed.AssociatedData) != 0 || parsed.Metadata != (Metadata{}) {
 				t.Fatalf("legacy parse carried header fields: %#v", parsed)
 			}
 			return
@@ -213,8 +265,18 @@ func FuzzParse(f *testing.F) {
 		if KindName(parsed.Kind) == "unknown" {
 			t.Fatalf("unknown parsed kind %d", parsed.Kind)
 		}
-		if parsed.Version == Version && len(parsed.AssociatedData) < HeaderSize+16 {
-			t.Fatalf("v2 AAD too short: %d", len(parsed.AssociatedData))
+		if parsed.Version == Version {
+			metaLen := int(binary.BigEndian.Uint16(data[6:8]))
+			wantAADLen := HeaderSize + metaLen + len(parsed.Salt)
+			if len(parsed.AssociatedData) != wantAADLen {
+				t.Fatalf("v2 AAD length = %d, want %d", len(parsed.AssociatedData), wantAADLen)
+			}
+			if !bytes.Equal(parsed.AssociatedData, data[:wantAADLen]) {
+				t.Fatal("v2 AAD does not match authenticated cleartext prefix")
+			}
+		}
+		if parsed.Metadata.SaltSize != len(parsed.Salt) {
+			t.Fatalf("metadata salt size = %d, want %d", parsed.Metadata.SaltSize, len(parsed.Salt))
 		}
 	})
 }
