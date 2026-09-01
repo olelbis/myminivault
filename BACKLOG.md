@@ -7,7 +7,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: clone or open the repository root, for example `/tmp/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.13.4`
+- Current baseline release: `v0.13.8`
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -15,7 +15,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `8.6 / 10` under the practical project-readiness model after `v0.13.4`.
+Current assessment score: `8.7 / 10` under the practical project-readiness model after `v0.13.8`.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, macOS Keychain support for token master-key material, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -47,6 +47,7 @@ Main risks:
 - package-level unit coverage is strong across the core internal packages, while `cmd/vault` remains intentionally measured through both focused tests and end-to-end CLI smoke tests
 - `cmd/vault` still contains orchestration that may deserve future extraction when it produces a clearer command boundary
 - the security model is clearer, but it is still self-reviewed and not an external audit
+- macOS and Linux are the active support targets; Windows is intentionally not fully supported until platform-specific locking, ACL, key-storage, packaging, and CI decisions are made
 - direct `vault set KEY value` and `vault use-token <token>` remain available for non-sensitive/demo use, but stdin alternatives now exist for both secret values and compact tokens
 - sensitive runtime helpers now reject symlinks, use OS-specific no-follow opens on Unix-like systems, create key temp/transaction files exclusively, and warn or optionally block many older-valid-vault rollback cases
 - authenticated containers detect tampering, and rollback-state checks now detect many older-valid-vault replacements; the remaining rollback workflow gap is a safer guided restore command
@@ -421,21 +422,21 @@ These items are the most direct path beyond the current `9.9 / 10` ordinary asse
 
 Recommended order:
 
-1. decide Windows support explicitly: either add a Windows lock implementation and CI matrix entry, or document Unix-only support and remove orphan Windows-specific path code
-2. keep explicit process-argument warnings current and continue reducing argument exposure where practical
-3. expand compatibility fixtures around configurable KDF metadata, HKDF recovery/shared-token saves, Argon2id defaults, and deprecated scrypt/v1 profiles
-4. keep fuzzing `internal/container.FuzzParse` after format or metadata parser changes
-5. add property-style tests for staged token writes/import/delete invariants
-6. harden token sync UX and policy so staged token writes are less likely to remain unreconciled
-7. add a guided `vault restore <backup>` command that previews candidate metadata before replacement and acceptance
-8. keep `staticcheck`, CodeQL, and `govulncheck` results triaged, then evaluate `gosec` with a documented triage policy
-9. implement real `vault migrate` based on the migration policy and existing `vault migrate --dry-run` preview
-10. consolidate duplicated checksum/wipe helpers into a focused internal package and remove legacy compatibility traps with tests
-11. keep rollback and broader same-user file-replacement race hardening moving after no-follow opens, directory fsync, exclusive temp/marker creation, and rollback warn/block checks
-12. continue migration coverage around authenticated KDF metadata and crash-consistency behavior
-13. evaluate signed tags/checksums and platform signing after SBOM and immutable Action pinning
-14. keep Linux token key storage file-backed until a reliable desktop/headless Secret Service strategy emerges
-15. keep the internal coverage floor healthy and reduce `cmd/vault` orchestration only when tests protect the boundary
+1. add a guided `vault restore <backup>` command that previews candidate metadata before replacement and acceptance
+2. add property-style tests for staged token writes/import/delete invariants
+3. harden token sync UX and policy so staged token writes are less likely to remain unreconciled
+4. keep explicit process-argument warnings current and continue reducing argument exposure where practical
+5. keep fuzzing `internal/container.FuzzParse` after format or metadata parser changes
+6. implement real `vault migrate` based on the migration policy and existing `vault migrate --dry-run` preview
+7. consolidate duplicated checksum/wipe helpers into a focused internal package and remove legacy compatibility traps with tests
+8. keep rollback and broader same-user file-replacement race hardening moving after no-follow opens, directory fsync, exclusive temp/marker creation, and rollback warn/block checks
+9. keep `staticcheck`, CodeQL, and `govulncheck` results triaged, then evaluate `gosec` with a documented triage policy
+10. continue migration coverage around authenticated KDF metadata and crash-consistency behavior
+11. evaluate signed tags/checksums and platform signing after SBOM and immutable Action pinning
+12. keep Linux token key storage file-backed until a reliable desktop/headless Secret Service strategy emerges
+13. keep the internal coverage floor healthy and reduce `cmd/vault` orchestration only when tests protect the boundary
+14. keep expanding the compatibility fixture corpus when new historical formats, KDF profiles, or payload layouts need long-term read coverage
+15. keep Windows as a low-priority future target unless real user demand appears; it is currently documented as not fully supported
 
 Suggested branches:
 
@@ -452,7 +453,7 @@ Priority: high.
 The first July 2026 review follow-up pass is complete. Remaining follow-up work:
 
 - add a guided `vault restore <backup>` command with preview and explicit acceptance
-- decide and document Windows support before adding Windows CI
+- keep Windows support low priority unless real user demand appears; current docs state that macOS and Linux are the active supported targets
 - keep `staticcheck`, CodeQL, and `govulncheck` results triaged, then decide whether `gosec` should become a CI gate
 - keep `SECURITY.md`, review request links, and the public focused-review issue current
 - expand the independent decryptor experiment beyond the initial Go/Python reference readers when useful

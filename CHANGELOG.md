@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Documented macOS/Linux as the active support targets and moved Windows support to low-priority future work.
 - Added a root `VERSION` file as the single source for local release-version injection and release tag consistency checks.
 - Expanded the compatibility fixture corpus with current Argon2id main-vault and HKDF-SHA256 recovery/shared-token vault fixtures.
 - Updated migration and development documentation for the current KDF-specific write profiles.

@@ -44,6 +44,8 @@ GitHub Releases also publish installable packages:
 
 Release assets include per-target SHA-256 checksum files, SPDX JSON SBOMs, an aggregate `SHA256SUMS` manifest, and GitHub artifact attestations when built by the release workflow.
 
+Supported targets are macOS and Linux. Windows is not fully supported yet: the project does not currently publish Windows packages, run Windows CI, or document Windows-specific runtime permission and locking semantics.
+
 Prefer the macOS `.pkg` release asset on macOS. The `.tar.gz` binary is unsigned and not notarized, so Gatekeeper may block it when downloaded from a browser.
 
 For local testing of an unsigned `.tar.gz` binary, make it executable first:
