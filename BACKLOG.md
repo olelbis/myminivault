@@ -21,7 +21,7 @@ Current assessment score: `8.6 / 10` under the practical project-readiness model
 
 Main strengths:
 
-- release discipline with Git tags, GitHub releases, and a changelog
+- release discipline with Git tags, GitHub releases, a root `VERSION` file, and a changelog
 - GitHub CI for formatting, vetting, `staticcheck`, automated tests across Linux and macOS, CodeQL, and `govulncheck`
 - release package automation for Linux amd64, Linux arm64, and macOS arm64, including archives, `.deb`, `.rpm`, `.pkg`, checksums, and GitHub artifact attestations
 - dedicated runtime directory under `~/.myminivault/` with `MYMINIVAULT_HOME` override

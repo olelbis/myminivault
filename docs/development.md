@@ -173,7 +173,8 @@ go build -o bin/vault ./cmd/vault
 Local builds show `vdev` in `vault help`. To emulate a release build locally, inject the version with ldflags:
 
 ```bash
-go build -trimpath -ldflags="-s -w -X main.vaultVersion=0.13.1" -o bin/vault ./cmd/vault
+VERSION=$(cat VERSION)
+go build -trimpath -ldflags="-s -w -X main.vaultVersion=${VERSION}" -o bin/vault ./cmd/vault
 ```
 
 Suggested manual smoke-test pattern in an isolated temporary directory:
