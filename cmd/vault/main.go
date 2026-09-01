@@ -401,7 +401,7 @@ SECURITY:
   security-audit        Comprehensive security audit
   doctor                Check runtime file permissions and local health
   inspect-runtime       List active and legacy runtime files without decrypting
-  migrate --dry-run     Preview encrypted runtime file format migration
+  migrate --dry-run     Inspect deprecated encrypted runtime formats
   rollback-accept       Accept current vault metadata after a manual restore
   config                Show configuration
   regenerate-token-key  Generate new token master key

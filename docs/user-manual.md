@@ -28,7 +28,7 @@ Keep these rules in mind:
 | Export secrets to a restrictive plaintext file | `vault export --output secrets.env` |
 | Import shell-style secrets | `vault import secrets.env` |
 | Check local file health | `vault doctor` |
-| Preview format migration | `vault migrate --dry-run` |
+| Inspect deprecated encrypted formats | `vault migrate --dry-run` |
 | Create recovery access | `vault setup-recovery` |
 | Refresh recovery snapshot | `vault refresh-recovery` |
 | Test recovery access | `vault test-recovery` |
@@ -275,9 +275,9 @@ Use this when:
 ./bin/vault migrate --dry-run
 ```
 
-Previews encrypted runtime file format migration without asking for the master password and without modifying files. It inspects active main vault, backup, recovery, and shared token vault files, reports whether each file is missing, legacy, `MYMV v1`, or current `MYMV v2`, and shows which files would be rewritten by a future real migration command.
+Inspects deprecated encrypted runtime file formats without asking for the master password and without modifying files. It checks active main vault, backup, recovery, and shared token vault files, reports whether each file is missing, legacy, `MYMV v1`, or current `MYMV v2`, and shows which deprecated files can be refreshed by the next normal authenticated save.
 
-The real mutating `vault migrate` command is not implemented yet. Current saves already rewrite readable older files as `MYMV v2` after normal authenticated save operations.
+A real mutating `vault migrate` command is intentionally not planned for the near term. Current saves already rewrite readable older files as current `MYMV v2` files after normal authenticated save operations, which keeps the risky rewrite path inside existing save flows.
 
 ## Password Recovery
 
@@ -696,7 +696,7 @@ Important behavior:
 | `vault-config.json` | Optional config override |
 | `.myminivault.lock` | Inter-process lock file |
 
-Current encrypted runtime files include a small cleartext `MYMV v2` container header with the container format version, file kind, and non-sensitive crypto metadata. Main-vault saves use the configured KDF metadata, defaulting to Argon2id. Recovery snapshots and shared-token vaults use HKDF-SHA256 for new saves. This helps `vault doctor` and `vault inspect-runtime` identify file format information without decrypting secrets. The v2 cleartext context is authenticated with AES-GCM AAD, so header or metadata tampering makes decryption fail. Mutating password-based saves also keep encrypted vault rollback metadata and update `rollback-state.json`; if a later command sees an older valid vault revision, it warns by default or blocks when `rollback_mode` is `block`. scrypt-based `MYMV v2`, older `MYMV v1`, Argon2id recovery/shared-token vaults from older experimental releases, and salt-plus-ciphertext files remain readable but are deprecated and are upgraded to the current write profile when rewritten.
+Current encrypted runtime files include a small cleartext `MYMV v2` container header with the container format version, file kind, and non-sensitive crypto metadata. Main-vault saves use the configured KDF metadata, defaulting to Argon2id. Recovery snapshots and shared-token vaults use HKDF-SHA256 for new saves. This helps `vault doctor` and `vault inspect-runtime` identify file format information without decrypting secrets. The v2 cleartext context is authenticated with AES-GCM AAD, so header or metadata tampering makes decryption fail. Mutating password-based saves also keep encrypted vault rollback metadata and update `rollback-state.json`; if a later command sees an older valid vault revision, it warns by default or blocks when `rollback_mode` is `block`. scrypt-based `MYMV v2`, older `MYMV v1`, Argon2id recovery/shared-token vaults from older experimental releases, and salt-plus-ciphertext files remain readable during the experimental series but are deprecated. They are upgraded to the current write profile when rewritten by normal authenticated saves.
 
 These files are ignored by Git because they may contain encrypted secrets, keys, logs, or local runtime state.
 

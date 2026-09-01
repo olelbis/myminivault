@@ -129,8 +129,10 @@ The intended sunset path is:
   the experimental `0.x` series
 - keep normal authenticated saves rewriting readable deprecated files to the
   current Argon2id-based `MYMV` v2 profile
-- before a future `1.0` release, decide whether deprecated formats remain
-  always-readable or require an explicit opt-in such as `--allow-legacy`
+- before a future `1.0` release, decide whether deprecated formats require an
+  explicit opt-in such as `--allow-legacy` before removal
+- do not add a mutating migration path unless normal authenticated saves prove
+  insufficient for real users
 - remove a deprecated read path only after the migration policy, fixtures,
   changelog, and user manual document the removal window
 

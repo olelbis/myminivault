@@ -67,35 +67,36 @@ Fixture policy:
 Some fixtures use intentionally weak test-only scrypt parameters so they run
 quickly in unit tests. They are compatibility fixtures, not production examples.
 
-## Future `vault migrate` Shape
+## Deprecated Format Strategy
 
-Migration starts with a non-mutating dry-run command. A future real migration
-command should be explicit and non-destructive by default.
+Migration starts and stops with a non-mutating inspection command for now. The
+project intentionally does not plan a mutating `vault migrate` command in the
+near term because rewriting encrypted files through a separate migration path
+would add risk and maintenance surface.
 
-Proposed command shape:
+Current command shape:
 
 ```bash
 vault migrate --dry-run
-vault migrate
 ```
 
 Current status:
 
 - `vault migrate --dry-run` is implemented as an inspection-only preview.
-- `vault migrate` is not implemented yet.
+- `vault migrate` without `--dry-run` is intentionally unsupported.
 - Dry-run does not ask for passwords, decrypt secrets, take the vault lock, or
   modify runtime files.
+- Normal authenticated save paths already rewrite readable deprecated files to
+  the current `MYMV` v2 write profile.
 
-Expected behavior:
+Operational guidance:
 
-- inspect active runtime files without printing secrets
-- report each encrypted file's current container format
-- preview which files would be rewritten
-- create backups before rewriting
-- rewrite readable legacy/v1 files to the current format
-- keep file permissions restrictive
-- fail clearly when a file cannot be parsed, decrypted, or backed up
-- never delete old backups automatically during the first migration design
+- use `vault migrate --dry-run` to identify deprecated runtime files
+- unlock and perform the relevant normal save operation to refresh a readable
+  deprecated file
+- keep backups before manual cleanup of old runtime files
+- keep compatibility fixtures until the read path is removed
+- prefer explicit deprecation windows over automatic bulk rewrites
 
 ## Deprecation Rules
 
@@ -104,7 +105,7 @@ Before removing read support for any old format:
 1. The old format must be documented here.
 2. A fixture for that format must exist.
 3. At least one release must warn that support is planned for removal.
-4. Migration guidance must exist in README, user manual, and release notes.
+4. Refresh or deprecation guidance must exist in README, user manual, and release notes.
 5. The removal must be a minor release or larger.
 
 ## Open Questions

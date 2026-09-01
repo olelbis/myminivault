@@ -426,7 +426,7 @@ Recommended order:
 2. harden token sync UX and policy so staged token writes are less likely to remain unreconciled
 3. keep explicit process-argument warnings current and continue reducing argument exposure where practical; runtime warnings for direct secret/token argv forms are implemented
 4. keep fuzzing `internal/container.FuzzParse` after format or metadata parser changes; current seed set covers v1, v2, HKDF metadata, empty metadata, invalid JSON, truncated metadata, max metadata length, and legacy salt+ciphertext
-5. implement real `vault migrate` based on the migration policy and existing `vault migrate --dry-run` preview
+5. keep deprecated-format policy explicit; do not implement real mutating `vault migrate` unless normal authenticated-save refresh proves insufficient
 6. consolidate duplicated checksum/wipe helpers into a focused internal package and remove legacy compatibility traps with tests
 7. keep rollback and broader same-user file-replacement race hardening moving after no-follow opens, directory fsync, exclusive temp/marker creation, and rollback warn/block checks
 8. keep `staticcheck`, CodeQL, and `govulncheck` results triaged, then evaluate `gosec` with a documented triage policy
@@ -455,7 +455,7 @@ The first July 2026 review follow-up pass is complete. Remaining follow-up work:
 - keep `staticcheck`, CodeQL, and `govulncheck` results triaged, then decide whether `gosec` should become a CI gate
 - keep `SECURITY.md`, review request links, and the public focused-review issue current
 - expand the independent decryptor experiment beyond the initial Go/Python reference readers when useful
-- implement the real mutating `vault migrate` command once dry-run behavior and migration policy have settled
+- keep `vault migrate --dry-run` as inspection-only and prefer documented deprecation plus normal authenticated-save refresh over a separate mutating migration command
 - keep expanding the compatibility fixture corpus when new historical formats, KDF profiles, or payload layouts need long-term read coverage; current Argon2id main-vault and HKDF recovery/shared-token fixtures are now covered
 - keep memory hardening honest: avoid string conversions for secrets, keep byte wiping best-effort, and document Go limits instead of promising impossible guarantees
 
