@@ -18,7 +18,7 @@ type migrationPlanItem struct {
 
 func handleMigrateCommand() error {
 	if len(os.Args) != 3 || os.Args[2] != "--dry-run" {
-		return fmt.Errorf("migrate currently supports only --dry-run; real migration is planned but not implemented")
+		return fmt.Errorf("migrate supports only --dry-run; deprecated formats remain readable and are rewritten by normal authenticated saves")
 	}
 	printMigrationDryRun()
 	return nil
@@ -43,12 +43,12 @@ func printMigrationDryRun() {
 			fmt.Printf("    format: %s\n", item.format)
 		}
 		fmt.Printf("    action: %s\n", item.action)
-		if strings.Contains(item.action, "would rewrite") {
+		if strings.Contains(item.action, "deprecated") {
 			migratable++
 		}
 	}
 
-	fmt.Printf("\nSummary: %d file(s) would be rewritten to MYMV v%d\n", migratable, container.Version)
+	fmt.Printf("\nSummary: %d deprecated file(s) can be refreshed by the next authenticated save\n", migratable)
 }
 
 func migrationPlan() []migrationPlanItem {
@@ -80,7 +80,7 @@ func migrationPlanForFile(spec runtimeFileSpec) migrationPlanItem {
 		}
 		item.status = "unreadable"
 		item.format = err.Error()
-		item.action = "manual review required before migration"
+		item.action = "manual review required before normal refresh"
 		return item
 	}
 
@@ -88,9 +88,9 @@ func migrationPlanForFile(spec runtimeFileSpec) migrationPlanItem {
 	item.format = container.Description(parsed)
 	switch {
 	case parsed.Legacy:
-		item.action = fmt.Sprintf("would rewrite to MYMV v%d after authenticated decrypt", container.Version)
+		item.action = fmt.Sprintf("deprecated; normal authenticated save rewrites to MYMV v%d", container.Version)
 	case parsed.Version < container.Version:
-		item.action = fmt.Sprintf("would rewrite to MYMV v%d after authenticated decrypt", container.Version)
+		item.action = fmt.Sprintf("deprecated; normal authenticated save rewrites to MYMV v%d", container.Version)
 	default:
 		item.action = "already current"
 	}

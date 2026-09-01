@@ -45,7 +45,7 @@ func TestMigrationPlanReportsLegacyAndCurrentActions(t *testing.T) {
 	if mainItem.status != "present" || !strings.Contains(mainItem.format, "legacy salt+ciphertext") {
 		t.Fatalf("main item = %+v, want legacy present", mainItem)
 	}
-	if !strings.Contains(mainItem.action, "would rewrite to MYMV v2") {
+	if !strings.Contains(mainItem.action, "deprecated; normal authenticated save rewrites to MYMV v2") {
 		t.Fatalf("main action = %q, want rewrite", mainItem.action)
 	}
 
@@ -64,7 +64,7 @@ func TestHandleMigrateCommandRequiresDryRun(t *testing.T) {
 
 	os.Args = []string{"vault", "migrate"}
 	err := handleMigrateCommand()
-	if err == nil || !strings.Contains(err.Error(), "supports only --dry-run") {
+	if err == nil || !strings.Contains(err.Error(), "deprecated formats remain readable") {
 		t.Fatalf("error = %v, want dry-run requirement", err)
 	}
 }
