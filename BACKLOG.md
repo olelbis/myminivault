@@ -35,9 +35,10 @@ Main strengths:
 - tested `internal/clipboard` package for backend selection and clear-if-unchanged behavior
 - tested `internal/export` package for shell export rendering and restrictive file writes
 - tested `internal/health` package for non-decrypting runtime metadata compatibility checks
-- internal package coverage at `85.1%`, above the enforced `80.0%` floor
+- tested `internal/sensitive` package for checksum-prefixed payload helpers and best-effort byte wiping
+- internal package coverage at `85.8%`, above the enforced `80.0%` floor
 - automated CLI smoke coverage for critical workflows in the top-level `tests` package
-- explicit handling for recovery, token sync, locking, backups, export, and password changes
+- explicit handling for recovery, token sync, locking, backups, export, checksummed payloads, best-effort byte wiping, and password changes
 - a handoff backlog that can restart work from a fresh chat
 
 Main risks:
@@ -65,33 +66,42 @@ Use this section first when resuming work. The detailed backlog below explains e
 
 ### Immediate Next Work
 
-1. **Review Follow-Up Hardening**
-   - Status: next recommended branch after `v0.13.4`.
-   - Goal: turn the external-style review notes into focused hardening work: token sync fuzz/property tests, rollback strict-mode design, static analysis follow-up, SECURITY contact verification, legacy migration policy, and compatibility fixtures.
-   - Suggested branch: `review-follow-up-hardening`.
+1. **Rollback And File-Replacement Race Hardening**
+   - Status: next recommended branch.
+   - Goal: keep tightening restore, backup, rename, rollback-state, and same-user file replacement behavior after no-follow opens, directory fsync, exclusive temp/marker creation, rollback warn/block checks, and guided restore.
+   - Suggested branch: `rollback-race-hardening`.
+
+2. **Static Analysis Triage**
+   - Status: `staticcheck`, CodeQL, and `govulncheck` are already in CI.
+   - Goal: keep existing findings triaged and evaluate `gosec` with a documented suppress/accept policy before turning it into a gate.
+   - Suggested branch: `static-analysis-triage`.
+
+3. **Coverage And cmd/vault Thinning**
+   - Status: internal coverage remains above the enforced floor; CLI behavior is still heavily protected by smoke tests.
+   - Goal: keep internal packages above `80.0%`, raise focused `cmd/vault` unit coverage where practical, and extract command-independent logic only when it makes behavior clearer.
+   - Suggested branch: `coverage-command-thinning`.
 
 ### Near-Term Hardening
 
-2. **Container KDF And Crash Consistency**
-   - Goal: continue migration tests and broader rollback/file-replacement race hardening after the first crash-consistency and exclusive-create passes.
-   - KDF status: bounded MYMV v2 KDF metadata loading policy implemented; new main-vault saves use Argon2id by default, new recovery/shared-token vault saves use HKDF-SHA256, while scrypt-based MYMV v2, Argon2id recovery/shared-token vaults from older experimental releases, MYMV v1, and legacy salt+ciphertext files remain readable but deprecated.
-   - Crash-consistency status: parent directories are synced after atomic runtime-file renames and legacy runtime migration moves where supported.
-   - Suggested branch: `container-runtime-hardening`.
+4. **Deprecated Format And Compatibility Fixtures**
+   - Goal: keep deprecated-format policy explicit, expand fixtures only when new historical formats/KDF profiles/layouts need long-term read coverage, and avoid a mutating `vault migrate` unless normal authenticated-save refresh proves insufficient.
+   - Status: bounded MYMV v2 KDF metadata loading is implemented; new main-vault saves use Argon2id by default; new recovery/shared-token vault saves use HKDF-SHA256; scrypt-based MYMV v2, Argon2id recovery/shared-token vaults from older experimental releases, MYMV v1, and legacy salt+ciphertext files remain readable but deprecated.
+   - Suggested branch: `deprecated-format-fixtures`.
 
-3. **Supply-Chain Hardening**
-   - Goal: evaluate signed tags/checksums and platform signing after SBOM generation, immutable Action pinning, and automated security scanning.
+5. **Supply-Chain Hardening**
+   - Goal: evaluate signed tags/checksums and platform signing after SBOM generation, immutable Action pinning, automated security scanning, and current package attestations.
    - Status: release packages upload per-target SPDX JSON SBOM files, include them in checksum manifests, attest them, workflows pin GitHub Actions to commit SHAs, and CI runs CodeQL plus `govulncheck`.
    - Suggested branch: `supply-chain-hardening`.
 
-4. **Rollback Policy**
-   - Status: warn-mode implementation completed in `v0.12.17`; opt-in `rollback_mode="block"` and `vault rollback-accept` implemented after `v0.13.5`.
-   - Goal: add a safer guided `vault restore <backup>` workflow without breaking backup and recovery semantics.
-   - Suggested branch: `rollback-policy`.
+6. **Linux Token Key Storage Review**
+   - Goal: keep Linux token key storage file-backed unless a reliable desktop/headless Secret Service strategy emerges.
+   - Status: macOS Keychain is supported; Linux Secret Service is detected by `doctor` but not used as storage.
+   - Suggested branch: `linux-token-key-storage`.
 
-5. **Secret Input And Runtime Path Hardening**
-   - Status: partial progress through `v0.13.4` with stdin/file/fd token input, explicit plaintext-output gates, portable symlink rejection, Unix no-follow opens for checked sensitive runtime helpers, exclusive creation for temp/transaction files, and rollback-state checks with warn/block modes.
-   - Goal: keep reducing direct secret/token exposure, sensitive runtime symlink risk, and runtime file race windows.
-   - Suggested branch: `secret-input-path-hardening`.
+7. **Windows Support Decision**
+   - Goal: keep Windows as a low-priority future target unless real user demand appears; document gaps around locking, ACLs, key storage, packaging, and CI.
+   - Status: macOS and Linux are the active support targets.
+   - Suggested branch: `windows-support-notes`.
 
 ### Completed Hardening Milestones
 
@@ -427,7 +437,7 @@ Recommended order:
 3. keep explicit process-argument warnings current and continue reducing argument exposure where practical; runtime warnings for direct secret/token argv forms are implemented
 4. keep fuzzing `internal/container.FuzzParse` after format or metadata parser changes; current seed set covers v1, v2, HKDF metadata, empty metadata, invalid JSON, truncated metadata, max metadata length, and legacy salt+ciphertext
 5. keep deprecated-format policy explicit; do not implement real mutating `vault migrate` unless normal authenticated-save refresh proves insufficient
-6. consolidate duplicated checksum/wipe helpers into a focused internal package and remove legacy compatibility traps with tests
+6. keep `internal/sensitive` focused after checksum/wipe consolidation; avoid adding unrelated crypto or storage policy there
 7. keep rollback and broader same-user file-replacement race hardening moving after no-follow opens, directory fsync, exclusive temp/marker creation, and rollback warn/block checks
 8. keep `staticcheck`, CodeQL, and `govulncheck` results triaged, then evaluate `gosec` with a documented triage policy
 9. continue migration coverage around authenticated KDF metadata and crash-consistency behavior
@@ -479,7 +489,7 @@ Current CI runs formatting, `go vet`, `staticcheck`, `go test ./...`, full cover
 
 Next actions:
 
-- keep `./internal/...` coverage at or above the current `80.0%` floor, with `85.1%` as the latest local baseline
+- keep `./internal/...` coverage at or above the current `80.0%` floor, with `85.8%` as the latest local baseline
 - raise `cmd/vault` coverage with focused unit tests or further extraction of command-independent logic where it improves clarity
 
 Suggested branch:

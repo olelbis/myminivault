@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +11,7 @@ import (
 	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
 	"github.com/olelbis/myminivault/internal/model"
 	vaultpaths "github.com/olelbis/myminivault/internal/paths"
+	vaultsensitive "github.com/olelbis/myminivault/internal/sensitive"
 )
 
 // Options groups the storage paths, crypto parameters, and optional recovery
@@ -235,9 +235,7 @@ func recoveryKeyBytes(opts Options) []byte {
 }
 
 func wipeBytes(data []byte) {
-	for i := range data {
-		data[i] = 0
-	}
+	vaultsensitive.Wipe(data)
 }
 
 // SaveFileAtomic writes to a temporary file and renames it into place. Existing
@@ -466,37 +464,9 @@ func tryLoadContainer(file string, saltSize int) (container.Parsed, error) {
 // marshalWithChecksum prefixes a SHA-256 checksum to the JSON payload. The
 // loader verifies it after decryption to catch accidental corruption.
 func marshalWithChecksum(vault *model.ExtendedVault) ([]byte, error) {
-	serialized, err := json.MarshalIndent(vault, "", "  ")
-	if err != nil {
-		return nil, err
-	}
-
-	checksum := sha256.Sum256(serialized)
-	return append(checksum[:], serialized...), nil
+	return vaultsensitive.MarshalJSONWithChecksum(vault)
 }
 
 func stripChecksum(decrypted []byte) ([]byte, error) {
-	if len(decrypted) <= sha256.Size {
-		return decrypted, nil
-	}
-
-	expectedChecksum := decrypted[:sha256.Size]
-	data := decrypted[sha256.Size:]
-	actualChecksum := sha256.Sum256(data)
-
-	checksumMatch := true
-	for i := range expectedChecksum {
-		if expectedChecksum[i] != actualChecksum[i] {
-			checksumMatch = false
-		}
-	}
-	if !checksumMatch {
-		var legacy map[string]string
-		if json.Unmarshal(decrypted, &legacy) == nil {
-			return decrypted, nil
-		}
-		return nil, errors.New("checksum failed")
-	}
-
-	return data, nil
+	return vaultsensitive.StripChecksumAllowLegacyJSON(decrypted, errors.New("legacy container data too short"), errors.New("checksum failed"))
 }

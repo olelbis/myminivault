@@ -5,6 +5,7 @@ import (
 
 	"github.com/olelbis/myminivault/internal/container"
 	vaultrollback "github.com/olelbis/myminivault/internal/rollback"
+	vaultsensitive "github.com/olelbis/myminivault/internal/sensitive"
 	vaultstorage "github.com/olelbis/myminivault/internal/storage"
 )
 
@@ -38,9 +39,7 @@ func recoverySnapshotWillRefresh() bool {
 }
 
 func wipeBytes(data []byte) {
-	for i := range data {
-		data[i] = 0
-	}
+	vaultsensitive.Wipe(data)
 }
 
 func tryLoadParsed(file string) (container.Parsed, error) {
