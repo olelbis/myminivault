@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Removed an allocation-size addition from `internal/sensitive.PrefixChecksum` to satisfy CodeQL overflow analysis without changing checksum payload format.
 - Hardened guided restore so backup files are read through checked no-follow opens and the exact verified bytes are reused for replacement, reducing backup file-replacement race windows.
 - Consolidated checksum-prefixed JSON payload and best-effort byte-wipe helpers into `internal/sensitive`, keeping stricter recovery/token checksum errors and main-vault legacy JSON compatibility.
 - Cleaned up backlog priorities so completed review-follow-up items no longer appear as the next active roadmap.

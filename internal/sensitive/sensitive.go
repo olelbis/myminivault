@@ -27,10 +27,9 @@ func MarshalJSONWithChecksum(value any) ([]byte, error) {
 // PrefixChecksum returns checksum || payload.
 func PrefixChecksum(payload []byte) []byte {
 	checksum := sha256.Sum256(payload)
-	out := make([]byte, 0, sha256.Size+len(payload))
-	out = append(out, checksum[:]...)
-	out = append(out, payload...)
-	return out
+	out := make([]byte, sha256.Size)
+	copy(out, checksum[:])
+	return append(out, payload...)
 }
 
 // StripChecksum verifies checksum || payload and returns payload.
