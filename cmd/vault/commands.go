@@ -20,6 +20,7 @@ import (
 	vaultclipboard "github.com/olelbis/myminivault/internal/clipboard"
 	vaultcommands "github.com/olelbis/myminivault/internal/commands"
 	vaultexport "github.com/olelbis/myminivault/internal/export"
+	vaultpaths "github.com/olelbis/myminivault/internal/paths"
 )
 
 // Command handlers (unchanged)
@@ -398,22 +399,11 @@ func pruneTimestampedBackups() error {
 }
 
 func copyFile(src, dst string) error {
-	source, err := os.Open(src)
+	data, err := vaultpaths.ReadFileChecked(src)
 	if err != nil {
 		return err
 	}
-	defer source.Close()
-
-	destination, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
-	if err != nil {
-		return err
-	}
-	defer destination.Close()
-
-	if _, err := io.Copy(destination, source); err != nil {
-		return err
-	}
-	return destination.Sync()
+	return writeFileExclusive(dst, data)
 }
 
 func showStats(vault *ExtendedVault) {

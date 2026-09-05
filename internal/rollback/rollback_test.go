@@ -183,6 +183,21 @@ func TestLoadStateRejectsInvalidContents(t *testing.T) {
 	}
 }
 
+func TestLoadStateRejectsSymlink(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target-state.json")
+	link := filepath.Join(dir, StateFileName)
+	if err := SaveState(target, model.VaultMetadata{VaultID: "vault-a", Revision: 2}); err != nil {
+		t.Fatalf("SaveState: %v", err)
+	}
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+	if _, err := LoadState(link); err == nil {
+		t.Fatal("expected symlink rollback state to be rejected")
+	}
+}
+
 func TestSaveStateRejectsIncompleteMetadata(t *testing.T) {
 	path := filepath.Join(t.TempDir(), StateFileName)
 	if err := SaveState(path, model.VaultMetadata{VaultID: "", Revision: 1}); err == nil {

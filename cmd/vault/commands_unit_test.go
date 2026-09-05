@@ -134,6 +134,49 @@ func TestParseExportArgsRejectsStdoutYes(t *testing.T) {
 	}
 }
 
+func TestCopyFileRejectsSymlinkSource(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target")
+	link := filepath.Join(dir, "link")
+	dst := filepath.Join(dir, "backup")
+	if err := os.WriteFile(target, []byte("secret"), 0600); err != nil {
+		t.Fatalf("write target: %v", err)
+	}
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+
+	if err := copyFile(link, dst); err == nil {
+		t.Fatal("expected symlink source to be rejected")
+	}
+	if _, err := os.Stat(dst); !os.IsNotExist(err) {
+		t.Fatalf("destination exists after failed copy: %v", err)
+	}
+}
+
+func TestCopyFileRejectsExistingDestination(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "vault.db")
+	dst := filepath.Join(dir, "vault.db.backup")
+	if err := os.WriteFile(src, []byte("current"), 0600); err != nil {
+		t.Fatalf("write source: %v", err)
+	}
+	if err := os.WriteFile(dst, []byte("existing"), 0600); err != nil {
+		t.Fatalf("write destination: %v", err)
+	}
+
+	if err := copyFile(src, dst); err == nil {
+		t.Fatal("expected existing destination to be rejected")
+	}
+	data, err := os.ReadFile(dst)
+	if err != nil {
+		t.Fatalf("read destination: %v", err)
+	}
+	if string(data) != "existing" {
+		t.Fatalf("destination changed to %q", data)
+	}
+}
+
 func TestPruneTimestampedBackupsKeepsNewestConfiguredCount(t *testing.T) {
 	dir := t.TempDir()
 	originalVaultFile := vaultFile

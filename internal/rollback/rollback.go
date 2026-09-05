@@ -106,7 +106,7 @@ func LoadState(path string) (*State, error) {
 	if err := vaultpaths.RejectSymlink(path); err != nil {
 		return nil, err
 	}
-	data, err := os.ReadFile(path)
+	data, err := vaultpaths.ReadFileChecked(path)
 	if err != nil {
 		return nil, err
 	}
