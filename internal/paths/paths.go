@@ -39,7 +39,7 @@ func EnsureRuntimeHome() (string, error) {
 	if err := os.MkdirAll(home, 0700); err != nil {
 		return "", fmt.Errorf("create runtime directory %s: %w", home, err)
 	}
-	if err := os.Chmod(home, 0700); err != nil {
+	if err := os.Chmod(home, 0700); err != nil { // #nosec G302 -- 0700 is the intended owner-only mode for a directory.
 		return "", fmt.Errorf("secure runtime directory %s: %w", home, err)
 	}
 	return home, nil

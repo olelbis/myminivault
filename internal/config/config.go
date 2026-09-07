@@ -160,7 +160,7 @@ func (cfg Config) KDFConfig() vaultcrypto.KDFConfig {
 			MemoryKiB: cfg.Argon2MemoryKiB,
 			Time:      cfg.Argon2Time,
 			Threads:   cfg.Argon2Threads,
-			KeySize:   uint32(cfg.KeySize),
+			KeySize:   uint32(cfg.KeySize), // #nosec G115 -- Config.Validate bounds key_size to 1..32 before use.
 		},
 	}
 }

@@ -71,34 +71,29 @@ Use this section first when resuming work. The detailed backlog below explains e
    - Goal: keep tightening restore, backup, rename, rollback-state, and same-user file replacement behavior after no-follow opens, directory fsync, exclusive temp/marker creation, rollback warn/block checks, and guided restore.
    - Suggested branch: `rollback-race-hardening`.
 
-2. **Static Analysis Triage**
-   - Status: `staticcheck`, CodeQL, and `govulncheck` are already in CI.
-   - Goal: keep existing findings triaged and evaluate `gosec` with a documented suppress/accept policy before turning it into a gate.
-   - Suggested branch: `static-analysis-triage`.
-
-3. **Coverage And cmd/vault Thinning**
+2. **Coverage And cmd/vault Thinning**
    - Status: internal coverage remains above the enforced floor; CLI behavior is still heavily protected by smoke tests.
    - Goal: keep internal packages above `80.0%`, raise focused `cmd/vault` unit coverage where practical, and extract command-independent logic only when it makes behavior clearer.
    - Suggested branch: `coverage-command-thinning`.
 
 ### Near-Term Hardening
 
-4. **Deprecated Format And Compatibility Fixtures**
+3. **Deprecated Format And Compatibility Fixtures**
    - Goal: keep deprecated-format policy explicit, expand fixtures only when new historical formats/KDF profiles/layouts need long-term read coverage, and avoid a mutating `vault migrate` unless normal authenticated-save refresh proves insufficient.
    - Status: bounded MYMV v2 KDF metadata loading is implemented; new main-vault saves use Argon2id by default; new recovery/shared-token vault saves use HKDF-SHA256; scrypt-based MYMV v2, Argon2id recovery/shared-token vaults from older experimental releases, MYMV v1, and legacy salt+ciphertext files remain readable but deprecated.
    - Suggested branch: `deprecated-format-fixtures`.
 
-5. **Supply-Chain Hardening**
+4. **Supply-Chain Hardening**
    - Goal: evaluate signed tags/checksums and platform signing after SBOM generation, immutable Action pinning, automated security scanning, and current package attestations.
    - Status: release packages upload per-target SPDX JSON SBOM files, include them in checksum manifests, attest them, workflows pin GitHub Actions to commit SHAs, and CI runs CodeQL plus `govulncheck`.
    - Suggested branch: `supply-chain-hardening`.
 
-6. **Linux Token Key Storage Review**
+5. **Linux Token Key Storage Review**
    - Goal: keep Linux token key storage file-backed unless a reliable desktop/headless Secret Service strategy emerges.
    - Status: macOS Keychain is supported; Linux Secret Service is detected by `doctor` but not used as storage.
    - Suggested branch: `linux-token-key-storage`.
 
-7. **Windows Support Decision**
+6. **Windows Support Decision**
    - Goal: keep Windows as a low-priority future target unless real user demand appears; document gaps around locking, ACLs, key storage, packaging, and CI.
    - Status: macOS and Linux are the active support targets.
    - Suggested branch: `windows-support-notes`.
@@ -113,12 +108,13 @@ Use this section first when resuming work. The detailed backlog below explains e
 6. **Token sync policy review**: completed in `v0.9.0`; legacy sync fallback decisions are visible, token sync freshness warnings are clearer, and policy docs include practical examples.
 7. **Initial `cmd/vault` cleanup pass**: completed in `v0.10.0`; recovery metadata compatibility moved into `internal/health` with focused tests.
 8. **Token CLI split and lock timeout**: completed in `v0.11.0`; token command code is split into focused files and lock acquisition now has a bounded wait.
-9. **Storage legacy parse cleanup**: completed in `v0.11.1`; main vault payload parsing now has one tested path for extended and legacy JSON.
-10. **Dedicated recovery salt**: completed in `v0.12.0`; new recovery snapshots use a dedicated random salt while legacy shared-salt snapshots remain readable and are refreshed on the next recovery rewrite.
-11. **Coverage follow-up**: completed in `v0.13.2`; `internal/token`, `internal/recovery`, `internal/rollback`, and `internal/paths` are all above the `80.0%` package-level target.
-12. **Password-command orchestration refactor**: completed in `v0.13.3`; rollback warnings, token import, access metadata, command dispatch, and final save/mirror decisions are separated and covered by focused tests.
-13. **Token execution and runtime health refactor**: completed in `v0.13.4`; token command request parsing is centralized and `doctor`/`inspect-runtime` share sensitive runtime-file specs to reduce drift.
-14. **Review follow-up hardening pass**: completed after `v0.13.4`; added token sync scenario/property-style tests, rollback block-mode checks, static-analysis tracking, SECURITY updates, migration fixture policy, fixture inventory coverage, and clearer memory-hardening limits.
+9. **Static analysis triage**: completed after local `gosec` evaluation, a documented suppress/accept policy in `docs/static-analysis.md`, no-follow token-file reads, bounded conversion clarifications, and local `staticcheck`/test/vet verification.
+10. **Storage legacy parse cleanup**: completed in `v0.11.1`; main vault payload parsing now has one tested path for extended and legacy JSON.
+11. **Dedicated recovery salt**: completed in `v0.12.0`; new recovery snapshots use a dedicated random salt while legacy shared-salt snapshots remain readable and are refreshed on the next recovery rewrite.
+12. **Coverage follow-up**: completed in `v0.13.2`; `internal/token`, `internal/recovery`, `internal/rollback`, and `internal/paths` are all above the `80.0%` package-level target.
+13. **Password-command orchestration refactor**: completed in `v0.13.3`; rollback warnings, token import, access metadata, command dispatch, and final save/mirror decisions are separated and covered by focused tests.
+14. **Token execution and runtime health refactor**: completed in `v0.13.4`; token command request parsing is centralized and `doctor`/`inspect-runtime` share sensitive runtime-file specs to reduce drift.
+15. **Review follow-up hardening pass**: completed after `v0.13.4`; added token sync scenario/property-style tests, rollback block-mode checks, static-analysis tracking, SECURITY updates, migration fixture policy, fixture inventory coverage, and clearer memory-hardening limits.
 
 ### Later Product Ideas
 
@@ -439,7 +435,7 @@ Recommended order:
 5. keep deprecated-format policy explicit; do not implement real mutating `vault migrate` unless normal authenticated-save refresh proves insufficient
 6. keep `internal/sensitive` focused after checksum/wipe consolidation; avoid adding unrelated crypto or storage policy there
 7. keep rollback and broader same-user file-replacement race hardening moving after no-follow opens, directory fsync, exclusive temp/marker creation, and rollback warn/block checks
-8. keep `staticcheck`, CodeQL, and `govulncheck` results triaged, then evaluate `gosec` with a documented triage policy
+8. keep `staticcheck`, CodeQL, and `govulncheck` results triaged, and keep `gosec` reviewed locally under `docs/static-analysis.md` before considering it as a CI gate
 9. continue migration coverage around authenticated KDF metadata and crash-consistency behavior
 10. evaluate signed tags/checksums and platform signing after SBOM and immutable Action pinning
 11. keep Linux token key storage file-backed until a reliable desktop/headless Secret Service strategy emerges
@@ -462,7 +458,7 @@ Priority: high.
 The first July 2026 review follow-up pass is complete. Remaining follow-up work:
 
 - keep Windows support low priority unless real user demand appears; current docs state that macOS and Linux are the active supported targets
-- keep `staticcheck`, CodeQL, and `govulncheck` results triaged, then decide whether `gosec` should become a CI gate
+- keep `staticcheck`, CodeQL, and `govulncheck` results triaged, and keep `gosec` reviewed locally under the documented suppress/accept policy before deciding whether it should become a CI gate
 - keep `SECURITY.md`, review request links, and the public focused-review issue current
 - expand the independent decryptor experiment beyond the initial Go/Python reference readers when useful
 - keep `vault migrate --dry-run` as inspection-only and prefer documented deprecation plus normal authenticated-save refresh over a separate mutating migration command

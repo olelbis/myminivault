@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	vaultaudit "github.com/olelbis/myminivault/internal/audit"
+	vaultpaths "github.com/olelbis/myminivault/internal/paths"
 	vaulttoken "github.com/olelbis/myminivault/internal/token"
 )
 
@@ -144,7 +145,7 @@ func readTokenArgument(args []string) (string, int, error) {
 		if len(args) < 5 {
 			return "", 0, errors.New("usage: vault use-token --token-file <path> <command> [args...]")
 		}
-		data, err := os.ReadFile(args[3])
+		data, err := vaultpaths.ReadFileChecked(args[3])
 		if err != nil {
 			return "", 0, fmt.Errorf("failed to read token file: %w", err)
 		}

@@ -431,12 +431,12 @@ func kdfConfigFromMetadata(meta container.Metadata, fallback vaultcrypto.ScryptC
 				MemoryKiB: meta.Argon2MemoryKiB,
 				Time:      meta.Argon2Time,
 				Threads:   meta.Argon2Threads,
-				KeySize:   uint32(meta.KeySize),
+				KeySize:   uint32(meta.KeySize), // #nosec G115 -- metadata key size is validated by KDFConfigForContainer before use.
 			},
 		}
 	}
 	if meta.KDF == container.KDFHKDFSHA256 {
-		return vaultcrypto.HKDFSHA256Config("myminivault:"+container.KindName(container.KindRecoveryVault), uint32(meta.KeySize))
+		return vaultcrypto.HKDFSHA256Config("myminivault:"+container.KindName(container.KindRecoveryVault), uint32(meta.KeySize)) // #nosec G115 -- metadata key size is validated by KDFConfigForContainer before use.
 	}
 	return vaultcrypto.KDFConfig{Name: container.KDFScrypt, Scrypt: fallback}
 }

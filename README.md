@@ -182,6 +182,7 @@ Token writes are staged in `shared-token-vault.json` and imported into the main 
 - [Project Site](https://olelbis.github.io/myminivault/)
 - [User Manual](docs/user-manual.md)
 - [Development Guide](docs/development.md)
+- [Static Analysis Triage](docs/static-analysis.md)
 - [Security Model](docs/security.md)
 - [Encrypted File Format](docs/format.md)
 - [Crypto Review Scope](docs/crypto-review-scope.md)

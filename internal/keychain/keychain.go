@@ -152,6 +152,6 @@ func (store Store) run(name string, args ...string) ([]byte, error) {
 	if store.Run != nil {
 		return store.Run(name, args...)
 	}
-	cmd := exec.Command(name, args...)
+	cmd := exec.Command(name, args...) // #nosec G204 -- keychain command is the fixed macOS security backend or a test hook.
 	return cmd.CombinedOutput()
 }

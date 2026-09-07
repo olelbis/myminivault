@@ -62,12 +62,12 @@ func (manager Manager) ClearIfUnchanged(expected string) error {
 }
 
 func commandOutput(name string, args ...string) (string, error) {
-	out, err := exec.Command(name, args...).Output()
+	out, err := exec.Command(name, args...).Output() // #nosec G204 -- clipboard command names and args are selected by Detect, not user input.
 	return string(out), err
 }
 
 func commandInput(value, name string, args ...string) error {
-	cmd := exec.Command(name, args...)
+	cmd := exec.Command(name, args...) // #nosec G204 -- clipboard command names and args are selected by Detect, not user input.
 	cmd.Stdin = strings.NewReader(value)
 	return cmd.Run()
 }

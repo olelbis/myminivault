@@ -2,6 +2,7 @@ package crypto
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/olelbis/myminivault/internal/container"
 )
@@ -49,11 +50,15 @@ func KDFConfigForContainer(parsed container.Parsed, fallback ScryptConfig) (KDFC
 		}
 		return KDFConfig{Name: container.KDFScrypt, Scrypt: cfg}, nil
 	case container.KDFArgon2id:
+		keySize, err := checkedUint32(meta.KeySize, "argon2 key size")
+		if err != nil {
+			return KDFConfig{}, err
+		}
 		cfg := Argon2idConfig{
 			MemoryKiB: meta.Argon2MemoryKiB,
 			Time:      meta.Argon2Time,
 			Threads:   meta.Argon2Threads,
-			KeySize:   uint32(meta.KeySize),
+			KeySize:   keySize,
 		}
 		if err := validateArgon2idConfig(cfg); err != nil {
 			return KDFConfig{}, err
@@ -63,7 +68,11 @@ func KDFConfigForContainer(parsed container.Parsed, fallback ScryptConfig) (KDFC
 		if meta.KeySize <= 0 || meta.KeySize > maxArgon2KeySize {
 			return KDFConfig{}, fmt.Errorf("hkdf key size %d outside allowed range 1..%d", meta.KeySize, maxArgon2KeySize)
 		}
-		return HKDFSHA256Config("myminivault:"+container.KindName(parsed.Kind), uint32(meta.KeySize)), nil
+		keySize, err := checkedUint32(meta.KeySize, "hkdf key size")
+		if err != nil {
+			return KDFConfig{}, err
+		}
+		return HKDFSHA256Config("myminivault:"+container.KindName(parsed.Kind), keySize), nil
 	default:
 		return KDFConfig{}, fmt.Errorf("unsupported container KDF %q", meta.KDF)
 	}
@@ -80,6 +89,13 @@ func ScryptConfigForContainer(parsed container.Parsed, fallback ScryptConfig) (S
 		return ScryptConfig{}, fmt.Errorf("container KDF %q is not scrypt", kdf.Name)
 	}
 	return kdf.Scrypt, nil
+}
+
+func checkedUint32(value int, name string) (uint32, error) {
+	if value < 0 || value > math.MaxUint32 {
+		return 0, fmt.Errorf("%s %d outside uint32 range", name, value)
+	}
+	return uint32(value), nil
 }
 
 func scryptConfigFromMetadata(meta container.Metadata, fallback ScryptConfig) (ScryptConfig, error) {

@@ -18,7 +18,7 @@ const (
 	vaultFileName        = "vault.db"
 	configFileName       = vaultconfig.FileName
 	logFileName          = "vault.log"
-	tokenRegistryName    = "vault-tokens.json"
+	tokenRegistryName    = "vault-tokens.json" // #nosec G101 -- this is a runtime metadata filename, not a credential.
 	tokenKeyFileName     = "vault-token.key"
 	sharedTokenVaultName = "shared-token-vault.json"
 	rollbackStateName    = "rollback-state.json"
