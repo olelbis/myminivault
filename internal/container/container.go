@@ -102,11 +102,12 @@ func AssociatedData(kind byte, salt []byte, metadata ...Metadata) ([]byte, error
 	if len(metaJSON) > 0xffff {
 		return nil, errors.New("container metadata too large")
 	}
+	metaLen := uint16(len(metaJSON)) // #nosec G115 -- length is bounded above immediately before this conversion.
 
 	aad := make([]byte, 0, HeaderSize+len(metaJSON)+len(salt))
 	aad = append(aad, magic...)
 	aad = append(aad, Version, kind, 0, 0)
-	binary.BigEndian.PutUint16(aad[6:8], uint16(len(metaJSON)))
+	binary.BigEndian.PutUint16(aad[6:8], metaLen)
 	aad = append(aad, metaJSON...)
 	aad = append(aad, salt...)
 	return aad, nil

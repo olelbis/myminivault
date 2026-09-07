@@ -83,8 +83,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	os.Stdout.Write(plaintext)
-	os.Stdout.Write([]byte("\n"))
+	if _, err := os.Stdout.Write(plaintext); err != nil {
+		fmt.Fprintf(os.Stderr, "write plaintext: %v\n", err)
+		os.Exit(1)
+	}
+	if _, err := os.Stdout.Write([]byte("\n")); err != nil {
+		fmt.Fprintf(os.Stderr, "write newline: %v\n", err)
+		os.Exit(1)
+	}
 }
 
 func decryptFile(path string, password []byte) ([]byte, error) {
@@ -193,7 +199,7 @@ func validateMetadata(meta metadata) error {
 
 func deriveKey(password, salt []byte, meta metadata) ([]byte, error) {
 	if meta.KDF == "argon2id" {
-		return argon2.IDKey(password, salt, meta.Argon2Time, meta.Argon2MemoryKiB, meta.Argon2Threads, uint32(meta.KeySize)), nil
+		return argon2.IDKey(password, salt, meta.Argon2Time, meta.Argon2MemoryKiB, meta.Argon2Threads, uint32(meta.KeySize)), nil // #nosec G115 -- validateMetadata requires the only supported key size, 32.
 	}
 	return scrypt.Key(password, salt, meta.ScryptN, meta.ScryptR, meta.ScryptP, meta.KeySize)
 }

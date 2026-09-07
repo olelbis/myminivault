@@ -4,6 +4,9 @@
 
 ### Changed
 
+- Added `docs/static-analysis.md` with the current static-analysis gate list, `gosec` triage guidance, suppression rules, and release policy for analysis-only changes.
+- Tightened or annotated bounded integer conversions reported by `gosec` so metadata-derived sizes are clearer to reviewers.
+- Switched `vault use-token --token-file` to checked no-follow file reads and recorded the current local `gosec` baseline for future CI-gate decisions.
 - Removed an allocation-size addition from `internal/sensitive.PrefixChecksum` to satisfy CodeQL overflow analysis without changing checksum payload format.
 - Hardened guided restore so backup and rollback-state files are read through checked no-follow opens, backup copies use exclusive destinations, and guided restore reuses the exact verified bytes for replacement, reducing backup file-replacement race windows.
 - Consolidated checksum-prefixed JSON payload and best-effort byte-wipe helpers into `internal/sensitive`, keeping stricter recovery/token checksum errors and main-vault legacy JSON compatibility.
