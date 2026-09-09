@@ -952,3 +952,13 @@ func forgeTokenSignature(t *testing.T, tokenStr, signature string) string {
 	parts[len(parts)-1] = signature
 	return strings.TrimRight(base64.URLEncoding.EncodeToString([]byte(strings.Join(parts, ":"))), "=")
 }
+
+func TestSharedVaultKDFConfigUsesHKDFContext(t *testing.T) {
+	cfg := SharedVaultKDFConfig()
+	if cfg.Name != container.KDFHKDFSHA256 {
+		t.Fatalf("KDF name = %q, want %q", cfg.Name, container.KDFHKDFSHA256)
+	}
+	if cfg.HKDF.Info != "myminivault:shared-token-vault" || cfg.HKDF.KeySize != 32 {
+		t.Fatalf("HKDF config = %+v, want shared-token-vault/32", cfg.HKDF)
+	}
+}

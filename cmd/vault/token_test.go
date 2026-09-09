@@ -351,3 +351,43 @@ func captureTokenJSONResult(t *testing.T, fn func() error) (map[string]any, erro
 	}
 	return payload, err
 }
+
+func TestReadTokenArgumentFromTokenFile(t *testing.T) {
+	dir := t.TempDir()
+	tokenPath := filepath.Join(dir, "token.txt")
+	if err := os.WriteFile(tokenPath, []byte(" compact-token\n"), 0600); err != nil {
+		t.Fatalf("write token file: %v", err)
+	}
+
+	token, commandIndex, err := readTokenArgument([]string{"vault", "use-token", "--token-file", tokenPath, "get", "API_KEY"})
+	if err != nil {
+		t.Fatalf("readTokenArgument: %v", err)
+	}
+	if token != "compact-token" || commandIndex != 4 {
+		t.Fatalf("token/index = %q/%d, want compact-token/4", token, commandIndex)
+	}
+}
+
+func TestReadTokenArgumentRejectsSymlinkTokenFile(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target-token.txt")
+	link := filepath.Join(dir, "token-link.txt")
+	if err := os.WriteFile(target, []byte("compact-token"), 0600); err != nil {
+		t.Fatalf("write token target: %v", err)
+	}
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatalf("symlink token file: %v", err)
+	}
+
+	_, _, err := readTokenArgument([]string{"vault", "use-token", "--token-file", link, "get", "API_KEY"})
+	if err == nil || !strings.Contains(err.Error(), "failed to read token file") {
+		t.Fatalf("error = %v, want read token file error", err)
+	}
+}
+
+func TestReadTokenArgumentReportsMissingTokenFileValue(t *testing.T) {
+	_, _, err := readTokenArgument([]string{"vault", "use-token", "--token-file"})
+	if err == nil || !strings.Contains(err.Error(), "usage: vault use-token --token-file") {
+		t.Fatalf("error = %v, want usage error", err)
+	}
+}

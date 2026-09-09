@@ -203,3 +203,40 @@ func TestKDFConfigForContainerRejectsUnsupportedMetadataFields(t *testing.T) {
 		})
 	}
 }
+
+func TestKDFConfigForContainerRejectsNegativeKeySizes(t *testing.T) {
+	base := container.Metadata{
+		Algorithm:        container.AlgorithmAES256GCM,
+		SaltSize:         16,
+		NonceSize:        12,
+		Payload:          container.PayloadChecksumJSON,
+		CiphertextLayout: container.CiphertextNoncePrefixed,
+	}
+
+	tests := map[string]container.Metadata{
+		"argon2id": func() container.Metadata {
+			meta := base
+			meta.KDF = container.KDFArgon2id
+			meta.Argon2MemoryKiB = 64 * 1024
+			meta.Argon2Time = 3
+			meta.Argon2Threads = 1
+			meta.KeySize = -1
+			return meta
+		}(),
+		"hkdf": func() container.Metadata {
+			meta := base
+			meta.KDF = container.KDFHKDFSHA256
+			meta.KeySize = -1
+			return meta
+		}(),
+	}
+
+	for name, meta := range tests {
+		t.Run(name, func(t *testing.T) {
+			_, err := KDFConfigForContainer(container.Parsed{Version: container.Version, Kind: container.KindMainVault, Metadata: meta}, ScryptConfig{N: 2, R: 1, P: 1, KeySize: 32})
+			if err == nil || !strings.Contains(err.Error(), "key size") {
+				t.Fatalf("error = %v, want key size error", err)
+			}
+		})
+	}
+}

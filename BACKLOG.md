@@ -36,7 +36,7 @@ Main strengths:
 - tested `internal/export` package for shell export rendering and restrictive file writes
 - tested `internal/health` package for non-decrypting runtime metadata compatibility checks
 - tested `internal/sensitive` package for checksum-prefixed payload helpers and best-effort byte wiping
-- internal package coverage at `85.8%`, above the enforced `80.0%` floor
+- internal package coverage at `86.2%`, above the enforced `80.0%` floor
 - automated CLI smoke coverage for critical workflows in the top-level `tests` package
 - explicit handling for recovery, token sync, locking, backups, export, checksummed payloads, best-effort byte wiping, and password changes
 - a handoff backlog that can restart work from a fresh chat
@@ -71,10 +71,10 @@ Use this section first when resuming work. The detailed backlog below explains e
    - Goal: keep tightening restore, backup, rename, rollback-state, and same-user file replacement behavior after no-follow opens, directory fsync, exclusive temp/marker creation, rollback warn/block checks, and guided restore.
    - Suggested branch: `rollback-race-hardening`.
 
-2. **Coverage And cmd/vault Thinning**
-   - Status: internal coverage remains above the enforced floor; CLI behavior is still heavily protected by smoke tests.
-   - Goal: keep internal packages above `80.0%`, raise focused `cmd/vault` unit coverage where practical, and extract command-independent logic only when it makes behavior clearer.
-   - Suggested branch: `coverage-command-thinning`.
+2. **cmd/vault Thinning**
+   - Status: latest coverage follow-up raised local baselines to `51.1%` full repository and `86.2%` internal packages; CLI behavior is still heavily protected by smoke tests.
+   - Goal: extract command-independent logic only when it makes behavior clearer and raises meaningful direct unit coverage, without replacing end-to-end smoke coverage.
+   - Suggested branch: `command-thinning`.
 
 ### Near-Term Hardening
 
@@ -241,6 +241,7 @@ Docs-only candidates:
 - Updated coverage baselines to `42.5%` full repository and `85.9%` internal packages.
 - Consolidated main vault payload parsing in `internal/storage` and added direct tests for extended and legacy JSON formats.
 - Updated coverage baselines to `42.6%` full repository and `86.0%` internal packages.
+- Updated coverage baselines to `51.1%` full repository and `86.2%` internal packages after focused sync, storage, crypto, token, and token-file parsing tests.
 - Added warn-mode rollback-state checks and updated coverage baselines to `44.1%` full repository and `81.2%` internal packages.
 
 ## Current Verification
@@ -485,7 +486,7 @@ Current CI runs formatting, `go vet`, `staticcheck`, `go test ./...`, full cover
 
 Next actions:
 
-- keep `./internal/...` coverage at or above the current `80.0%` floor, with `85.8%` as the latest local baseline
+- keep `./internal/...` coverage at or above the current `80.0%` floor, with `86.2%` as the latest local baseline
 - raise `cmd/vault` coverage with focused unit tests or further extraction of command-independent logic where it improves clarity
 
 Suggested branch:
