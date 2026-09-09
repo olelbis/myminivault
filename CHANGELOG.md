@@ -3,6 +3,8 @@
 ## [Unreleased]
 
 ### Changed
+- Added focused coverage for sync preview changes, storage parsed-container loading, KDF metadata key-size validation, shared-token KDF config, and token-file argument parsing.
+- Updated local coverage baselines to `51.1%` full repository and `86.2%` internal packages.
 
 - Added `docs/static-analysis.md` with the current static-analysis gate list, `gosec` triage guidance, suppression rules, and release policy for analysis-only changes.
 - Tightened or annotated bounded integer conversions reported by `gosec` so metadata-derived sizes are clearer to reviewers.

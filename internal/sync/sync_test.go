@@ -462,3 +462,40 @@ func cloneTimeMap(values map[string]time.Time) map[string]time.Time {
 	}
 	return cloned
 }
+
+func TestPreviewResultHasChanges(t *testing.T) {
+	tests := map[string]struct {
+		result PreviewResult
+		want   bool
+	}{
+		"empty":             {result: PreviewResult{}, want: false},
+		"imports":           {result: PreviewResult{ImportKeys: []string{"A"}}, want: true},
+		"deletes":           {result: PreviewResult{DeleteKeys: []string{"A"}}, want: true},
+		"conflicts only":    {result: PreviewResult{ConflictKeys: []string{"A"}}, want: true},
+		"legacy only empty": {result: PreviewResult{LegacyDecisionKeys: []string{"A"}}, want: false},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			if got := tt.result.HasChanges(); got != tt.want {
+				t.Fatalf("HasChanges() = %t, want %t", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSyncMetadataAccessorsHandleNilInputs(t *testing.T) {
+	if !UpdatedAt(nil, "A").IsZero() {
+		t.Fatal("nil vault UpdatedAt should be zero")
+	}
+	if !DeletedAt(nil, "A").IsZero() {
+		t.Fatal("nil vault DeletedAt should be zero")
+	}
+	vault := &model.ExtendedVault{Sync: &model.SyncMetadata{}}
+	if !UpdatedAt(vault, "A").IsZero() {
+		t.Fatal("nil UpdatedAt map should return zero")
+	}
+	if !DeletedAt(vault, "A").IsZero() {
+		t.Fatal("nil DeletedAt map should return zero")
+	}
+}

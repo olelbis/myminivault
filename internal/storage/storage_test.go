@@ -875,3 +875,29 @@ func writeEncryptedPlaintext(t *testing.T, opts Options, password, salt, plainte
 		t.Fatalf("SaveFileAtomic fixture: %v", err)
 	}
 }
+
+func TestTryLoadParsedReturnsContainerDetails(t *testing.T) {
+	opts := storageTestOptions(t.TempDir())
+	salt := []byte("1234567890123456")
+	ciphertext := []byte("encrypted")
+	meta := highEntropyContainerMetadata(opts.SaltSize)
+	wrapped, err := container.Wrap(container.KindRecoveryVault, salt, ciphertext, meta)
+	if err != nil {
+		t.Fatalf("Wrap: %v", err)
+	}
+	path := filepath.Join(filepath.Dir(opts.VaultFile), "vault.db.recovery")
+	if err := os.WriteFile(path, wrapped, 0600); err != nil {
+		t.Fatalf("write wrapped file: %v", err)
+	}
+
+	parsed, err := TryLoadParsed(path, opts.SaltSize)
+	if err != nil {
+		t.Fatalf("TryLoadParsed: %v", err)
+	}
+	if parsed.Legacy || parsed.Kind != container.KindRecoveryVault || parsed.Metadata.KDF != container.KDFHKDFSHA256 {
+		t.Fatalf("parsed = %+v, want recovery HKDF container", parsed)
+	}
+	if !bytes.Equal(parsed.Salt, salt) || !bytes.Equal(parsed.Ciphertext, ciphertext) {
+		t.Fatalf("payload = %q/%q, want %q/%q", parsed.Salt, parsed.Ciphertext, salt, ciphertext)
+	}
+}
