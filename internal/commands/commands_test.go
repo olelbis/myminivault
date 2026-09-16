@@ -144,3 +144,49 @@ func TestImportFromFile(t *testing.T) {
 		}
 	}
 }
+
+func TestShouldLogAccess(t *testing.T) {
+	tests := map[string]bool{
+		"set":             true,
+		"delete":          true,
+		"clear":           true,
+		"import":          true,
+		"create-token":    true,
+		"get":             false,
+		"list":            false,
+		"export":          false,
+		"search":          false,
+		"stats":           false,
+		"unknown-command": true,
+	}
+
+	for command, want := range tests {
+		t.Run(command, func(t *testing.T) {
+			if got := ShouldLogAccess(command); got != want {
+				t.Fatalf("ShouldLogAccess(%q) = %v, want %v", command, got, want)
+			}
+		})
+	}
+}
+
+func TestShouldMirrorMainVaultToShared(t *testing.T) {
+	tests := map[string]bool{
+		"set":             true,
+		"delete":          true,
+		"clear":           true,
+		"import":          true,
+		"get":             false,
+		"list":            false,
+		"create-token":    false,
+		"sync-tokens":     false,
+		"unknown-command": false,
+	}
+
+	for command, want := range tests {
+		t.Run(command, func(t *testing.T) {
+			if got := ShouldMirrorMainVaultToShared(command); got != want {
+				t.Fatalf("ShouldMirrorMainVaultToShared(%q) = %v, want %v", command, got, want)
+			}
+		})
+	}
+}

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	vaultcommands "github.com/olelbis/myminivault/internal/commands"
 	vaultrollback "github.com/olelbis/myminivault/internal/rollback"
 	vaultsync "github.com/olelbis/myminivault/internal/sync"
 )
@@ -217,7 +218,7 @@ func recordPasswordCommandAccess(command string, vault *ExtendedVault) {
 	vault.Metadata.LastAccess = time.Now()
 	vault.Metadata.AccessCount++
 
-	if shouldLogAccessForCommand(command) {
+	if vaultcommands.ShouldLogAccess(command) {
 		logAccess(command)
 	}
 }
@@ -330,7 +331,7 @@ func executePasswordCommand(command string, extendedVault *ExtendedVault, salt, 
 
 	return passwordCommandOutcome{
 		saveVault:    true,
-		mirrorShared: shouldMirrorMainVaultToShared(command),
+		mirrorShared: vaultcommands.ShouldMirrorMainVaultToShared(command),
 	}, nil
 }
 
