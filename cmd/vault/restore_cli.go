@@ -105,11 +105,7 @@ func createPreRestoreBackup() (string, error) {
 
 func replaceVaultWithBackupData(backupData []byte) error {
 	tmpPath := vaultFile + ".restore.tmp"
-	if err := os.Remove(tmpPath); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to remove stale restore temp file: %w", err)
-	}
 	if err := writeFileExclusive(tmpPath, backupData); err != nil {
-		_ = os.Remove(tmpPath)
 		return fmt.Errorf("failed to stage restored vault: %w", err)
 	}
 	if err := os.Rename(tmpPath, vaultFile); err != nil {
@@ -122,15 +118,31 @@ func replaceVaultWithBackupData(backupData []byte) error {
 	return os.Chmod(vaultFile, 0600)
 }
 
-func writeFileExclusive(path string, data []byte) error {
+func writeFileExclusive(path string, data []byte) (err error) {
 	destination, err := vaultpaths.OpenFileCreateExclusiveChecked(path, 0600)
 	if err != nil {
 		return err
 	}
-	defer destination.Close()
+	keep := false
+	defer func() {
+		closeErr := destination.Close()
+		if closeErr != nil {
+			if err == nil {
+				err = closeErr
+			}
+			keep = false
+		}
+		if !keep {
+			_ = os.Remove(path)
+		}
+	}()
 
-	if _, err := destination.Write(data); err != nil {
+	if _, err = destination.Write(data); err != nil {
 		return err
 	}
-	return destination.Sync()
+	if err = destination.Sync(); err != nil {
+		return err
+	}
+	keep = true
+	return nil
 }

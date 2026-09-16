@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Hardened rollback restore staging so a pre-existing `vault.db.restore.tmp` is rejected and preserved instead of removed before exclusive staging.
 - Moved password-command audit and shared-vault mirror policy from `cmd/vault` into `internal/commands` with focused unit coverage.
 - Added focused coverage for sync preview changes, storage parsed-container loading, KDF metadata key-size validation, shared-token KDF config, and token-file argument parsing.
 - Updated local coverage baselines to `51.1%` full repository and `86.3%` internal packages.

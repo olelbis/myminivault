@@ -118,6 +118,28 @@ func TestHandleRestoreCommandRejectsSymlinkBackup(t *testing.T) {
 	}
 }
 
+func TestReplaceVaultWithBackupDataRejectsPreexistingTempFile(t *testing.T) {
+	restore := useRestoreTestRuntime(t)
+	defer restore()
+
+	tmpPath := vaultFile + ".restore.tmp"
+	if err := os.WriteFile(tmpPath, []byte("existing temp"), 0600); err != nil {
+		t.Fatalf("write restore temp: %v", err)
+	}
+
+	err := replaceVaultWithBackupData([]byte("new vault bytes"))
+	if err == nil || !strings.Contains(err.Error(), "failed to stage restored vault") {
+		t.Fatalf("error = %v, want staging failure", err)
+	}
+	data, readErr := os.ReadFile(tmpPath)
+	if readErr != nil {
+		t.Fatalf("read restore temp: %v", readErr)
+	}
+	if string(data) != "existing temp" {
+		t.Fatalf("restore temp was modified: %q", data)
+	}
+}
+
 func TestHandleRestoreCommandRejectsUndecryptableBackup(t *testing.T) {
 	restore := useRestoreTestRuntime(t)
 	defer restore()
