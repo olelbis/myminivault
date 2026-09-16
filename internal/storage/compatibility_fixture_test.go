@@ -1,9 +1,12 @@
 package storage
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
+	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -15,21 +18,50 @@ import (
 
 var compatScrypt = vaultcrypto.ScryptConfig{N: 2, R: 1, P: 1, KeySize: 32}
 
+var compatibilityFixtureSHA256 = map[string]string{
+	"legacy-salt-ciphertext-main.b64": "e4de1bc6349de441ede55d05bc79c9ebc1367c82827a6ba60cbc103d625d7dc3",
+	"mymv-v1-main.b64":                "97fd7d9122b91d4f077ee7c40ff012ed3e03376e76852a6f509bcdf3798207ba",
+	"mymv-v2-main.b64":                "4712aa92bd3ec780ae83b51e8c300556102f0c4bb5661a0b6c546ed2b6599718",
+	"mymv-v2-main-argon2id.b64":       "8989dfd3b4bf64cc8fb5605f45a0b0cb65f53c2618be9a217a0ced62d6917022",
+	"mymv-v2-recovery.b64":            "0c1f5bf04780011a606e44fc86d16214ca0bf5fed0e97ae601d632081b23ddb7",
+	"mymv-v2-recovery-hkdf.b64":       "b8a10d818c2943bad8540d4f9c82a44c5dcc98f3a77d15efd5823e710f51adaa",
+	"mymv-v2-shared-token.b64":        "72b51dc3a54c0cb07fe53a5d9be7fdc645ee2c662b347dd738ec1fc97ad53e5f",
+	"mymv-v2-shared-token-hkdf.b64":   "c2d741d5b631ac9539695313cbb00ccbbc2aa32089a003831d5aec133b68eed1",
+}
+
 func TestCompatibilityFixtureCorpusInventory(t *testing.T) {
-	fixtures := []string{
-		"legacy-salt-ciphertext-main.b64",
-		"mymv-v1-main.b64",
-		"mymv-v2-main.b64",
-		"mymv-v2-main-argon2id.b64",
-		"mymv-v2-recovery.b64",
-		"mymv-v2-recovery-hkdf.b64",
-		"mymv-v2-shared-token.b64",
-		"mymv-v2-shared-token-hkdf.b64",
+	entries, err := os.ReadDir(filepath.Join("testdata", "compat"))
+	if err != nil {
+		t.Fatalf("read compatibility fixture directory: %v", err)
 	}
 
-	for _, fixture := range fixtures {
-		if _, err := os.Stat(filepath.Join("testdata", "compat", fixture)); err != nil {
+	found := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		found = append(found, entry.Name())
+	}
+	sort.Strings(found)
+
+	want := make([]string, 0, len(compatibilityFixtureSHA256))
+	for fixture := range compatibilityFixtureSHA256 {
+		want = append(want, fixture)
+	}
+	sort.Strings(want)
+
+	if strings.Join(found, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("fixture inventory drifted\nfound:\n%s\nwant:\n%s", strings.Join(found, "\n"), strings.Join(want, "\n"))
+	}
+
+	for _, fixture := range want {
+		data, err := os.ReadFile(filepath.Join("testdata", "compat", fixture))
+		if err != nil {
 			t.Fatalf("fixture %s missing or unreadable: %v", fixture, err)
+		}
+		checksum := sha256.Sum256(data)
+		if got := fmt.Sprintf("%x", checksum); got != compatibilityFixtureSHA256[fixture] {
+			t.Fatalf("fixture %s checksum = %s, want %s", fixture, got, compatibilityFixtureSHA256[fixture])
 		}
 	}
 }

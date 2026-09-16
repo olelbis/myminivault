@@ -60,9 +60,17 @@ Fixture policy:
   removed
 - add a fixture before changing parser behavior for legacy, v1, v2, recovery,
   or shared-token vault payloads
+- update the explicit fixture inventory and SHA-256 checksums in
+  `internal/storage/compatibility_fixture_test.go` whenever a fixture is added,
+  removed, or intentionally regenerated
 - include at least one negative/tamper test when metadata authentication or KDF
   bounds change
 - keep fixture passwords and KDF parameters clearly test-only
+
+The inventory test intentionally fails on both missing fixtures and extra files
+in `internal/storage/testdata/compat/`. This keeps compatibility support
+reviewable: changing a fixture becomes a conscious code review event rather
+than a silent testdata edit.
 
 Some fixtures use intentionally weak test-only scrypt parameters so they run
 quickly in unit tests. They are compatibility fixtures, not production examples.
