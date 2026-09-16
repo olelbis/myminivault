@@ -66,50 +66,45 @@ Use this section first when resuming work. The detailed backlog below explains e
 
 ### Immediate Next Work
 
-1. **Rollback And File-Replacement Race Hardening**
-   - Status: next recommended branch.
-   - Goal: keep tightening restore, backup, rename, rollback-state, and same-user file replacement behavior after no-follow opens, directory fsync, exclusive temp/marker creation, rollback warn/block checks, and guided restore.
-   - Suggested branch: `rollback-race-hardening`.
-
-2. **Deprecated Format And Compatibility Fixtures**
+1. **Deprecated Format And Compatibility Fixtures**
    - Goal: keep deprecated-format policy explicit, expand fixtures only when new historical formats/KDF profiles/layouts need long-term read coverage, and avoid a mutating `vault migrate` unless normal authenticated-save refresh proves insufficient.
    - Status: bounded MYMV v2 KDF metadata loading is implemented; new main-vault saves use Argon2id by default; new recovery/shared-token vault saves use HKDF-SHA256; scrypt-based MYMV v2, Argon2id recovery/shared-token vaults from older experimental releases, MYMV v1, and legacy salt+ciphertext files remain readable but deprecated.
    - Suggested branch: `deprecated-format-fixtures`.
 
-3. **Supply-Chain Hardening**
+2. **Supply-Chain Hardening**
    - Goal: evaluate signed tags/checksums and platform signing after SBOM generation, immutable Action pinning, automated security scanning, and current package attestations.
    - Status: release packages upload per-target SPDX JSON SBOM files, include them in checksum manifests, attest them, workflows pin GitHub Actions to commit SHAs, and CI runs CodeQL plus `govulncheck`.
    - Suggested branch: `supply-chain-hardening`.
 
-4. **Linux Token Key Storage Review**
+3. **Linux Token Key Storage Review**
    - Goal: keep Linux token key storage file-backed unless a reliable desktop/headless Secret Service strategy emerges.
    - Status: macOS Keychain is supported; Linux Secret Service is detected by `doctor` but not used as storage.
    - Suggested branch: `linux-token-key-storage`.
 
-5. **Windows Support Decision**
+4. **Windows Support Decision**
    - Goal: keep Windows as a low-priority future target unless real user demand appears; document gaps around locking, ACLs, key storage, packaging, and CI.
    - Status: macOS and Linux are the active support targets.
    - Suggested branch: `windows-support-notes`.
 
 ### Completed Hardening Milestones
 
-1. **Container metadata**: completed in `v0.5.0` through `MYMV v2`.
-2. **AES-GCM AAD binding**: completed in `v0.5.0` for `MYMV v2`.
-3. **Plaintext-output policy**: completed in `v0.6.0`; plaintext terminal/stdout output now requires explicit `--show`, `--stdout`, or `--json`.
-4. **Startup runtime permission hardening**: completed in `v0.7.0`; normal startup now tightens existing runtime file permissions to `0600` while `doctor` and `inspect-runtime` stay non-mutating.
-5. **Recovery inspect / doctor hardening**: completed in `v0.8.0`; `doctor` now reports recovery freshness and non-decrypting compatibility, and `inspect-runtime` includes a recovery relationship summary.
-6. **Token sync policy review**: completed in `v0.9.0`; legacy sync fallback decisions are visible, token sync freshness warnings are clearer, and policy docs include practical examples.
-7. **Initial `cmd/vault` cleanup pass**: completed in `v0.10.0`; recovery metadata compatibility moved into `internal/health` with focused tests.
-8. **Token CLI split and lock timeout**: completed in `v0.11.0`; token command code is split into focused files and lock acquisition now has a bounded wait.
-9. **Static analysis triage**: completed after local `gosec` evaluation, a documented suppress/accept policy in `docs/static-analysis.md`, no-follow token-file reads, bounded conversion clarifications, and local `staticcheck`/test/vet verification.
-10. **Storage legacy parse cleanup**: completed in `v0.11.1`; main vault payload parsing now has one tested path for extended and legacy JSON.
-11. **Dedicated recovery salt**: completed in `v0.12.0`; new recovery snapshots use a dedicated random salt while legacy shared-salt snapshots remain readable and are refreshed on the next recovery rewrite.
-12. **Coverage follow-up**: completed in `v0.13.2`; `internal/token`, `internal/recovery`, `internal/rollback`, and `internal/paths` are all above the `80.0%` package-level target.
-13. **Password-command orchestration refactor**: completed in `v0.13.3`; rollback warnings, token import, access metadata, command dispatch, and final save/mirror decisions are separated and covered by focused tests.
-14. **Token execution and runtime health refactor**: completed in `v0.13.4`; token command request parsing is centralized and `doctor`/`inspect-runtime` share sensitive runtime-file specs to reduce drift.
-15. **Review follow-up hardening pass**: completed after `v0.13.4`; added token sync scenario/property-style tests, rollback block-mode checks, static-analysis tracking, SECURITY updates, migration fixture policy, fixture inventory coverage, and clearer memory-hardening limits.
-16. **Command policy thinning pass**: completed after moving password-command audit and shared-vault mirror policy out of `cmd/vault` and into `internal/commands`, keeping CLI handlers focused on orchestration.
-
+1. **Rollback restore staging hardening**: completed after guided restore began rejecting and preserving pre-existing `vault.db.restore.tmp` paths instead of deleting them before exclusive staging.
+2. **Container metadata**: completed in `v0.5.0` through `MYMV v2`.
+3. **AES-GCM AAD binding**: completed in `v0.5.0` for `MYMV v2`.
+4. **Plaintext-output policy**: completed in `v0.6.0`; plaintext terminal/stdout output now requires explicit `--show`, `--stdout`, or `--json`.
+5. **Startup runtime permission hardening**: completed in `v0.7.0`; normal startup now tightens existing runtime file permissions to `0600` while `doctor` and `inspect-runtime` stay non-mutating.
+6. **Recovery inspect / doctor hardening**: completed in `v0.8.0`; `doctor` now reports recovery freshness and non-decrypting compatibility, and `inspect-runtime` includes a recovery relationship summary.
+7. **Token sync policy review**: completed in `v0.9.0`; legacy sync fallback decisions are visible, token sync freshness warnings are clearer, and policy docs include practical examples.
+8. **Initial `cmd/vault` cleanup pass**: completed in `v0.10.0`; recovery metadata compatibility moved into `internal/health` with focused tests.
+9. **Token CLI split and lock timeout**: completed in `v0.11.0`; token command code is split into focused files and lock acquisition now has a bounded wait.
+10. **Static analysis triage**: completed after local `gosec` evaluation, a documented suppress/accept policy in `docs/static-analysis.md`, no-follow token-file reads, bounded conversion clarifications, and local `staticcheck`/test/vet verification.
+11. **Storage legacy parse cleanup**: completed in `v0.11.1`; main vault payload parsing now has one tested path for extended and legacy JSON.
+12. **Dedicated recovery salt**: completed in `v0.12.0`; new recovery snapshots use a dedicated random salt while legacy shared-salt snapshots remain readable and are refreshed on the next recovery rewrite.
+13. **Coverage follow-up**: completed in `v0.13.2`; `internal/token`, `internal/recovery`, `internal/rollback`, and `internal/paths` are all above the `80.0%` package-level target.
+14. **Password-command orchestration refactor**: completed in `v0.13.3`; rollback warnings, token import, access metadata, command dispatch, and final save/mirror decisions are separated and covered by focused tests.
+15. **Token execution and runtime health refactor**: completed in `v0.13.4`; token command request parsing is centralized and `doctor`/`inspect-runtime` share sensitive runtime-file specs to reduce drift.
+16. **Review follow-up hardening pass**: completed after `v0.13.4`; added token sync scenario/property-style tests, rollback block-mode checks, static-analysis tracking, SECURITY updates, migration fixture policy, fixture inventory coverage, and clearer memory-hardening limits.
+17. **Command policy thinning pass**: completed after moving password-command audit and shared-vault mirror policy out of `cmd/vault` and into `internal/commands`, keeping CLI handlers focused on orchestration.
 ### Later Product Ideas
 
 Product ideas such as `vault run`, profiles, namespaces, a TUI, hooks, and rotating one-time secret tokens stay below the hardening work unless they directly reduce operational risk.
