@@ -159,3 +159,24 @@ func ParseImportValue(value string) (string, error) {
 
 	return parsed.String(), nil
 }
+
+// ShouldLogAccess reports whether command should be written to the audit log.
+func ShouldLogAccess(command string) bool {
+	switch command {
+	case "get", "list", "export", "search", "stats":
+		return false
+	default:
+		return true
+	}
+}
+
+// ShouldMirrorMainVaultToShared reports whether a successful command mutates
+// main vault data that should be mirrored to the shared token vault.
+func ShouldMirrorMainVaultToShared(command string) bool {
+	switch command {
+	case "set", "delete", "clear", "import":
+		return true
+	default:
+		return false
+	}
+}
