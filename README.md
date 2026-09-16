@@ -131,28 +131,64 @@ Restore a backup after previewing its metadata:
 
 ## Common Commands
 
+The safest daily path keeps secret material out of process arguments and terminal output by default.
+
+### Recommended Daily Use
+
 | Command | Purpose |
 | --- | --- |
 | `set <key> --stdin` | Store a value read from stdin instead of process arguments |
-| `set <key> <value>` | Store a value from argv with a process-argument warning, mainly for demos or low-risk values |
-| `get <key> --show` | Print a stored value intentionally |
 | `copy <key>` | Copy a value to the clipboard without printing it |
-| `delete <key>` | Delete a key |
-| `list` | List key names |
+| `get <key> --show` | Print a stored value intentionally when clipboard use is not appropriate |
+| `list` | List key names without values |
 | `search <pattern> --show` | Search keys and print matching values intentionally |
-| `backup` | Create a timestamped backup |
+| `delete <key>` | Delete a key |
+| `backup` | Create a timestamped encrypted backup |
+
+### Operational And Recovery
+
+| Command | Purpose |
+| --- | --- |
 | `restore <backup>` | Preview and restore a backup after confirmation |
-| `export --output <file>` | Write shell-safe export lines to a restrictive plaintext file after confirmation |
-| `import <file>` | Import values from a file |
-| `setup-recovery` | Create a recovery key |
-| `refresh-recovery` | Rewrite the recovery snapshot |
+| `setup-recovery` | Create a recovery key and encrypted recovery snapshot |
+| `refresh-recovery` | Rewrite the recovery snapshot after vault changes |
 | `recover` | Reset the master password with the recovery key |
-| `create-token` | Create temporary token access |
-| `use-token` | Use a temporary token from stdin, file, inherited fd, or argv with a process-argument warning |
-| `security-audit` | Print local vault status |
-| `doctor` | Check runtime file permissions and local health |
+| `doctor` | Check runtime file permissions, recovery freshness, rollback state, and local health |
+| `security-audit` | Print local vault status after unlocking |
+| `stats` | Print normal vault metadata, counts, and recovery/token summaries |
+
+### Token Access And Automation
+
+| Command | Purpose |
+| --- | --- |
+| `create-token` | Create scoped temporary access for selected keys |
+| `use-token --stdin` | Use a temporary token without putting it in argv |
+| `use-token --token-file <file>` | Read a temporary token from a protected file |
+| `use-token --token-fd <fd>` | Read a temporary token from an inherited file descriptor |
+| `sync-tokens` | Import staged token writes into the main vault |
+| `sync-tokens --dry-run` | Preview token imports, deletes, conflicts, and legacy metadata decisions |
+| `list-tokens` | List token registry entries without printing token secrets |
+| `token-info <token-id>` | Inspect one token registry entry |
+| `revoke-token <token-id>` | Revoke one token |
+| `cleanup-tokens` | Remove expired token metadata |
+| `regenerate-token-key` | Rotate token master-key material and invalidate existing tokens |
+
+### Advanced Or Risky
+
+| Command | Purpose |
+| --- | --- |
+| `set <key> <value>` | Store a value from argv with a process-argument warning; mainly for demos or low-risk values |
+| `use-token <token>` | Use a compact token from argv with a process-argument warning for human-readable commands |
+| `export --output <file>` | Write shell-safe plaintext export lines to a restrictive file after confirmation |
+| `export --stdout` | Print plaintext export lines for controlled automation only |
+| `import <file>` | Import values from a file |
+
+### Compatibility And Inspection
+
+| Command | Purpose |
+| --- | --- |
 | `inspect-runtime` | List active and legacy runtime files without decrypting |
-| `migrate --dry-run` | Preview encrypted runtime file format migration without modifying files |
+| `migrate --dry-run` | Preview deprecated encrypted runtime file formats without modifying files |
 
 Token commands can emit JSON for third-party integrations:
 
