@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Hardened the release workflow to build only from the named release tag, verify that its checkout matches that tag, avoid persisted checkout credentials, and scope upload/attestation permissions to the jobs that need them. Documented checksum and GitHub artifact-attestation verification for release downloads.
 - Locked the deprecated-format compatibility fixture corpus with exact inventory and SHA-256 checksums so fixture drift must be reviewed explicitly.
 - Hardened rollback restore staging so a pre-existing `vault.db.restore.tmp` is rejected and preserved instead of removed before exclusive staging.
 - Moved password-command audit and shared-vault mirror policy from `cmd/vault` into `internal/commands` with focused unit coverage.

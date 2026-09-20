@@ -67,8 +67,8 @@ Use this section first when resuming work. The detailed backlog below explains e
 ### Immediate Next Work
 
 1. **Supply-Chain Hardening**
-   - Goal: evaluate signed tags/checksums and platform signing after SBOM generation, immutable Action pinning, automated security scanning, and current package attestations.
-   - Status: release packages upload per-target SPDX JSON SBOM files, include them in checksum manifests, attest them, workflows pin GitHub Actions to commit SHAs, and CI runs CodeQL plus `govulncheck`.
+   - Goal: evaluate signed tags/checksums and platform signing after SBOM generation, immutable Action pinning, automated security scanning, current package attestations, tag-pinned release builds, and release-download verification guidance.
+   - Status: release packages upload per-target SPDX JSON SBOM files, include them in checksum manifests, attest them, build from and verify the named release tag, use non-persistent checkout credentials, scope release permissions per job, workflows pin GitHub Actions to commit SHAs, and CI runs CodeQL plus `govulncheck`.
    - Suggested branch: `supply-chain-hardening`.
 
 2. **Linux Token Key Storage Review**
