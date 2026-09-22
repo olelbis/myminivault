@@ -66,7 +66,7 @@ func handleCreateToken(vault *ExtendedVault) {
 
 	options, err := parseTokenCreationOptions(os.Args[2:])
 	if err != nil {
-		fmt.Printf("❌ %v\n", err)
+		fmt.Printf("❌ %s\n", capitalizeError(err))
 		return
 	}
 
@@ -142,31 +142,31 @@ func parseTokenCreationOptions(args []string) (tokenCreationOptions, error) {
 		case strings.HasPrefix(arg, "--max-uses="):
 			uses, err := strconv.Atoi(strings.TrimPrefix(arg, "--max-uses="))
 			if err != nil {
-				return tokenCreationOptions{}, fmt.Errorf("Invalid max uses: %w", err)
+				return tokenCreationOptions{}, fmt.Errorf("invalid max uses: %w", err)
 			}
 			options.maxUses = uses
 		}
 	}
 
 	if options.keyPattern == "" || durationText == "" {
-		return tokenCreationOptions{}, errors.New("Both --keys and --duration are required")
+		return tokenCreationOptions{}, errors.New("both --keys and --duration are required")
 	}
 	if strings.Contains(options.keyPattern, ":") {
-		return tokenCreationOptions{}, errors.New("Token key patterns cannot contain ':'")
+		return tokenCreationOptions{}, errors.New("token key patterns cannot contain ':'")
 	}
 
 	duration, err := time.ParseDuration(durationText)
 	if err != nil {
-		return tokenCreationOptions{}, fmt.Errorf("Invalid duration format: %w", err)
+		return tokenCreationOptions{}, fmt.Errorf("invalid duration format: %w", err)
 	}
 	if duration <= 0 {
-		return tokenCreationOptions{}, errors.New("Token duration must be greater than zero")
+		return tokenCreationOptions{}, errors.New("token duration must be greater than zero")
 	}
 	if duration > 24*time.Hour {
-		return tokenCreationOptions{}, errors.New("Maximum duration is 24 hours for security")
+		return tokenCreationOptions{}, errors.New("maximum duration is 24 hours for security")
 	}
 	if options.maxUses <= 0 {
-		return tokenCreationOptions{}, errors.New("Max uses must be greater than zero")
+		return tokenCreationOptions{}, errors.New("max uses must be greater than zero")
 	}
 
 	if permissionsText != "" {
@@ -177,12 +177,17 @@ func parseTokenCreationOptions(args []string) (tokenCreationOptions, error) {
 	}
 	for _, permission := range options.permissions {
 		if permission != "read" && permission != "write" {
-			return tokenCreationOptions{}, fmt.Errorf("Invalid permission: %s (valid: read, write)", permission)
+			return tokenCreationOptions{}, fmt.Errorf("invalid permission: %s (valid: read, write)", permission)
 		}
 	}
 
 	options.duration = duration
 	return options, nil
+}
+
+func capitalizeError(err error) string {
+	message := err.Error()
+	return strings.ToUpper(message[:1]) + message[1:]
 }
 
 func generateShortRandomID() string {
