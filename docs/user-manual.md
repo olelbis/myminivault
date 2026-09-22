@@ -598,7 +598,7 @@ If `vault-config.json` is malformed or unsafe, the CLI stops with a config error
 - `file` explicitly keeps the current `vault-token.key` runtime file behavior
 - `keychain` requires an implemented OS keychain backend and fails clearly when unavailable
 
-On first token use, `auto` can migrate an existing macOS `vault-token.key` into macOS Keychain and then remove the old file. On Linux, token key storage is file-based by design for now. `vault doctor` checks for both a DBus session and `secret-tool` before reporting Secret Service as available, but Linux still uses the file fallback. Other OS stores remain future work.
+On first token use, `auto` can migrate an existing macOS `vault-token.key` into macOS Keychain and then remove the old file. On Linux, the protected `vault-token.key` file is the supported token-key backend so token use works consistently on desktops, headless servers, SSH sessions, containers, and CI. `vault doctor` checks for both a DBus session and `secret-tool` before reporting Secret Service as available, but this is diagnostic only and does not change Linux storage. Other OS stores remain future work.
 
 `rollback_mode` controls how the CLI reacts when the encrypted vault revision appears older than the local trusted `rollback-state.json` high-water mark:
 

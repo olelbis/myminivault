@@ -62,7 +62,7 @@ xattr -dr com.apple.quarantine ./vault
 ./vault help
 ```
 
-Token keychain support is intentionally platform-specific. On macOS, `token_key_storage=auto` prefers macOS Keychain for token master-key material when available. On Linux, token key storage is file-based by design for now; `vault doctor` can report Secret Service readiness when both a DBus session and `secret-tool` are present, but the supported Linux storage path remains the portable `vault-token.key` fallback.
+Token keychain support is intentionally platform-specific. On macOS, `token_key_storage=auto` prefers macOS Keychain for token master-key material when available. On Linux, the supported token-key backend is the protected `vault-token.key` file: this keeps token use reliable on desktops, servers, SSH sessions, containers, and CI. `vault doctor` can report Secret Service readiness when both a DBus session and `secret-tool` are present, but it is diagnostic only and does not change Linux storage.
 
 Build the CLI from the repository root:
 

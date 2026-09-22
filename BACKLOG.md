@@ -71,12 +71,7 @@ Use this section first when resuming work. The detailed backlog below explains e
    - Status: release packages upload per-target SPDX JSON SBOM files, include them in checksum manifests, attest them, build from and verify the named release tag, use non-persistent checkout credentials, scope release permissions per job, workflows pin GitHub Actions to commit SHAs, and CI runs CodeQL plus `govulncheck`.
    - Suggested branch: `supply-chain-hardening`.
 
-2. **Linux Token Key Storage Review**
-   - Goal: keep Linux token key storage file-backed unless a reliable desktop/headless Secret Service strategy emerges.
-   - Status: macOS Keychain is supported; Linux Secret Service is detected by `doctor` but not used as storage.
-   - Suggested branch: `linux-token-key-storage`.
-
-3. **Windows Support Decision**
+2. **Windows Support Decision**
    - Goal: keep Windows as a low-priority future target unless real user demand appears; document gaps around locking, ACLs, key storage, packaging, and CI.
    - Status: macOS and Linux are the active support targets.
    - Suggested branch: `windows-support-notes`.
@@ -101,6 +96,7 @@ Use this section first when resuming work. The detailed backlog below explains e
 16. **Token execution and runtime health refactor**: completed in `v0.13.4`; token command request parsing is centralized and `doctor`/`inspect-runtime` share sensitive runtime-file specs to reduce drift.
 17. **Review follow-up hardening pass**: completed after `v0.13.4`; added token sync scenario/property-style tests, rollback block-mode checks, static-analysis tracking, SECURITY updates, migration fixture policy, fixture inventory coverage, and clearer memory-hardening limits.
 18. **Command policy thinning pass**: completed after moving password-command audit and shared-vault mirror policy out of `cmd/vault` and into `internal/commands`, keeping CLI handlers focused on orchestration.
+19. **Linux token key storage policy**: completed as a deliberate file-backed policy. Linux keeps `vault-token.key` for portable desktop, headless, SSH, container, and CI use; Secret Service detection remains diagnostic only and is reconsidered only if a reliable strategy covers both desktop and headless environments.
 ### Later Product Ideas
 
 Product ideas such as `vault run`, profiles, namespaces, a TUI, hooks, and rotating one-time secret tokens stay below the hardening work unless they directly reduce operational risk.
@@ -683,11 +679,11 @@ git pull
 git switch -c memory-exposure-next
 ```
 
-### Completed / Watch: OS Keychain For Token Master Key
+### Completed / Watch: OS Token Key Storage Policy
 
 Priority: medium.
 
-`vault-token.key` is local token-system key material. It is stored as a restrictive runtime file today, but a future hardening pass should evaluate OS-backed secret storage for platforms that support it.
+`vault-token.key` is local token-system key material. macOS supports Keychain storage. Linux deliberately uses the restrictive runtime-file backend so token use remains predictable on desktops, servers, SSH sessions, containers, and CI jobs.
 
 Recommended policy:
 
@@ -702,11 +698,11 @@ Recommended policy:
 Platform direction:
 
 - use macOS Keychain for `vault-token.key` or a wrapping key on macOS
-- on Linux, keep token key storage file-backed by design for now; Secret Service/libsecret detection remains informational through DBus plus `secret-tool`
+- on Linux, keep token key storage file-backed as the supported policy; Secret Service/libsecret detection remains informational through DBus plus `secret-tool` and does not select a storage backend
 - keep Linux headless/server usage explicitly supported through the file fallback
 - keep Windows Credential Manager or DPAPI as a future option if Windows support becomes a project goal
 - keep file-based fallback for portability, automation, and minimal environments
-- treat any actual migration from file storage to keychain storage as a separate release from detection/configuration unless the implementation remains very small and well tested
+- reconsider a Linux Secret Service backend only if it has a documented, tested desktop and headless strategy; any migration from file storage must be a separate release
 
 Suggested implementation phases:
 

@@ -179,7 +179,7 @@ Runtime files should stay out of Git and should normally be readable only by the
 
 Legacy encrypted files without a `MYMV` header remain readable as salt-plus-ciphertext files. `MYMV v1` files, scrypt-based `MYMV v2` files, and Argon2id recovery/shared-token vaults from earlier experimental releases also remain readable but are deprecated. Once an older main, recovery, or shared token vault is saved again, the rewritten file uses the current `MYMV v2` write profile: configured Argon2id by default for the main vault, HKDF-SHA256 for high-entropy recovery and shared-token vaults.
 
-`token_key_storage` can be set to `auto`, `file`, or `keychain`. On macOS, `auto` prefers macOS Keychain for token master-key material when the `security` tool is available, and can migrate an existing `vault-token.key` into Keychain on first token use. `file` keeps the portable restrictive-file behavior. `keychain` requires an implemented OS backend and fails clearly when unavailable instead of silently writing `vault-token.key`. On Linux, token key storage is file-based by design for now; readiness detection requires both a DBus session and `secret-tool`, but Secret Service storage is not part of the supported behavior yet.
+`token_key_storage` can be set to `auto`, `file`, or `keychain`. On macOS, `auto` prefers macOS Keychain for token master-key material when the `security` tool is available, and can migrate an existing `vault-token.key` into Keychain on first token use. `file` keeps the portable restrictive-file behavior. `keychain` requires an implemented OS backend and fails clearly when unavailable instead of silently writing `vault-token.key`. On Linux, protected file storage is the deliberate supported policy so token use remains reliable on desktops, headless servers, SSH sessions, containers, and CI. Readiness detection requires both a DBus session and `secret-tool`, but Secret Service is diagnostic only and does not select a storage backend.
 
 The macOS backend stores the token master key under the `myminivault` service and uses the runtime token-key path as the Keychain account, so separate `MYMINIVAULT_HOME` directories do not intentionally share the same token key. The implementation shells out to the macOS `security` tool, so it improves at-rest storage but is not a complete mitigation against same-user process inspection while a token command is running.
 
@@ -370,7 +370,7 @@ Recommended next steps:
 - sync runtime directories after atomic renames where supported and document the remaining crash-consistency limits
 - continue the rollback detection work in [Rollback Policy](rollback-policy.md) with safer restore tooling and possible OS-backed trusted state
 - keep token sync protected with scenario/property-style tests so preview, import, update, delete, conflict, and legacy fallback behavior stay aligned
-- keep macOS Keychain support current and reconsider Linux Secret Service storage only with a reliable desktop/headless policy
+- keep macOS Keychain support current; reconsider Linux Secret Service storage only if a future implementation has a reliable, documented, and tested desktop/headless policy
 - keep `staticcheck`, CodeQL, and `govulncheck` results triaged, evaluate `gosec`, then evaluate signed tags/checksums and platform signing before stronger supply-chain claims
 - consider signed tags, signed checksum manifests, or platform-specific package signing later in the release process
 - avoid claiming production security without an external audit
