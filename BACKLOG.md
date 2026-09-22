@@ -472,7 +472,7 @@ Current CI runs formatting, `go vet`, `staticcheck`, `go test ./...`, full cover
 Next actions:
 
 - keep `./internal/...` coverage at or above the current `80.0%` floor, with `86.3%` as the latest local baseline
-- raise `cmd/vault` coverage with focused unit tests or further extraction of command-independent logic where it improves clarity
+- raise `cmd/vault` coverage with focused unit tests or further extraction of command-independent logic where it improves clarity; the latest local baseline is `27.7%` after extracting token-creation option policy
 
 Suggested branch:
 

@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Refactored `create-token` option parsing into a focused, tested policy helper. Added coverage for defaults, permission normalization, required values, and token lifetime/use limits; local `cmd/vault` coverage increased from `25.8%` to `27.7%`.
 - Hardened the release workflow to build only from the named release tag, verify that its checkout matches that tag, avoid persisted checkout credentials, and scope upload/attestation permissions to the jobs that need them. Documented checksum and GitHub artifact-attestation verification for release downloads.
 - Locked the deprecated-format compatibility fixture corpus with exact inventory and SHA-256 checksums so fixture drift must be reviewed explicitly.
 - Hardened rollback restore staging so a pre-existing `vault.db.restore.tmp` is rejected and preserved instead of removed before exclusive staging.
