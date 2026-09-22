@@ -2,6 +2,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -11,6 +12,13 @@ import (
 
 	vaulttoken "github.com/olelbis/myminivault/internal/token"
 )
+
+type tokenCreationOptions struct {
+	keyPattern  string
+	duration    time.Duration
+	permissions []string
+	maxUses     int
+}
 
 func cleanupExpiredTokens(vault *ExtendedVault) error {
 	if vault.TokenManager == nil || len(vault.TokenManager.Tokens) == 0 {
@@ -56,69 +64,10 @@ func handleCreateToken(vault *ExtendedVault) {
 		return
 	}
 
-	// Parse arguments
-	var keyPattern, duration, permissions string
-	maxUses := 100
-
-	for _, arg := range os.Args[2:] {
-		if strings.HasPrefix(arg, "--keys=") {
-			keyPattern = strings.TrimPrefix(arg, "--keys=")
-		} else if strings.HasPrefix(arg, "--duration=") {
-			duration = strings.TrimPrefix(arg, "--duration=")
-		} else if strings.HasPrefix(arg, "--permissions=") {
-			permissions = strings.TrimPrefix(arg, "--permissions=")
-		} else if strings.HasPrefix(arg, "--max-uses=") {
-			uses, err := strconv.Atoi(strings.TrimPrefix(arg, "--max-uses="))
-			if err != nil {
-				fmt.Printf("❌ Invalid max uses: %v\n", err)
-				return
-			}
-			maxUses = uses
-		}
-	}
-
-	if keyPattern == "" || duration == "" {
-		fmt.Println("❌ Both --keys and --duration are required")
-		return
-	}
-	if strings.Contains(keyPattern, ":") {
-		fmt.Println("❌ Token key patterns cannot contain ':'")
-		return
-	}
-
-	dur, err := time.ParseDuration(duration)
+	options, err := parseTokenCreationOptions(os.Args[2:])
 	if err != nil {
-		fmt.Printf("❌ Invalid duration format: %v\n", err)
+		fmt.Printf("❌ %v\n", err)
 		return
-	}
-
-	if dur <= 0 {
-		fmt.Println("❌ Token duration must be greater than zero")
-		return
-	}
-	if dur > 24*time.Hour {
-		fmt.Println("❌ Maximum duration is 24 hours for security")
-		return
-	}
-	if maxUses <= 0 {
-		fmt.Println("❌ Max uses must be greater than zero")
-		return
-	}
-
-	perms := []string{"read"}
-	if permissions != "" {
-		perms = strings.Split(permissions, ",")
-		for i, p := range perms {
-			perms[i] = strings.TrimSpace(p)
-		}
-	}
-
-	validPerms := map[string]bool{"read": true, "write": true}
-	for _, p := range perms {
-		if !validPerms[p] {
-			fmt.Printf("❌ Invalid permission: %s (valid: read, write)\n", p)
-			return
-		}
 	}
 
 	if vault.TokenManager == nil {
@@ -131,11 +80,11 @@ func handleCreateToken(vault *ExtendedVault) {
 	tokenID := generateShortRandomID()
 	token := AccessToken{
 		TokenID:     tokenID,
-		KeyPattern:  keyPattern,
-		ExpiresAt:   time.Now().Add(dur),
-		Permissions: perms,
+		KeyPattern:  options.keyPattern,
+		ExpiresAt:   time.Now().Add(options.duration),
+		Permissions: options.permissions,
 		UsageCount:  0,
-		MaxUses:     maxUses,
+		MaxUses:     options.maxUses,
 		CreatedAt:   time.Now(),
 	}
 
@@ -168,13 +117,72 @@ func handleCreateToken(vault *ExtendedVault) {
 
 	fmt.Printf("✅ Secure synchronized token created!\n")
 	fmt.Printf("🎫 Token ID: %s\n", tokenID)
-	fmt.Printf("📋 Key Pattern: %s\n", keyPattern)
+	fmt.Printf("📋 Key Pattern: %s\n", options.keyPattern)
 	fmt.Printf("⏰ Expires: %s\n", token.ExpiresAt.Format("2006-01-02 15:04:05"))
-	fmt.Printf("🔑 Permissions: %s\n", strings.Join(perms, ", "))
-	fmt.Printf("📊 Max Uses: %d\n", maxUses)
+	fmt.Printf("🔑 Permissions: %s\n", strings.Join(options.permissions, ", "))
+	fmt.Printf("📊 Max Uses: %d\n", options.maxUses)
 	fmt.Printf("\n🎟️  Compact Token (use this with 'vault use-token'):\n")
 	printBoxedValue(signedToken)
 	fmt.Printf("\n🔄 Token writes are stored in the shared token vault and imported by master commands.\n")
+}
+
+// parseTokenCreationOptions validates the command-independent token policy.
+func parseTokenCreationOptions(args []string) (tokenCreationOptions, error) {
+	options := tokenCreationOptions{maxUses: 100, permissions: []string{"read"}}
+	var durationText, permissionsText string
+
+	for _, arg := range args {
+		switch {
+		case strings.HasPrefix(arg, "--keys="):
+			options.keyPattern = strings.TrimPrefix(arg, "--keys=")
+		case strings.HasPrefix(arg, "--duration="):
+			durationText = strings.TrimPrefix(arg, "--duration=")
+		case strings.HasPrefix(arg, "--permissions="):
+			permissionsText = strings.TrimPrefix(arg, "--permissions=")
+		case strings.HasPrefix(arg, "--max-uses="):
+			uses, err := strconv.Atoi(strings.TrimPrefix(arg, "--max-uses="))
+			if err != nil {
+				return tokenCreationOptions{}, fmt.Errorf("Invalid max uses: %w", err)
+			}
+			options.maxUses = uses
+		}
+	}
+
+	if options.keyPattern == "" || durationText == "" {
+		return tokenCreationOptions{}, errors.New("Both --keys and --duration are required")
+	}
+	if strings.Contains(options.keyPattern, ":") {
+		return tokenCreationOptions{}, errors.New("Token key patterns cannot contain ':'")
+	}
+
+	duration, err := time.ParseDuration(durationText)
+	if err != nil {
+		return tokenCreationOptions{}, fmt.Errorf("Invalid duration format: %w", err)
+	}
+	if duration <= 0 {
+		return tokenCreationOptions{}, errors.New("Token duration must be greater than zero")
+	}
+	if duration > 24*time.Hour {
+		return tokenCreationOptions{}, errors.New("Maximum duration is 24 hours for security")
+	}
+	if options.maxUses <= 0 {
+		return tokenCreationOptions{}, errors.New("Max uses must be greater than zero")
+	}
+
+	if permissionsText != "" {
+		options.permissions = strings.Split(permissionsText, ",")
+		for i, permission := range options.permissions {
+			options.permissions[i] = strings.TrimSpace(permission)
+		}
+	}
+	for _, permission := range options.permissions {
+		if permission != "read" && permission != "write" {
+			return tokenCreationOptions{}, fmt.Errorf("Invalid permission: %s (valid: read, write)", permission)
+		}
+	}
+
+	options.duration = duration
+	return options, nil
 }
 
 func generateShortRandomID() string {
