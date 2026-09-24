@@ -71,11 +71,7 @@ Use this section first when resuming work. The detailed backlog below explains e
    - Status: release packages upload per-target SPDX JSON SBOM files, include them in checksum manifests, attest them, build from and verify the named release tag, use non-persistent checkout credentials, scope release permissions per job, workflows pin GitHub Actions to commit SHAs, and CI runs CodeQL plus `govulncheck`.
    - Suggested branch: `supply-chain-hardening`.
 
-2. **Token Sync UX Follow-Up**
-   - Goal: keep staged token writes visible to both human and machine-readable clients, and preserve the preview/import/delete/conflict invariants with focused tests.
-   - Status: human-readable token writes already point to `vault sync-tokens`; JSON token writes now carry explicit pending-sync metadata. Keep this area under watch if the sync policy changes.
-
-3. **Windows Support Decision**
+2. **Windows Support Decision**
    - Goal: keep Windows as a low-priority future target unless real user demand appears; document gaps around locking, ACLs, key storage, packaging, and CI.
    - Status: macOS and Linux are the active support targets.
    - Suggested branch: `windows-support-notes`.
@@ -101,6 +97,7 @@ Use this section first when resuming work. The detailed backlog below explains e
 17. **Review follow-up hardening pass**: completed after `v0.13.4`; added token sync scenario/property-style tests, rollback block-mode checks, static-analysis tracking, SECURITY updates, migration fixture policy, fixture inventory coverage, and clearer memory-hardening limits.
 18. **Command policy thinning pass**: completed after moving password-command audit and shared-vault mirror policy out of `cmd/vault` and into `internal/commands`, keeping CLI handlers focused on orchestration.
 19. **Linux token key storage policy**: completed as a deliberate file-backed policy. Linux keeps `vault-token.key` for portable desktop, headless, SSH, container, and CI use; Secret Service detection remains diagnostic only and is reconsidered only if a reliable strategy covers both desktop and headless environments.
+20. **Token sync UX follow-up**: completed after JSON token writes began reporting `sync_required: true` and `sync_command: "vault sync-tokens"`; preview/import/delete/conflict invariants already have focused core coverage.
 ### Later Product Ideas
 
 Product ideas such as `vault run`, profiles, namespaces, a TUI, hooks, and rotating one-time secret tokens stay below the hardening work unless they directly reduce operational risk.
@@ -414,20 +411,18 @@ These items are the most direct path beyond the current `9.9 / 10` ordinary asse
 
 Recommended order:
 
-1. add property-style tests for staged token writes/import/delete invariants
-2. harden token sync UX and policy so staged token writes are less likely to remain unreconciled
-3. keep explicit process-argument warnings current and continue reducing argument exposure where practical; runtime warnings for direct secret/token argv forms are implemented
+1. evaluate signed tags/checksums and platform signing after SBOM, immutable Action pinning, attestations, tag-pinned release builds, and release-download verification guidance
+2. keep the internal coverage floor healthy and reduce `cmd/vault` orchestration only when tests protect the boundary
+3. add CLI smoke coverage for `security-audit` and guided backup/restore expectations
 4. keep fuzzing `internal/container.FuzzParse` after format or metadata parser changes; current seed set covers v1, v2, HKDF metadata, empty metadata, invalid JSON, truncated metadata, max metadata length, and legacy salt+ciphertext
-5. keep deprecated-format policy explicit; do not implement real mutating `vault migrate` unless normal authenticated-save refresh proves insufficient
-6. keep `internal/sensitive` focused after checksum/wipe consolidation; avoid adding unrelated crypto or storage policy there
-7. keep rollback and broader same-user file-replacement race hardening moving after no-follow opens, directory fsync, exclusive temp/marker creation, and rollback warn/block checks
-8. keep `staticcheck`, CodeQL, and `govulncheck` results triaged, and keep `gosec` reviewed locally under `docs/static-analysis.md` before considering it as a CI gate
-9. continue migration coverage around authenticated KDF metadata and crash-consistency behavior
-10. evaluate signed tags/checksums and platform signing after SBOM and immutable Action pinning
-11. keep Linux token key storage file-backed until a reliable desktop/headless Secret Service strategy emerges
-12. keep the internal coverage floor healthy and reduce `cmd/vault` orchestration only when tests protect the boundary
-13. keep expanding the compatibility fixture corpus when new historical formats, KDF profiles, or payload layouts need long-term read coverage
-14. keep Windows as a low-priority future target unless real user demand appears; it is currently documented as not fully supported
+5. continue migration coverage around authenticated KDF metadata and crash-consistency behavior
+6. keep rollback and broader same-user file-replacement race hardening moving after no-follow opens, directory fsync, exclusive temp/marker creation, and rollback warn/block checks
+7. keep `staticcheck`, CodeQL, and `govulncheck` results triaged, and keep `gosec` reviewed locally under `docs/static-analysis.md` before considering it as a CI gate
+8. keep explicit process-argument warnings current and continue reducing argument exposure where practical
+9. keep deprecated-format policy explicit; do not implement real mutating `vault migrate` unless normal authenticated-save refresh proves insufficient
+10. keep `internal/sensitive` focused after checksum/wipe consolidation; avoid adding unrelated crypto or storage policy there
+11. keep expanding the compatibility fixture corpus when new historical formats, KDF profiles, or payload layouts need long-term read coverage
+12. keep Windows as a low-priority future target unless real user demand appears; it is currently documented as not fully supported
 
 Suggested branches:
 
@@ -712,7 +707,7 @@ Suggested implementation phases:
 
 1. `token-keychain-detection`: config validation, platform detection, `doctor` reporting, documentation, no storage behavior change. Completed in `v0.4.7`.
 2. `token-keychain-macos`: macOS Keychain backend, fallback behavior, migration tests where practical. Completed in `v0.4.9`.
-3. `token-keychain-linux`: Secret Service/libsecret readiness detection with DBus plus `secret-tool`; Linux storage remains file-backed by design for now. Completed in `v0.4.10`.
+3. `token-keychain-linux`: Secret Service/libsecret readiness detection with DBus plus `secret-tool`; Linux storage remains deliberately file-backed. Completed in `v0.4.10`.
 
 Suggested branch:
 
