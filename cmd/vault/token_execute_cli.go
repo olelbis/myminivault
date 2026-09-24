@@ -354,10 +354,12 @@ func executeTokenSet(vault *ExtendedVault, token AccessToken, key, value string,
 	}
 
 	if jsonOutput {
-		return writeJSON(map[string]string{
-			"key":     key,
-			"message": "set via token in the shared token vault",
-			"status":  "ok",
+		return writeJSON(map[string]any{
+			"key":           key,
+			"message":       "set via token in the shared token vault",
+			"status":        "ok",
+			"sync_command":  "vault sync-tokens",
+			"sync_required": true,
 		})
 	}
 

@@ -71,7 +71,11 @@ Use this section first when resuming work. The detailed backlog below explains e
    - Status: release packages upload per-target SPDX JSON SBOM files, include them in checksum manifests, attest them, build from and verify the named release tag, use non-persistent checkout credentials, scope release permissions per job, workflows pin GitHub Actions to commit SHAs, and CI runs CodeQL plus `govulncheck`.
    - Suggested branch: `supply-chain-hardening`.
 
-2. **Windows Support Decision**
+2. **Token Sync UX Follow-Up**
+   - Goal: keep staged token writes visible to both human and machine-readable clients, and preserve the preview/import/delete/conflict invariants with focused tests.
+   - Status: human-readable token writes already point to `vault sync-tokens`; JSON token writes now carry explicit pending-sync metadata. Keep this area under watch if the sync policy changes.
+
+3. **Windows Support Decision**
    - Goal: keep Windows as a low-priority future target unless real user demand appears; document gaps around locking, ACLs, key storage, packaging, and CI.
    - Status: macOS and Linux are the active support targets.
    - Suggested branch: `windows-support-notes`.
