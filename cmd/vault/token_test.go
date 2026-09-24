@@ -188,6 +188,26 @@ func TestExecuteTokenGetJSON(t *testing.T) {
 	}
 }
 
+func TestExecuteTokenSetJSONReportsPendingSync(t *testing.T) {
+	vault := &ExtendedVault{Data: map[string]string{}}
+	token := AccessToken{TokenID: "token-id", KeyPattern: "API_*", Permissions: []string{"write"}, MaxUses: 3, ExpiresAt: time.Now().Add(time.Hour)}
+	prepareTokenCommandPersistence(t, vault, token)
+
+	payload := captureTokenJSON(t, func() error {
+		return executeTokenSet(vault, token, "API_KEY", "hello", true)
+	})
+
+	if payload["key"] != "API_KEY" || payload["status"] != "ok" {
+		t.Fatalf("unexpected set payload: %#v", payload)
+	}
+	if payload["sync_required"] != true || payload["sync_command"] != "vault sync-tokens" {
+		t.Fatalf("pending sync metadata = %#v", payload)
+	}
+	if vault.Data["API_KEY"] != "hello" {
+		t.Fatalf("API_KEY = %q, want hello", vault.Data["API_KEY"])
+	}
+}
+
 func TestExecuteTokenListJSONIsSorted(t *testing.T) {
 	vault := &ExtendedVault{Data: map[string]string{"API_Z": "z", "DB_KEY": "db", "API_A": "a"}}
 	token := AccessToken{TokenID: "token-id", KeyPattern: "API_*", Permissions: []string{"read"}, MaxUses: 3, ExpiresAt: time.Now().Add(time.Hour)}

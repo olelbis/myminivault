@@ -514,6 +514,8 @@ To preview staged token changes before saving them into `vault.db`:
 
 The dry run lists keys that would be imported or updated, keys that would be deleted, conflicts that would be skipped, and decisions that depend on legacy sync metadata. It does not save `vault.db`, `shared-token-vault.json`, or `rollback-state.json`.
 
+For machine-readable token workflows, a successful `vault use-token ... set ... --json` response includes `sync_required: true` and `sync_command: "vault sync-tokens"`. Treat this as pending work: the value is available through the shared token vault, but has not yet been persisted into `vault.db`.
+
 Sync policy:
 
 - `vault.db` is the master-password source of truth after a master command saves

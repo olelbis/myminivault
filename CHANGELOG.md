@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Added explicit pending-sync fields to successful token `set --json` responses so automation can run `vault sync-tokens` without parsing human-readable output.
 - Documented the deliberate Linux token-key storage policy: `vault-token.key` remains the supported protected backend for desktop and headless environments, while Secret Service detection stays diagnostic only.
 - Refactored `create-token` option parsing into a focused, tested policy helper. Added coverage for defaults, permission normalization, required values, and token lifetime/use limits; local `cmd/vault` coverage increased from `25.8%` to `27.7%`.
 - Hardened the release workflow to build only from the named release tag, verify that its checkout matches that tag, avoid persisted checkout credentials, and scope upload/attestation permissions to the jobs that need them. Documented checksum and GitHub artifact-attestation verification for release downloads.

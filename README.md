@@ -190,7 +190,7 @@ The safest daily path keeps secret material out of process arguments and termina
 | `inspect-runtime` | List active and legacy runtime files without decrypting |
 | `migrate --dry-run` | Preview deprecated encrypted runtime file formats without modifying files |
 
-Token commands can emit JSON for third-party integrations:
+Token commands can emit JSON for third-party integrations. A successful token `set` includes `sync_required: true` and `sync_command: "vault sync-tokens"`, because the value is staged in the shared token vault until a master-password command imports it:
 
 ```bash
 vault use-token "$MYMV_TOKEN" get API_KEY --json
