@@ -413,16 +413,15 @@ Recommended order:
 
 1. evaluate signed tags/checksums and platform signing after SBOM, immutable Action pinning, attestations, tag-pinned release builds, and release-download verification guidance
 2. keep the internal coverage floor healthy and reduce `cmd/vault` orchestration only when tests protect the boundary
-3. add CLI smoke coverage for `security-audit` and guided backup/restore expectations
-4. keep fuzzing `internal/container.FuzzParse` after format or metadata parser changes; current seed set covers v1, v2, HKDF metadata, empty metadata, invalid JSON, truncated metadata, max metadata length, and legacy salt+ciphertext
-5. continue migration coverage around authenticated KDF metadata and crash-consistency behavior
-6. keep rollback and broader same-user file-replacement race hardening moving after no-follow opens, directory fsync, exclusive temp/marker creation, and rollback warn/block checks
-7. keep `staticcheck`, CodeQL, and `govulncheck` results triaged, and keep `gosec` reviewed locally under `docs/static-analysis.md` before considering it as a CI gate
-8. keep explicit process-argument warnings current and continue reducing argument exposure where practical
-9. keep deprecated-format policy explicit; do not implement real mutating `vault migrate` unless normal authenticated-save refresh proves insufficient
-10. keep `internal/sensitive` focused after checksum/wipe consolidation; avoid adding unrelated crypto or storage policy there
-11. keep expanding the compatibility fixture corpus when new historical formats, KDF profiles, or payload layouts need long-term read coverage
-12. keep Windows as a low-priority future target unless real user demand appears; it is currently documented as not fully supported
+3. keep fuzzing `internal/container.FuzzParse` after format or metadata parser changes; current seed set covers v1, v2, HKDF metadata, empty metadata, invalid JSON, truncated metadata, max metadata length, and legacy salt+ciphertext
+4. continue migration coverage around authenticated KDF metadata and crash-consistency behavior
+5. keep rollback and broader same-user file-replacement race hardening moving after no-follow opens, directory fsync, exclusive temp/marker creation, and rollback warn/block checks
+6. keep `staticcheck`, CodeQL, and `govulncheck` results triaged, and keep `gosec` reviewed locally under `docs/static-analysis.md` before considering it as a CI gate
+7. keep explicit process-argument warnings current and continue reducing argument exposure where practical
+8. keep deprecated-format policy explicit; do not implement real mutating `vault migrate` unless normal authenticated-save refresh proves insufficient
+9. keep `internal/sensitive` focused after checksum/wipe consolidation; avoid adding unrelated crypto or storage policy there
+10. keep expanding the compatibility fixture corpus when new historical formats, KDF profiles, or payload layouts need long-term read coverage
+11. keep Windows as a low-priority future target unless real user demand appears; it is currently documented as not fully supported
 
 Suggested branches:
 
@@ -581,8 +580,7 @@ Automated smoke tests currently cover:
 
 Additional smoke coverage to consider:
 
-- `security-audit`
-- backup/restore expectations if restore is added later
+- revisit smoke scenarios whenever new user-facing CLI commands or recovery/restore behavior is added
 
 Suggested branch:
 

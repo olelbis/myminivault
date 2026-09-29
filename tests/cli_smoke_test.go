@@ -143,6 +143,58 @@ func TestCLISmokeBasicVaultCommands(t *testing.T) {
 	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY", "--show")), "not found")
 }
 
+func TestCLISmokeSecurityAuditDoesNotPrintSecretValues(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "API_KEY", "audit-secret-value"))
+	auditOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "security-audit"))
+
+	for _, want := range []string{
+		"Security Audit Report",
+		"No recovery key configured",
+		"No tokens configured",
+		"Vault: 1 keys",
+	} {
+		requireContains(t, auditOutput, want)
+	}
+	if strings.Contains(auditOutput, "audit-secret-value") {
+		t.Fatalf("security audit printed a secret value:\n%s", auditOutput)
+	}
+}
+
+func TestCLISmokeRestoreReplacesVaultAndPreservesCurrentVersion(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "API_KEY", "backup-value"))
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "backup")), "Manual backup created successfully")
+
+	backups, err := filepath.Glob(filepath.Join(dir, "vault.db.*.bak"))
+	if err != nil {
+		t.Fatalf("glob backup: %v", err)
+	}
+	if len(backups) != 1 {
+		t.Fatalf("timestamped backups = %v, want one", backups)
+	}
+	backupPath := backups[0]
+
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "API_KEY", "current-value"))
+	restoreOutput := requireOK(t, runVault(t, bin, dir, "pass\nyes\n", "restore", backupPath))
+	for _, want := range []string{"Restore preview:", "Restored vault from", "Previous vault saved as", "Rollback state accepted"} {
+		requireContains(t, restoreOutput, want)
+	}
+
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY", "--show")), "backup-value")
+	preRestoreBackups, err := filepath.Glob(filepath.Join(dir, "vault.db.pre-restore-*.bak"))
+	if err != nil {
+		t.Fatalf("glob pre-restore backup: %v", err)
+	}
+	if len(preRestoreBackups) != 1 {
+		t.Fatalf("pre-restore backups = %v, want one", preRestoreBackups)
+	}
+}
+
 func TestCLISmokeSetValueFromStdin(t *testing.T) {
 	bin := buildVaultBinary(t)
 	dir := t.TempDir()
