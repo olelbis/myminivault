@@ -36,6 +36,7 @@ func handleInspectRuntimeCommand() {
 	}
 
 	printRecoveryInspectionSummary()
+	printTokenSyncInspectionSummary()
 	printRollbackInspectionSummary()
 
 	legacy := legacyRuntimeFiles()
@@ -63,6 +64,13 @@ func printRecoveryInspectionSummary() {
 	fmt.Println("\nRecovery relationship:")
 	fmt.Printf("  freshness: %s - %s\n", strings.ToLower(freshness.status), freshness.detail)
 	fmt.Printf("  compatibility: %s - %s\n", strings.ToLower(compatibility.status), compatibility.detail)
+}
+
+func printTokenSyncInspectionSummary() {
+	freshness := checkSharedVaultFreshness()
+
+	fmt.Println("\nToken sync relationship:")
+	fmt.Printf("  freshness: %s - %s\n", strings.ToLower(freshness.status), freshness.detail)
 }
 
 func tokenKeyStorageInspection() string {

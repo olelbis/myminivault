@@ -619,6 +619,7 @@ func TestCLISmokeDoctorChecksRuntimeHealth(t *testing.T) {
 	requireContains(t, doctorOutput, "token sync freshness")
 	requireContains(t, doctorOutput, "file fallback")
 	requireContains(t, doctorOutput, "Status: usable with warnings")
+	requireContains(t, doctorOutput, "Hint: run 'vault inspect-runtime'")
 
 	if err := os.Chmod(filepath.Join(dir, vaultFile), 0644); err != nil {
 		t.Fatalf("chmod vault file: %v", err)
@@ -658,11 +659,37 @@ func TestCLISmokeInspectRuntimeShowsActiveAndLegacyFiles(t *testing.T) {
 	requireContains(t, inspect, "format: MYMV v2 main-vault AES-256-GCM/argon2id")
 	requireContains(t, inspect, "Recovery relationship:")
 	requireContains(t, inspect, "compatibility:")
+	requireContains(t, inspect, "Token sync relationship:")
 	requireContains(t, inspect, "Legacy current-directory files:")
 	requireContains(t, inspect, filepath.Join(workDir, vaultFile))
 	requireContains(t, inspect, "format: legacy salt+ciphertext")
 	requireContains(t, inspect, "newer by mtime:")
 	requireContains(t, inspect, "migration: skipped")
+}
+
+func TestCLISmokeInspectRuntimeReportsPendingTokenSync(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir := t.TempDir()
+
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "API_KEY", "hello"))
+	createOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=API_*", "--duration=1h", "--permissions=read,write"))
+	token := extractCompactToken(t, createOutput)
+	requireOK(t, runVault(t, bin, dir, "", "use-token", token, "set", "API_KEY", "updated"))
+
+	mainInfo, err := os.Stat(filepath.Join(dir, vaultFile))
+	if err != nil {
+		t.Fatalf("stat main vault: %v", err)
+	}
+	sharedPath := filepath.Join(dir, sharedTokenVault)
+	future := mainInfo.ModTime().Add(time.Minute)
+	if err := os.Chtimes(sharedPath, future, future); err != nil {
+		t.Fatalf("set shared token vault mtime: %v", err)
+	}
+
+	inspect := requireOK(t, runVault(t, bin, dir, "", "inspect-runtime"))
+	requireContains(t, inspect, "Token sync relationship:")
+	requireContains(t, inspect, "freshness: warn - shared token vault newer than main vault")
+	requireContains(t, inspect, "run vault sync-tokens to persist staged token writes")
 }
 
 func TestCLISmokeAuditLogOmitsKeyNamesAndCanBeDisabled(t *testing.T) {
