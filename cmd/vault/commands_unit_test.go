@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -105,32 +106,73 @@ func TestImportFromFile(t *testing.T) {
 	}
 }
 
-func TestParseExportArgsAcceptsOutputYes(t *testing.T) {
-	originalArgs := os.Args
-	t.Cleanup(func() { os.Args = originalArgs })
-	os.Args = []string{"vault", "export", "--output", "secrets.env", "--yes"}
-
-	outputPath := ""
-	stdout := false
-	assumeYes := false
-	if !parseExportArgs(&outputPath, &stdout, &assumeYes) {
-		t.Fatal("parseExportArgs returned false")
+func TestParseExportOptions(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    []string
+		want    exportOptions
+		wantErr bool
+	}{
+		{name: "output and confirmation", args: []string{"--output", "secrets.env", "--yes"}, want: exportOptions{outputPath: "secrets.env", assumeYes: true}},
+		{name: "equals output", args: []string{"--output=secrets.env"}, want: exportOptions{outputPath: "secrets.env"}},
+		{name: "stdout", args: []string{"--stdout"}, want: exportOptions{stdout: true}},
+		{name: "missing destination", wantErr: true},
+		{name: "stdout confirmation", args: []string{"--stdout", "--yes"}, wantErr: true},
+		{name: "duplicate outputs", args: []string{"--output=a", "--output=b"}, wantErr: true},
+		{name: "output and stdout", args: []string{"--output=a", "--stdout"}, wantErr: true},
+		{name: "unknown flag", args: []string{"--unsafe"}, wantErr: true},
 	}
-	if outputPath != "secrets.env" || stdout || !assumeYes {
-		t.Fatalf("outputPath/stdout/assumeYes = %q/%t/%t", outputPath, stdout, assumeYes)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseExportOptions(tt.args)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parseExportOptions: %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("options = %+v, want %+v", got, tt.want)
+			}
+		})
 	}
 }
 
-func TestParseExportArgsRejectsStdoutYes(t *testing.T) {
-	originalArgs := os.Args
-	t.Cleanup(func() { os.Args = originalArgs })
-	os.Args = []string{"vault", "export", "--stdout", "--yes"}
+func TestParseCopyOptions(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    []string
+		want    copyOptions
+		wantErr error
+	}{
+		{name: "default ttl", args: []string{"API_KEY"}, want: copyOptions{key: "API_KEY", ttl: 30 * time.Second}},
+		{name: "explicit ttl", args: []string{"API_KEY", "--ttl=5s"}, want: copyOptions{key: "API_KEY", ttl: 5 * time.Second}},
+		{name: "disabled clear", args: []string{"API_KEY", "--ttl=0"}, want: copyOptions{key: "API_KEY"}},
+		{name: "missing key", wantErr: errors.New("expected")},
+		{name: "bad option", args: []string{"API_KEY", "--wait=5s"}, wantErr: errors.New("expected")},
+		{name: "negative ttl", args: []string{"API_KEY", "--ttl=-1s"}, wantErr: errInvalidClipboardTTL},
+	}
 
-	outputPath := ""
-	stdout := false
-	assumeYes := false
-	if parseExportArgs(&outputPath, &stdout, &assumeYes) {
-		t.Fatal("parseExportArgs should reject --stdout with --yes")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseCopyOptions(tt.args)
+			if tt.wantErr != nil {
+				if err == nil || (tt.wantErr == errInvalidClipboardTTL && !errors.Is(err, errInvalidClipboardTTL)) {
+					t.Fatalf("error = %v, want %v", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parseCopyOptions: %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("options = %+v, want %+v", got, tt.want)
+			}
+		})
 	}
 }
 

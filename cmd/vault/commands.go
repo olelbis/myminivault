@@ -98,10 +98,8 @@ func handleDeleteCommand(vault map[string]string) {
 }
 
 func handleExportCommand(vault map[string]string) {
-	outputPath := ""
-	stdout := false
-	assumeYes := false
-	if ok := parseExportArgs(&outputPath, &stdout, &assumeYes); !ok {
+	options, err := parseExportOptions(os.Args[2:])
+	if err != nil {
 		fmt.Println("Usage: vault export --output <file>")
 		fmt.Println("       vault export --output <file> --yes")
 		fmt.Println("       vault export --stdout")
@@ -109,20 +107,20 @@ func handleExportCommand(vault map[string]string) {
 		return
 	}
 
-	if outputPath != "" {
-		if !confirmPlaintextExport(outputPath, assumeYes) {
+	if options.outputPath != "" {
+		if !confirmPlaintextExport(options.outputPath, options.assumeYes) {
 			fmt.Println("Export cancelled")
 			return
 		}
-		if err := vaultexport.WriteFile(outputPath, vault); err != nil {
+		if err := vaultexport.WriteFile(options.outputPath, vault); err != nil {
 			fmt.Printf("❌ Export failed: %v\n", err)
 			return
 		}
-		fmt.Printf("✅ Export written to %s with mode 0600\n", outputPath)
+		fmt.Printf("✅ Export written to %s with mode 0600\n", options.outputPath)
 		return
 	}
 
-	if !stdout {
+	if !options.stdout {
 		fmt.Println("Usage: vault export --output <file>")
 		return
 	}
@@ -130,37 +128,46 @@ func handleExportCommand(vault map[string]string) {
 	fmt.Print(vaultexport.Render(vault))
 }
 
-func parseExportArgs(outputPath *string, stdout *bool, assumeYes *bool) bool {
-	args := os.Args[2:]
+type exportOptions struct {
+	outputPath string
+	stdout     bool
+	assumeYes  bool
+}
+
+func parseExportOptions(args []string) (exportOptions, error) {
+	var options exportOptions
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch {
 		case arg == "--output":
-			if *outputPath != "" || *stdout || i+1 >= len(args) {
-				return false
+			if options.outputPath != "" || options.stdout || i+1 >= len(args) {
+				return exportOptions{}, errors.New("invalid export options")
 			}
 			i++
-			*outputPath = args[i]
+			options.outputPath = args[i]
 		case strings.HasPrefix(arg, "--output="):
-			if *outputPath != "" || *stdout {
-				return false
+			if options.outputPath != "" || options.stdout {
+				return exportOptions{}, errors.New("invalid export options")
 			}
-			*outputPath = strings.TrimPrefix(arg, "--output=")
+			options.outputPath = strings.TrimPrefix(arg, "--output=")
 		case arg == "--stdout":
-			if *outputPath != "" || *stdout {
-				return false
+			if options.outputPath != "" || options.stdout {
+				return exportOptions{}, errors.New("invalid export options")
 			}
-			*stdout = true
+			options.stdout = true
 		case arg == "--yes":
-			*assumeYes = true
+			options.assumeYes = true
 		default:
-			return false
+			return exportOptions{}, errors.New("invalid export options")
 		}
 	}
-	if *stdout && *assumeYes {
-		return false
+	if options.stdout && options.assumeYes {
+		return exportOptions{}, errors.New("invalid export options")
 	}
-	return *stdout || *outputPath != ""
+	if !options.stdout && options.outputPath == "" {
+		return exportOptions{}, errors.New("missing export destination")
+	}
+	return options, nil
 }
 
 func confirmPlaintextExport(outputPath string, assumeYes bool) bool {
@@ -196,29 +203,19 @@ func handleListCommand(vault map[string]string) {
 }
 
 func handleCopyCommand(vault map[string]string) {
-	if len(os.Args) < 3 || len(os.Args) > 4 {
+	options, err := parseCopyOptions(os.Args[2:])
+	if err != nil {
+		if errors.Is(err, errInvalidClipboardTTL) {
+			fmt.Println("❌ Invalid clipboard TTL")
+			return
+		}
 		fmt.Println("Usage: vault copy <key> [--ttl=30s]")
 		return
 	}
 
-	key := os.Args[2]
-	ttl := 30 * time.Second
-	if len(os.Args) == 4 {
-		if !strings.HasPrefix(os.Args[3], "--ttl=") {
-			fmt.Println("Usage: vault copy <key> [--ttl=30s]")
-			return
-		}
-		parsedTTL, err := time.ParseDuration(strings.TrimPrefix(os.Args[3], "--ttl="))
-		if err != nil || parsedTTL < 0 {
-			fmt.Println("❌ Invalid clipboard TTL")
-			return
-		}
-		ttl = parsedTTL
-	}
-
-	value, exists := vault[key]
+	value, exists := vault[options.key]
 	if !exists {
-		fmt.Printf("❌ Key '%s' not found\n", key)
+		fmt.Printf("❌ Key '%s' not found\n", options.key)
 		return
 	}
 
@@ -233,19 +230,47 @@ func handleCopyCommand(vault map[string]string) {
 		return
 	}
 
-	if ttl == 0 {
+	if options.ttl == 0 {
 		fmt.Println("✅ Secret copied to clipboard.")
 		fmt.Println("⚠️  Automatic clipboard clearing disabled by --ttl=0.")
 		return
 	}
 
-	fmt.Printf("✅ Secret copied to clipboard. It will be cleared in %s if supported.\n", ttl)
-	time.Sleep(ttl)
+	fmt.Printf("✅ Secret copied to clipboard. It will be cleared in %s if supported.\n", options.ttl)
+	time.Sleep(options.ttl)
 	if err := manager.ClearIfUnchanged(value); err != nil {
 		fmt.Printf("⚠️  Automatic clipboard clearing failed: %v\n", err)
 		return
 	}
 	fmt.Println("🧹 Clipboard cleared.")
+}
+
+var errInvalidClipboardTTL = errors.New("invalid clipboard ttl")
+
+type copyOptions struct {
+	key string
+	ttl time.Duration
+}
+
+func parseCopyOptions(args []string) (copyOptions, error) {
+	if len(args) < 1 || len(args) > 2 {
+		return copyOptions{}, errors.New("invalid copy options")
+	}
+
+	options := copyOptions{key: args[0], ttl: 30 * time.Second}
+	if len(args) == 1 {
+		return options, nil
+	}
+	if !strings.HasPrefix(args[1], "--ttl=") {
+		return copyOptions{}, errors.New("invalid copy options")
+	}
+
+	ttl, err := time.ParseDuration(strings.TrimPrefix(args[1], "--ttl="))
+	if err != nil || ttl < 0 {
+		return copyOptions{}, errInvalidClipboardTTL
+	}
+	options.ttl = ttl
+	return options, nil
 }
 
 func handleSearchCommand(vault map[string]string) {
