@@ -59,13 +59,19 @@ func handleDoctorCommand() {
 	fmt.Printf("\nSummary: %d warning(s), %d failure(s)\n", warnings, failures)
 	if failures > 0 {
 		fmt.Println("Status: attention required")
+		printDoctorInspectRuntimeHint()
 		return
 	}
 	if warnings > 0 {
 		fmt.Println("Status: usable with warnings")
+		printDoctorInspectRuntimeHint()
 		return
 	}
 	fmt.Println("Status: healthy")
+}
+
+func printDoctorInspectRuntimeHint() {
+	fmt.Println("Hint: run 'vault inspect-runtime' for a non-decrypting inventory of active and legacy runtime files.")
 }
 
 func checkRollbackStateHealth() doctorCheck {

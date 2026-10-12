@@ -533,12 +533,10 @@ git switch -c file-container-header-next
 
 Priority: medium.
 
-`vault inspect-runtime` now explains which files are active and which legacy files may still exist without decrypting vault data. `vault doctor` still covers health checks. Documentation has been updated across the main user/developer/security docs.
+`vault inspect-runtime` now explains which files are active and which legacy files may still exist without decrypting vault data. It also summarizes the shared-token vault freshness relationship. `vault doctor` still covers health checks and points to `inspect-runtime` when warnings or failures need file-level context. Documentation has been updated across the main user/developer/security docs.
 
 Remaining direction:
 
-- consider whether `vault doctor` should link to or embed fuller `inspect-runtime` output
-- keep smoke coverage for conflict reporting and runtime inspection output
 - add future checks that warn about unsupported container versions if format evolution requires it
 
 Suggested branch:
