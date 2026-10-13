@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Fixed diagnostic startup so `doctor` and `inspect-runtime` do not create the runtime directory, change its permissions, or migrate legacy files; added CLI regression coverage.
 - Added a token-sync relationship summary to `vault inspect-runtime`; `vault doctor` now points to that non-decrypting inspection when it reports warnings or failures.
 - Added end-to-end CLI smoke coverage for `security-audit` secret redaction and confirmed backup/restore behavior, including the pre-restore backup and rollback-state acceptance path.
 - Extracted `export` and `copy` argument validation from CLI handlers into focused parsers with table-driven coverage for safe destinations, confirmation rules, clipboard TTLs, and invalid options. Local `cmd/vault` coverage increased from `28.4%` to `29.4%`.

@@ -62,38 +62,32 @@ func handleConfigCommand() error {
 }
 
 func initRuntimePaths() error {
-	home, err := vaultpaths.EnsureRuntimeHome()
+	return initializeRuntimePaths(false)
+}
+
+func initializeRuntimePaths(readOnly bool) error {
+	home, err := vaultpaths.RuntimeHome()
+	if !readOnly {
+		home, err = vaultpaths.EnsureRuntimeHome()
+	}
 	if err != nil {
+		return err
+	}
+	if err := vaultpaths.RejectSymlink(home); err != nil && !os.IsNotExist(err) {
 		return err
 	}
 
 	runtimeHome = home
-	if vaultFile, err = vaultpaths.File(vaultFileName); err != nil {
-		return err
-	}
-	if configFile, err = vaultpaths.File(configFileName); err != nil {
-		return err
-	}
-	if logFile, err = vaultpaths.File(logFileName); err != nil {
-		return err
-	}
-	if tokenRegistry, err = vaultpaths.File(tokenRegistryName); err != nil {
-		return err
-	}
-	if tokenKeyFile, err = vaultpaths.File(tokenKeyFileName); err != nil {
-		return err
-	}
-	if sharedTokenVault, err = vaultpaths.File(sharedTokenVaultName); err != nil {
-		return err
-	}
-	if rollbackStateFile, err = vaultpaths.File(rollbackStateName); err != nil {
-		return err
-	}
-	if vaultLockFile, err = vaultpaths.File(lockFileName); err != nil {
-		return err
-	}
-	if err := migrateLegacyRuntimeFiles(home); err != nil {
-		return err
+	vaultFile = filepath.Join(home, vaultFileName)
+	configFile = filepath.Join(home, configFileName)
+	logFile = filepath.Join(home, logFileName)
+	tokenRegistry = filepath.Join(home, tokenRegistryName)
+	tokenKeyFile = filepath.Join(home, tokenKeyFileName)
+	sharedTokenVault = filepath.Join(home, sharedTokenVaultName)
+	rollbackStateFile = filepath.Join(home, rollbackStateName)
+	vaultLockFile = filepath.Join(home, lockFileName)
+	if !readOnly {
+		return migrateLegacyRuntimeFiles(home)
 	}
 	return nil
 }

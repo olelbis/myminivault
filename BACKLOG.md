@@ -539,6 +539,8 @@ Remaining direction:
 
 - add future checks that warn about unsupported container versions if format evolution requires it
 
+Diagnostic startup now only resolves runtime paths: it does not create the runtime directory, change directory/file permissions, or migrate legacy files. CLI regression tests cover both diagnostic commands with missing and existing runtime directories.
+
 Suggested branch:
 
 ```bash
