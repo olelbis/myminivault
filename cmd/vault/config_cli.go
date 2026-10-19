@@ -61,10 +61,6 @@ func handleConfigCommand() error {
 	return nil
 }
 
-func initRuntimePaths() error {
-	return initializeRuntimePaths(false)
-}
-
 func initializeRuntimePaths(readOnly bool) error {
 	home, err := vaultpaths.RuntimeHome()
 	if !readOnly {

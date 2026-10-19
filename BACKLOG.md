@@ -8,6 +8,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
 - Current baseline release: `v0.13.8`
+- Current module requirement: Go `1.27.0`, preferred toolchain `go1.27.2`; workflows and development documentation select Go `1.27.2`.
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -15,7 +16,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 
 ## Project Assessment
 
-Current assessment score: `8.7 / 10` under the practical project-readiness model after `v0.13.8`.
+Historical assessment: `8.7 / 10` under the practical project-readiness model after `v0.13.8`. This is not a fresh assessment or an audit result.
 
 `myminivault` is a solid local/personal CLI vault project with a clean release workflow, meaningful smoke tests, GitHub CI across Linux and macOS, release packaging for common Linux/macOS targets, coverage reporting, a formal threat model, a clearer package structure than the original monolith, stronger local security checks, macOS Keychain support for token master-key material, timestamp-aware token sync metadata, tested internal file locking, tested audit logging helpers, tested sync helpers, tested command helpers, tested clipboard helpers, tested export helpers, stronger token helper coverage, and safer alternatives to printing plaintext secrets. It should still be treated as an experimental personal security tool, not as a production-grade password manager.
 
@@ -36,7 +37,7 @@ Main strengths:
 - tested `internal/export` package for shell export rendering and restrictive file writes
 - tested `internal/health` package for non-decrypting runtime metadata compatibility checks
 - tested `internal/sensitive` package for checksum-prefixed payload helpers and best-effort byte wiping
-- internal package coverage at `86.3%`, above the enforced `80.0%` floor
+- historical internal package coverage measurement of `86.3%`, with an enforced `80.0%` floor
 - automated CLI smoke coverage for critical workflows in the top-level `tests` package
 - explicit handling for recovery, token sync, locking, backups, export, checksummed payloads, best-effort byte wiping, and password changes
 - a handoff backlog that can restart work from a fresh chat
@@ -66,17 +67,35 @@ Use this section first when resuming work. The detailed backlog below explains e
 
 ### Immediate Next Work
 
-1. **Supply-Chain Hardening**
-   - Goal: evaluate signed tags/checksums and platform signing after SBOM generation, immutable Action pinning, automated security scanning, current package attestations, tag-pinned release builds, and release-download verification guidance.
-   - Status: release packages upload per-target SPDX JSON SBOM files, include them in checksum manifests, attest them, build from and verify the named release tag, use non-persistent checkout credentials, scope release permissions per job, workflows pin GitHub Actions to commit SHAs, and CI runs CodeQL plus `govulncheck`.
-   - Suggested branch: `supply-chain-hardening`.
+Reviewed on 2026-10-19 against `main` after the diagnostic startup fix was merged. Follow this order; the historical detail below is not a separate queue.
 
-2. **Windows Support Decision**
-   - Goal: keep Windows as a low-priority future target unless real user demand appears; document gaps around locking, ACLs, key storage, packaging, and CI.
-   - Status: macOS and Linux are the active support targets.
-   - Suggested branch: `windows-support-notes`.
+1. **Prepare one grouped maintenance release**
+   - Review `Unreleased` against the changes since `v0.13.8`, separating fixes, behavior changes, and internal/test-only work.
+   - Recheck release instructions and documentation, run the release checks with the aligned toolchain, and record fresh coverage measurements instead of treating historical baselines as current results.
+   - Create the tag/release only when explicitly authorized; avoid another release for every small commit.
+
+2. **Maintain the focused external security review**
+   - Keep the public request, scope, file-format specification, independent readers, and compatibility fixtures consistent with current code.
+   - Triage concrete reviewer findings first. The project remains self-reviewed and unaudited until independent evidence says otherwise.
+
+### Recurring Maintenance
+
+- Triage CI, `staticcheck`, CodeQL, and `govulncheck`; evaluate `gosec` under the documented policy.
+- Preserve the internal coverage floor; add tests for identified risk or uncovered behavior rather than chasing a score.
+- Rerun parser fuzzing and expand compatibility fixtures when format, KDF metadata, or historical read paths change.
+- Revisit crash consistency, rollback, token synchronization, and file replacement when a concrete gap or change warrants it.
+- Keep diagnostic commands non-mutating. Both startup and command execution now have CLI regression coverage.
+
+### Decisions To Revisit
+
+- **Distribution signing:** assess what signed tags/checksums or platform signing add beyond current SBOMs, checksums, attestations, and tag-pinned builds, including key custody, cost, and verification instructions. This is not an automatic next implementation.
+- **Future format checks:** add diagnostic handling when format evolution introduces a concrete need; unsupported-container rejection already has tests.
+- **Import/export and memory exposure:** retain the documented limits and revisit specific improvements when there is a clear use case or measurable mitigation.
+- **Windows:** lowest priority; the support decision is already documented. Reopen only with real demand and a platform test plan.
 
 ### Completed Hardening Milestones
+
+- **Go toolchain alignment:** CI, security scanning (including govulncheck), release packaging, the README badge, and the development guide now explicitly use Go `1.27.2`, matching the preferred module toolchain. GitHub analyzer execution remains validated by CI.
 
 1. **Deprecated format fixture policy**: completed after the compatibility fixture corpus was made exact with checksum-verified inventory coverage and documented update rules.
 2. **Rollback restore staging hardening**: completed after guided restore began rejecting and preserving pre-existing `vault.db.restore.tmp` paths instead of deleting them before exclusive staging.
@@ -98,6 +117,8 @@ Use this section first when resuming work. The detailed backlog below explains e
 18. **Command policy thinning pass**: completed after moving password-command audit and shared-vault mirror policy out of `cmd/vault` and into `internal/commands`, keeping CLI handlers focused on orchestration.
 19. **Linux token key storage policy**: completed as a deliberate file-backed policy. Linux keeps `vault-token.key` for portable desktop, headless, SSH, container, and CI use; Secret Service detection remains diagnostic only and is reconsidered only if a reliable strategy covers both desktop and headless environments.
 20. **Token sync UX follow-up**: completed after JSON token writes began reporting `sync_required: true` and `sync_command: "vault sync-tokens"`; preview/import/delete/conflict invariants already have focused core coverage.
+21. **Read-only diagnostics:** completed on `main` in `f6e51eb`; diagnostic startup no longer creates directories, changes permissions, or migrates legacy files. CLI regression tests cover missing and existing runtime directories.
+
 ### Later Product Ideas
 
 Product ideas such as `vault run`, profiles, namespaces, a TUI, hooks, and rotating one-time secret tokens stay below the hardening work unless they directly reduce operational risk.
@@ -226,7 +247,9 @@ Docs-only candidates:
 - Updated coverage baselines to `51.1%` full repository and `86.3%` internal packages after focused sync, storage, crypto, token, and token-file parsing tests.
 - Added warn-mode rollback-state checks and updated coverage baselines to `44.1%` full repository and `81.2%` internal packages.
 
-## Current Verification
+## Verification Guide And Historical Results
+
+The checks below describe the verification process. Coverage numbers and manual outcomes recorded in this file are historical observations, not measurements rerun during the 2026-10-19 documentation cleanup.
 
 Current automated checks:
 
@@ -340,7 +363,9 @@ docs/
   token-sync-policy.md  main/shared token vault sync policy and deferred decisions
 ```
 
-## Detailed Roadmap
+## Maintenance And Decision Reference
+
+The overview is the only ordered queue. The sections below preserve context and acceptance guidance; completed/watch sections do not request new implementation.
 
 This section expands the overview above. Items are grouped by decision priority, not by the order in which they were originally added.
 
@@ -403,13 +428,13 @@ git pull
 git switch -c token-sync-next
 ```
 
-### Next: Quality Roadmap Beyond 9.9
+### Ongoing: Quality Maintenance Reference
 
-Priority: medium-high.
+Priority: recurring; use the overview for actionable ordering.
 
-These items are the most direct path beyond the current `9.9 / 10` ordinary assessment and `9.2 / 10` paranoid assessment. Prefer them before adding new product features.
+These are maintenance areas, not outstanding findings or a promise of a higher security score. The assessment near the top is historical and cannot replace current verification or independent review.
 
-Recommended order:
+Maintenance reference:
 
 1. evaluate signed tags/checksums and platform signing after SBOM, immutable Action pinning, attestations, tag-pinned release builds, and release-download verification guidance
 2. keep the internal coverage floor healthy and reduce `cmd/vault` orchestration only when tests protect the boundary
@@ -423,17 +448,10 @@ Recommended order:
 10. keep expanding the compatibility fixture corpus when new historical formats, KDF profiles, or payload layouts need long-term read coverage
 11. keep Windows as a low-priority future target unless real user demand appears; it is currently documented as not fully supported
 
-Suggested branches:
 
-```bash
-git switch main
-git pull
-git switch -c review-follow-up-hardening
-```
+### Ongoing: Review Follow-Up Maintenance
 
-### Next: Review Follow-Up Hardening
-
-Priority: high.
+Priority: driven by concrete findings; external feedback is tracked in the overview.
 
 The first July 2026 review follow-up pass is complete. Remaining follow-up work:
 
@@ -445,9 +463,9 @@ The first July 2026 review follow-up pass is complete. Remaining follow-up work:
 - keep expanding the compatibility fixture corpus when new historical formats, KDF profiles, or payload layouts need long-term read coverage; current Argon2id main-vault and HKDF recovery/shared-token fixtures are now covered
 - keep memory hardening honest: avoid string conversions for secrets, keep byte wiping best-effort, and document Go limits instead of promising impossible guarantees
 
-### Next: Release Cadence Cleanup
+### Release Policy: Grouped Maintenance Releases
 
-Priority: medium.
+Status: ongoing policy; release preparation is ordered in the overview.
 
 The early project history intentionally used many tiny releases while stabilizing behavior and packaging. Going forward, keep the changelog useful for upgrade decisions:
 
@@ -457,46 +475,31 @@ The early project history intentionally used many tiny releases while stabilizin
 - reserve minor releases for larger user-facing changes or format/security compatibility work
 - keep release notes short and focused on what changes user risk, behavior, packaging, or compatibility
 
-### Next: Coverage Follow-Up
+### Ongoing: Coverage Follow-Up
 
-Priority: medium.
+Status: recurring maintenance; refresh measurements during release preparation.
 
 Current CI runs formatting, `go vet`, `staticcheck`, `go test ./...`, full coverage reporting, and an enforced internal package coverage floor.
 
 Next actions:
 
-- keep `./internal/...` coverage at or above the current `80.0%` floor, with `86.3%` as the latest local baseline
-- raise `cmd/vault` coverage with focused unit tests or further extraction of command-independent logic where it improves clarity; the latest local baseline is `29.4%` after extracting token-creation, export, and clipboard option policy
+- keep `./internal/...` coverage at or above the current `80.0%` floor; `86.3%` is a historical local measurement, to be refreshed for the grouped release
+- cover specific CLI risks with focused tests or useful extraction; `29.4%` was the local `cmd/vault` measurement after extracting token-creation, export, and clipboard option policy, before subsequent diagnostic changes
 
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c coverage-next
-```
 
 ### Later Hardening: Install And Release Packaging
 
-Priority: medium.
+Status: packaging implemented; signing and additional distribution channels are decisions to revisit.
 
 The README now documents `go install`, and release package automation builds Linux amd64, Linux arm64, and macOS arm64 archives when a GitHub release is published. Release automation also publishes Linux `.deb`, Linux `.rpm`, macOS `.pkg`, SHA-256 checksum manifests, and GitHub artifact attestations.
 
-Recommended progression:
+Remaining distribution decisions:
 
-- expanded package workflow for `v0.4.5` has been verified successfully
-- decide whether Linux/macOS amd64 and arm64 are enough for the first public phase
+- revisit the current Linux amd64/arm64 and macOS arm64 target set only when user demand warrants additional builds
 - consider Homebrew only after release binaries and public positioning are more mature
 - keep checksums and attestations in release assets/workflow outputs if binaries are published
 - consider signed checksum files and platform signing before treating release distribution as hardened
 
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c install-packaging
-```
 
 ### Completed / Watch: File Container Header
 
@@ -521,17 +524,10 @@ Future direction:
 - add more explicit migration prompts only if a future incompatible container version appears
 - keep old-format read tests when evolving the format again
 
-Suggested branch:
 
-```bash
-git switch main
-git pull
-git switch -c file-container-header-next
-```
+### Completed / Watch: Runtime Inspect And Doctor Improvements
 
-### Later Hardening: Runtime Inspect And Doctor Improvements
-
-Priority: medium.
+Priority: completed; revisit on diagnostic or format changes.
 
 `vault inspect-runtime` now explains which files are active and which legacy files may still exist without decrypting vault data. It also summarizes the shared-token vault freshness relationship. `vault doctor` still covers health checks and points to `inspect-runtime` when warnings or failures need file-level context. Documentation has been updated across the main user/developer/security docs.
 
@@ -541,13 +537,6 @@ Remaining direction:
 
 Diagnostic startup now only resolves runtime paths: it does not create the runtime directory, change directory/file permissions, or migrate legacy files. CLI regression tests cover both diagnostic commands with missing and existing runtime directories.
 
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c runtime-inspect
-```
 
 ### Ongoing: Additional CLI Smoke Tests
 
@@ -571,7 +560,9 @@ Automated smoke tests currently cover:
 - shell-safe `export` output
 - export/import round-trip behavior for shell-escaped special values
 - malformed config from the CLI
-- `vault doctor`
+- `vault doctor` and `inspect-runtime`, including non-mutating startup and pending token-sync inspection
+- `security-audit` secret redaction
+- confirmed restore with pre-restore backup and rollback-state acceptance
 - audit-log redaction and disabled audit logging
 - recovery `setup-recovery`
 - recovery `test-recovery`
@@ -582,13 +573,6 @@ Additional smoke coverage to consider:
 
 - revisit smoke scenarios whenever new user-facing CLI commands or recovery/restore behavior is added
 
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c cli-smoke-tests-more
-```
 
 ### Later Hardening: Import/Export Format Review
 
@@ -615,13 +599,6 @@ Remaining:
 - document safe shell usage and shell history caveats in more detail
 - decide whether a future non-shell JSON export format should exist for safer machine round-trips
 
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c import-export-format
-```
 
 ### Ongoing: Future Refactor Candidates
 
@@ -666,26 +643,19 @@ Ideas to revisit:
 - reduce plaintext lifetime in memory where practical
 - continue moving password/secret handling toward `[]byte` where the code can zero buffers afterward
 - add best-effort zeroing for derived keys and password buffers where Go semantics make that meaningful
-- evaluate macOS Keychain for protecting `vault-token.key` or a future local wrapping key at rest
+- preserve existing macOS Keychain support for token key material; evaluate additional wrapping only if a distinct threat-model benefit is established
 
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c memory-exposure-next
-```
 
 ### Completed / Watch: OS Token Key Storage Policy
 
-Priority: medium.
+Status: completed policy; revisit only if storage requirements change.
 
 `vault-token.key` is local token-system key material. macOS supports Keychain storage. Linux deliberately uses the restrictive runtime-file backend so token use remains predictable on desktops, servers, SSH sessions, containers, and CI jobs.
 
-Recommended policy:
+Implemented policy:
 
-- add config first, before changing token key storage:
-  - `token_key_storage = "auto"`: prefer macOS Keychain when available, otherwise use the current file fallback
+- configuration selects token key storage:
+  - `token_key_storage = "auto"`: prefer macOS Keychain when available, otherwise use the file fallback
   - `token_key_storage = "file"`: always use the current `vault-token.key` file behavior
   - `token_key_storage = "keychain"`: require OS keychain and fail clearly if unavailable
 - expose keychain status in `vault doctor`, such as `available`, `unavailable`, `using file fallback`, or `configured but unavailable`
@@ -701,25 +671,18 @@ Platform direction:
 - keep file-based fallback for portability, automation, and minimal environments
 - reconsider a Linux Secret Service backend only if it has a documented, tested desktop and headless strategy; any migration from file storage must be a separate release
 
-Suggested implementation phases:
+Completed implementation phases:
 
 1. `token-keychain-detection`: config validation, platform detection, `doctor` reporting, documentation, no storage behavior change. Completed in `v0.4.7`.
 2. `token-keychain-macos`: macOS Keychain backend, fallback behavior, migration tests where practical. Completed in `v0.4.9`.
 3. `token-keychain-linux`: Secret Service/libsecret readiness detection with DBus plus `secret-tool`; Linux storage remains deliberately file-backed. Completed in `v0.4.10`.
 
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c linux-keychain-storage-decision
-```
 
 ## Product Ideas After Hardening
 
 These are intentionally lower priority than the stability/security work above. Revisit them after documentation cleanup, security review, token sync policy review, and test-depth work are in better shape.
 
-### Machine-Readable Token Integration
+### Completed Reference: Machine-Readable Token Integration
 
 Status: completed in `v0.4.11`.
 
@@ -731,13 +694,13 @@ Start with a small CLI contract instead of an SDK or daemon:
 vault use-token "$TOKEN" get API_KEY --json
 ```
 
-Target success output:
+Success output example:
 
 ```json
 {"key":"API_KEY","value":"secret"}
 ```
 
-Target error output:
+Error output example:
 
 ```json
 {"error":"token expired"}
@@ -746,19 +709,12 @@ Target error output:
 Recommended scope:
 
 - JSON output is available for `use-token <token> get`, `set`, `list`, and `search`
-- plaintext default output remains unchanged for backward compatibility
+- secret output requires explicit `--show` or `--json`; default human output does not expose values
 - error output is machine-readable when `--json` is requested
 - subprocess examples for Python, Go, and Java are documented
 - smoke coverage verifies token JSON success and failure paths
 - defer SDKs, agents, and richer APIs until the CLI JSON contract is stable
 
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c machine-readable-token-integration
-```
 
 ### `vault run -- <command>`
 
@@ -769,13 +725,6 @@ vault run -- npm start
 vault run -- go test ./...
 ```
 
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c vault-run-command
-```
 
 ### Project Profiles
 
@@ -787,13 +736,6 @@ vault profile use myapp
 vault profile list
 ```
 
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c project-profiles
-```
 
 ### Namespaces
 
@@ -804,13 +746,6 @@ vault set prod.DB_PASSWORD ...
 vault list prod.*
 ```
 
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c namespaces
-```
 
 ### Token UX Cleanup
 
@@ -822,13 +757,6 @@ vault token inspect <id>
 vault token revoke <id>
 ```
 
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c token-ux
-```
 
 ### Terminal UI
 
@@ -838,13 +766,6 @@ Add an optional TUI for browsing/searching keys, viewing token status, editing v
 vault ui
 ```
 
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c tui
-```
 
 ### Secret Rotation Hooks
 
@@ -854,13 +775,6 @@ Support command-driven rotation workflows:
 vault rotate API_KEY --cmd './scripts/regenerate-api-key'
 ```
 
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c secret-rotation
-```
 
 ### Hook System
 
@@ -870,13 +784,6 @@ Allow local scripts to run after selected events such as `set`, `delete`, `backu
 vault hook add after-set ./scripts/audit.sh
 ```
 
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c hooks
-```
 
 ### Rotating One-Time Secret Tokens
 
@@ -905,13 +812,6 @@ Important design notes:
 - define failure semantics before implementation, especially whether a token is consumed if post-use rotation fails
 - audit should record the rotation event without leaking key names or values unless the audit policy changes
 
-Suggested branch:
-
-```bash
-git switch main
-git pull
-git switch -c rotating-one-time-tokens
-```
 
 ## Useful Commands
 

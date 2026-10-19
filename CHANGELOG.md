@@ -4,6 +4,8 @@
 
 ### Changed
 
+- Aligned CI, security scanning, release packaging, and development documentation with Go `1.27.2`.
+- Updated the CI Staticcheck pin to `v0.8.2` for Go 1.27 compatibility and removed an unused runtime-initialization wrapper reported by the updated analyzer.
 - Fixed diagnostic startup so `doctor` and `inspect-runtime` do not create the runtime directory, change its permissions, or migrate legacy files; added CLI regression coverage.
 - Added a token-sync relationship summary to `vault inspect-runtime`; `vault doctor` now points to that non-decrypting inspection when it reports warnings or failures.
 - Added end-to-end CLI smoke coverage for `security-audit` secret redaction and confirmed backup/restore behavior, including the pre-restore backup and rollback-state acceptance path.

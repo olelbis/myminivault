@@ -10,7 +10,7 @@
 
 <p align="center">
   <img alt="CI" src="https://github.com/olelbis/myminivault/actions/workflows/ci.yml/badge.svg">
-  <img alt="Go" src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white">
+  <img alt="Go" src="https://img.shields.io/badge/Go-1.27.2-00ADD8?logo=go&logoColor=white">
   <img alt="Latest release" src="https://img.shields.io/github/v/release/olelbis/myminivault?sort=semver">
   <img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/olelbis/myminivault.svg">
   <img alt="Internal coverage" src="https://img.shields.io/badge/internal_coverage-85.1%25-brightgreen">

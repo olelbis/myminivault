@@ -2,6 +2,8 @@
 
 This document captures architecture, test, and release workflow notes for future development sessions.
 
+Use Go `1.27.2` for local validation. The module declares a Go `1.27.0` minimum and prefers toolchain `go1.27.2`; CI, security scanning, and release packaging select `1.27.2` explicitly.
+
 ## Project Layout
 
 ```text
@@ -327,7 +329,7 @@ Development notes:
 - tests should set `MYMINIVAULT_HOME` when executing the compiled CLI
 - do not point development runs at the real `~/.myminivault/` unless you intend to use real local vault state
 - path resolution lives in `internal/paths`
-- CLI globals are initialized by `initRuntimePaths`
+- CLI runtime paths are initialized by `initializeRuntimePaths`; diagnostic commands use its read-only mode
 - runtime inspection output lives in `cmd/vault/runtime_inspect.go`
 - recovery freshness and compatibility checks live in `cmd/vault/doctor_cli.go` and are reused by `inspect-runtime`
 - legacy cwd migration is intentionally conservative and skips files when the runtime-home target already exists
