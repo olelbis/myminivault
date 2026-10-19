@@ -39,7 +39,8 @@ func run() error {
 		return nil
 	}
 
-	if err := initRuntimePaths(); err != nil {
+	readOnlyRuntime := command == "doctor" || command == "inspect-runtime"
+	if err := initializeRuntimePaths(readOnlyRuntime); err != nil {
 		return fmt.Errorf("runtime path error: %w", err)
 	}
 

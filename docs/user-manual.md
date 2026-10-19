@@ -680,7 +680,7 @@ Important behavior:
 - legacy runtime files in the current working directory are migrated only if the target file is missing
 - normal commands tighten existing runtime file permissions to `0600` when possible
 - sensitive restore, temp, and transaction files fail on pre-existing paths instead of reusing them
-- `vault doctor` and `vault inspect-runtime` report permissions without changing them
+- `vault doctor` and `vault inspect-runtime` report permissions without changing them, do not create the runtime directory, and do not migrate legacy current-directory files
 - do not use a Git repo, shared folder, or cloud-sync folder unless you understand the exposure and conflict risks
 
 | File | Purpose |

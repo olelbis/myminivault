@@ -629,6 +629,59 @@ func TestCLISmokeDoctorChecksRuntimeHealth(t *testing.T) {
 	requireContains(t, insecureOutput, "mode 0644")
 }
 
+func TestCLISmokeDiagnosticsDoNotMutateRuntime(t *testing.T) {
+	bin := buildVaultBinary(t)
+	for _, command := range []string{"doctor", "inspect-runtime"} {
+		t.Run(command, func(t *testing.T) {
+			workDir := t.TempDir()
+			runtimeDir := filepath.Join(t.TempDir(), "runtime")
+			legacyPath := filepath.Join(workDir, vaultFile)
+			legacyData := []byte("legacy inspection fixture")
+			if err := os.WriteFile(legacyPath, legacyData, 0644); err != nil {
+				t.Fatal(err)
+			}
+			runInspection := func() {
+				cmd := exec.Command(bin, command)
+				cmd.Dir = workDir
+				cmd.Env = append(os.Environ(), vaultHomeEnv+"="+runtimeDir, "PATH="+t.TempDir())
+				out, err := cmd.CombinedOutput()
+				requireOK(t, cliResult{output: string(out), err: err})
+			}
+			runInspection()
+			requireFileNotExists(t, runtimeDir)
+			data, err := os.ReadFile(legacyPath)
+			if err != nil || string(data) != string(legacyData) {
+				t.Fatalf("legacy file changed: %q, %v", data, err)
+			}
+			if err := os.Mkdir(runtimeDir, 0755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Chmod(runtimeDir, 0755); err != nil {
+				t.Fatal(err)
+			}
+			activePath := filepath.Join(runtimeDir, vaultFile)
+			if err := os.WriteFile(activePath, legacyData, 0644); err != nil {
+				t.Fatal(err)
+			}
+			runInspection()
+			entries, err := os.ReadDir(runtimeDir)
+			if err != nil || len(entries) != 1 {
+				t.Fatalf("runtime files changed: %v, %v", entries, err)
+			}
+			for path, want := range map[string]os.FileMode{runtimeDir: 0755, activePath: 0644, legacyPath: 0644} {
+				info, err := os.Stat(path)
+				if err != nil || info.Mode().Perm() != want {
+					t.Fatalf("permissions changed for %s: %v", path, err)
+				}
+			}
+			data, err = os.ReadFile(activePath)
+			if err != nil || string(data) != string(legacyData) {
+				t.Fatalf("active file changed: %q, %v", data, err)
+			}
+		})
+	}
+}
+
 func TestCLISmokeInspectRuntimeShowsActiveAndLegacyFiles(t *testing.T) {
 	bin := buildVaultBinary(t)
 	workDir := t.TempDir()
