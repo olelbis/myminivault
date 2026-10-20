@@ -7,14 +7,15 @@ GitHub Actions publishes a `coverage-report` artifact on every CI run. The artif
 - `internal-coverage.out`: Go coverage profile for `./internal/...`
 - `internal-coverage.txt`: function-level internal package coverage report
 
-Current local baseline:
+Local baseline measured on 2026-10-20 with Go `1.27.2` (macOS arm64):
 
 | Scope | Statement coverage |
 | --- | --- |
-| Full repository | 51.1% |
+| Full repository | 53.0% |
 | Internal packages | 86.3% |
+| CLI package (`cmd/vault`) | 29.4% |
 
-The README badge tracks internal package coverage because the project has many CLI smoke tests that execute the compiled `vault` binary as a subprocess. Those smoke tests are valuable behavior checks, but subprocess execution does not contribute much statement coverage to the parent `cmd/vault` test process.
+The README badge is a manually maintained snapshot of internal package coverage; the CI artifact contains the measurement for each run. CLI smoke tests execute a separately compiled, uninstrumented `vault` binary, so they check behavior without contributing statement coverage to `cmd/vault`.
 
 CI enforces an internal package coverage floor of `80.0%`. Full repository coverage remains informational because subprocess-based CLI smoke tests protect real behavior without raising statement coverage in `cmd/vault`.
 

@@ -2,39 +2,44 @@
 
 ## [Unreleased]
 
+## [v0.14.0] - 2026-10-20
+
+### Added
+
+- Added `vault restore <backup>` with decrypted metadata preview, explicit confirmation, a pre-restore backup, and acceptance of the restored rollback revision.
+- Added `sync_required` and `sync_command` fields to successful token `set --json` responses so automation can identify staged writes.
+- Added a token-sync relationship summary to `inspect-runtime` and an inspection hint when `doctor` reports warnings or failures.
+- Added a root `VERSION` file for release-version injection and tag consistency checks.
+
+### Fixed
+
+- Made diagnostic startup read-only: `doctor` and `inspect-runtime` no longer create the runtime directory, change its permissions, or migrate legacy files.
+- Removed allocation-size arithmetic flagged by CodeQL from checksum payload construction without changing the file format.
+- Normalized parsed container salt-size metadata to the actual salt boundary.
+
+### Security
+
+- Hardened guided restore with checked no-follow backup and rollback-state reads, exclusive backup destinations, and replacement using the exact verified bytes.
+- Reject and preserve pre-existing restore staging paths instead of removing them before staging.
+- Read `use-token --token-file` inputs through checked no-follow opens.
+- Warn on stderr when secret values or compact tokens are passed directly in process arguments; stdin/file/fd alternatives remain preferred.
+- Build release packages from the named tag, verify the checkout, avoid persisted checkout credentials, and scope upload/attestation permissions per job.
+
 ### Changed
 
-- Aligned CI, security scanning, release packaging, and development documentation with Go `1.27.2`.
-- Updated the CI Staticcheck pin to `v0.8.2` for Go 1.27 compatibility and removed an unused runtime-initialization wrapper reported by the updated analyzer.
-- Fixed diagnostic startup so `doctor` and `inspect-runtime` do not create the runtime directory, change its permissions, or migrate legacy files; added CLI regression coverage.
-- Added a token-sync relationship summary to `vault inspect-runtime`; `vault doctor` now points to that non-decrypting inspection when it reports warnings or failures.
-- Added end-to-end CLI smoke coverage for `security-audit` secret redaction and confirmed backup/restore behavior, including the pre-restore backup and rollback-state acceptance path.
-- Extracted `export` and `copy` argument validation from CLI handlers into focused parsers with table-driven coverage for safe destinations, confirmation rules, clipboard TTLs, and invalid options. Local `cmd/vault` coverage increased from `28.4%` to `29.4%`.
-- Added explicit pending-sync fields to successful token `set --json` responses so automation can run `vault sync-tokens` without parsing human-readable output.
-- Documented the deliberate Linux token-key storage policy: `vault-token.key` remains the supported protected backend for desktop and headless environments, while Secret Service detection stays diagnostic only.
-- Refactored `create-token` option parsing into a focused, tested policy helper. Added coverage for defaults, permission normalization, required values, and token lifetime/use limits; local `cmd/vault` coverage increased from `25.8%` to `27.7%`.
-- Hardened the release workflow to build only from the named release tag, verify that its checkout matches that tag, avoid persisted checkout credentials, and scope upload/attestation permissions to the jobs that need them. Documented checksum and GitHub artifact-attestation verification for release downloads.
-- Locked the deprecated-format compatibility fixture corpus with exact inventory and SHA-256 checksums so fixture drift must be reviewed explicitly.
-- Hardened rollback restore staging so a pre-existing `vault.db.restore.tmp` is rejected and preserved instead of removed before exclusive staging.
-- Moved password-command audit and shared-vault mirror policy from `cmd/vault` into `internal/commands` with focused unit coverage.
-- Added focused coverage for sync preview changes, storage parsed-container loading, KDF metadata key-size validation, shared-token KDF config, and token-file argument parsing.
-- Updated local coverage baselines to `51.1%` full repository and `86.3%` internal packages.
-- Added `docs/static-analysis.md` with the current static-analysis gate list, `gosec` triage guidance, suppression rules, and release policy for analysis-only changes.
-- Tightened or annotated bounded integer conversions reported by `gosec` so metadata-derived sizes are clearer to reviewers.
-- Switched `vault use-token --token-file` to checked no-follow file reads and recorded the current local `gosec` baseline for future CI-gate decisions.
-- Removed an allocation-size addition from `internal/sensitive.PrefixChecksum` to satisfy CodeQL overflow analysis without changing checksum payload format.
-- Hardened guided restore so backup and rollback-state files are read through checked no-follow opens, backup copies use exclusive destinations, and guided restore reuses the exact verified bytes for replacement, reducing backup file-replacement race windows.
-- Consolidated checksum-prefixed JSON payload and best-effort byte-wipe helpers into `internal/sensitive`, keeping stricter recovery/token checksum errors and main-vault legacy JSON compatibility.
-- Cleaned up backlog priorities so completed review-follow-up items no longer appear as the next active roadmap.
-- Reframed legacy encrypted-format handling around explicit deprecation and normal authenticated-save refreshes instead of planning a separate mutating `vault migrate` command.
-- Strengthened `internal/container.FuzzParse` with metadata edge-case seeds and normalized parsed container `salt_size` metadata to the actual salt boundary.
-- Added runtime `stderr` warnings for direct `vault set <key> <value>` and `vault use-token <token>` forms so users are nudged toward stdin, token-file, or token-fd inputs for real secret material.
-- Added token sync invariant coverage to keep `sync-tokens --dry-run` previews aligned with real imports, preserve newer main-vault conflicts, and verify import/delete metadata updates.
-- Added `vault restore <backup>` to decrypt and preview backup metadata, require explicit confirmation, preserve the current vault as a pre-restore backup, replace `vault.db`, and accept the restored rollback revision.
-- Documented macOS/Linux as the active support targets and moved Windows support to low-priority future work.
-- Added a root `VERSION` file as the single source for local release-version injection and release tag consistency checks.
-- Expanded the compatibility fixture corpus with current Argon2id main-vault and HKDF-SHA256 recovery/shared-token vault fixtures.
-- Updated migration and development documentation for the current KDF-specific write profiles.
+- Aligned CI, security scanning, release packaging, and development documentation with Go `1.27.2`; updated Staticcheck to `v0.8.2` and removed an unused initialization wrapper.
+- Extracted token-creation, export, and clipboard option parsing and moved audit/mirror policy into `internal/commands`.
+- Consolidated checksum-prefixed payload and best-effort wiping helpers in `internal/sensitive`.
+- Documented Linux token-key storage as deliberately file-backed, with Secret Service detection remaining diagnostic; macOS and Linux are the active support targets.
+- Clarified deprecated-format handling: `migrate --dry-run` stays inspection-only, while normal authenticated saves refresh readable older formats.
+- Documented checksum/attestation verification and static-analysis triage, and reorganized backlog priorities.
+
+### Tests And Compatibility
+
+- Added CLI regression coverage for non-mutating diagnostics, pending token-sync inspection, security-audit secret redaction, and confirmed backup/restore behavior.
+- Added token-sync preview/import/conflict/delete invariants, parser edge-case fuzz seeds, and focused command, storage, KDF, sync, and token-input tests.
+- Expanded compatibility fixtures for current Argon2id main-vault and HKDF recovery/shared-token profiles; locked fixture inventory and SHA-256 checksums against accidental drift.
+- Measured coverage with Go `1.27.2` on 2026-10-20: `53.0%` full repository, `86.3%` internal packages, and `29.4%` CLI package. Go and Python reference-reader tests passed.
 
 ## [v0.13.8] - 2026-08-31
 
