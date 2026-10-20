@@ -7,7 +7,8 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Project path: clone or open the repository root, for example `/tmp/myminivault`
 - Stable branch: `main`
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
-- Current baseline release: `v0.13.8`
+- Current baseline release: `v0.14.0`
+- Grouped maintenance release: prepared on 2026-10-20 with Go `1.27.2`, including guided `restore`, file hardening, and non-mutating diagnostics. See `CHANGELOG.md` for release notes. Published package results must be checked from the release workflow.
 - Current module requirement: Go `1.27.0`, preferred toolchain `go1.27.2`; workflows and development documentation select Go `1.27.2`.
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
@@ -37,7 +38,7 @@ Main strengths:
 - tested `internal/export` package for shell export rendering and restrictive file writes
 - tested `internal/health` package for non-decrypting runtime metadata compatibility checks
 - tested `internal/sensitive` package for checksum-prefixed payload helpers and best-effort byte wiping
-- historical internal package coverage measurement of `86.3%`, with an enforced `80.0%` floor
+- internal package coverage of `86.3%` measured on 2026-10-20, with an enforced `80.0%` floor
 - automated CLI smoke coverage for critical workflows in the top-level `tests` package
 - explicit handling for recovery, token sync, locking, backups, export, checksummed payloads, best-effort byte wiping, and password changes
 - a handoff backlog that can restart work from a fresh chat
@@ -69,12 +70,7 @@ Use this section first when resuming work. The detailed backlog below explains e
 
 Reviewed on 2026-10-19 against `main` after the diagnostic startup fix was merged. Follow this order; the historical detail below is not a separate queue.
 
-1. **Prepare one grouped maintenance release**
-   - Review `Unreleased` against the changes since `v0.13.8`, separating fixes, behavior changes, and internal/test-only work.
-   - Recheck release instructions and documentation, run the release checks with the aligned toolchain, and record fresh coverage measurements instead of treating historical baselines as current results.
-   - Create the tag/release only when explicitly authorized; avoid another release for every small commit.
-
-2. **Maintain the focused external security review**
+1. **Maintain the focused external security review**
    - Keep the public request, scope, file-format specification, independent readers, and compatibility fixtures consistent with current code.
    - Triage concrete reviewer findings first. The project remains self-reviewed and unaudited until independent evidence says otherwise.
 
@@ -249,7 +245,7 @@ Docs-only candidates:
 
 ## Verification Guide And Historical Results
 
-The checks below describe the verification process. Coverage numbers and manual outcomes recorded in this file are historical observations, not measurements rerun during the 2026-10-19 documentation cleanup.
+The checks below describe the verification process. Historical entries retain their original results; fresh release-preparation measurements from 2026-10-20 are recorded in `docs/coverage.md`: full repository `53.0%`, internal packages `86.3%`, CLI package `29.4%`. Go tests with atomic coverage, both independent readers, and native builds passed with Go `1.27.2`. Release builds inject the version from `VERSION`.
 
 Current automated checks:
 
@@ -483,8 +479,8 @@ Current CI runs formatting, `go vet`, `staticcheck`, `go test ./...`, full cover
 
 Next actions:
 
-- keep `./internal/...` coverage at or above the current `80.0%` floor; `86.3%` is a historical local measurement, to be refreshed for the grouped release
-- cover specific CLI risks with focused tests or useful extraction; `29.4%` was the local `cmd/vault` measurement after extracting token-creation, export, and clipboard option policy, before subsequent diagnostic changes
+- keep `./internal/...` coverage at or above the current `80.0%` floor; the 2026-10-20 release-preparation measurement is `86.3%`
+- cover specific CLI risks with focused tests or useful extraction; the 2026-10-20 `cmd/vault` measurement is `29.4%`, with subprocess smoke coverage assessed separately
 
 
 ### Later Hardening: Install And Release Packaging
