@@ -38,7 +38,7 @@ Main strengths:
 - tested `internal/export` package for shell export rendering and restrictive file writes
 - tested `internal/health` package for non-decrypting runtime metadata compatibility checks
 - tested `internal/sensitive` package for checksum-prefixed payload helpers and best-effort byte wiping
-- internal package coverage of `86.3%` measured on 2026-10-20, with an enforced `80.0%` floor
+- internal package coverage of `86.3%` remeasured on 2026-10-24 with Go `1.27.3`, with an enforced `80.0%` floor
 - automated CLI smoke coverage for critical workflows in the top-level `tests` package
 - explicit handling for recovery, token sync, locking, backups, export, checksummed payloads, best-effort byte wiping, and password changes
 - a handoff backlog that can restart work from a fresh chat
@@ -244,6 +244,8 @@ Docs-only candidates:
 - Added warn-mode rollback-state checks and updated coverage baselines to `44.1%` full repository and `81.2%` internal packages.
 
 ## Verification Guide And Historical Results
+
+Latest coverage rerun: 2026-10-24, macOS arm64, explicitly selected `GOTOOLCHAIN=go1.27.3`, with cached test results disabled. Full repository `53.0%`, internal packages `86.3%`, CLI package `29.4%`; unchanged from Go `1.27.2`. Native build and Staticcheck `v0.8.2` also passed. Module/workflow pins still select `1.27.2` pending a separate alignment.
 
 The checks below describe the verification process. Historical entries retain their original results; fresh release-preparation measurements from 2026-10-20 are recorded in `docs/coverage.md`: full repository `53.0%`, internal packages `86.3%`, CLI package `29.4%`. Go tests with atomic coverage, both independent readers, and native builds passed with Go `1.27.2`. Release builds inject the version from `VERSION`.
 
