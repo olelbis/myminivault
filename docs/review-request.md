@@ -54,12 +54,13 @@ Primary code:
 - `internal/sync`
 - `internal/model`
 
-Reference readers (both read MYMV v2 main vaults with Argon2id or scrypt; the Go reader also reads the HKDF recovery fixture; neither covers shared-token or legacy files):
+Reference readers (both read MYMV v2 main vaults with Argon2id or scrypt and the HKDF recovery/shared-token fixtures; neither covers legacy files):
 
 - `tools/reference-decryptor`
 - `tools/reference-decryptor-python`
 - `tools/reference-decryptor/testdata/main-vault-v2.b64`
 - `internal/storage/testdata/compat/mymv-v2-recovery-hkdf.b64`
+- `internal/storage/testdata/compat/mymv-v2-shared-token-hkdf.b64`
 
 ## How To Report Feedback
 
@@ -98,11 +99,12 @@ Docs:
 - docs/crypto-review-scope.md
 - docs/security.md
 
-Reference readers (MYMV v2 main-vault Argon2id/scrypt; Go also covers HKDF recovery):
+Reference readers (MYMV v2 main-vault Argon2id/scrypt and HKDF recovery/shared-token):
 - tools/reference-decryptor
 - tools/reference-decryptor-python
 - tools/reference-decryptor/testdata/main-vault-v2.b64
 - internal/storage/testdata/compat/mymv-v2-recovery-hkdf.b64
+- internal/storage/testdata/compat/mymv-v2-shared-token-hkdf.b64
 
 I am especially interested in mistakes around AAD usage, KDF metadata
 validation, nonce handling, file-format parsing, recovery semantics,

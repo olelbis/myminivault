@@ -25,11 +25,14 @@ import (
 )
 
 const (
-	currentVersion byte = 2
-	headerSize          = 8
-	saltSize            = 16
-	nonceSize           = 12
-	checksumSize        = sha256.Size
+	currentVersion    byte = 2
+	headerSize             = 8
+	saltSize               = 16
+	nonceSize              = 12
+	checksumSize           = sha256.Size
+	kindMainVault          = 1
+	kindRecoveryVault      = 2
+	kindSharedToken        = 3
 )
 
 var magic = []byte{'M', 'Y', 'M', 'V'}
@@ -61,19 +64,30 @@ type parsedContainer struct {
 func main() {
 	var passwordFile string
 	var recoveryKeyFile string
+	var tokenKeyFile string
 	flag.StringVar(&passwordFile, "password-file", "", "file containing the master password, without requiring it in process arguments")
 	flag.StringVar(&recoveryKeyFile, "recovery-key-file", "", "file containing a recovery key for a recovery vault")
+	flag.StringVar(&tokenKeyFile, "token-key-file", "", "file containing a raw 32-byte token master key for a shared-token vault")
 	flag.Parse()
 
-	if flag.NArg() != 1 || (passwordFile == "") == (recoveryKeyFile == "") {
-		fmt.Fprintln(os.Stderr, "usage: reference-decryptor (--password-file <file> | --recovery-key-file <file>) <vault-file>")
+	provided := 0
+	for _, path := range []string{passwordFile, recoveryKeyFile, tokenKeyFile} {
+		if path != "" {
+			provided++
+		}
+	}
+	if flag.NArg() != 1 || provided != 1 {
+		fmt.Fprintln(os.Stderr, "usage: reference-decryptor (--password-file <file> | --recovery-key-file <file> | --token-key-file <file>) <vault-file>")
 		os.Exit(2)
 	}
-	kind := byte(1)
+	kind := byte(kindMainVault)
 	keyFile := passwordFile
 	if recoveryKeyFile != "" {
-		kind = 2
+		kind = kindRecoveryVault
 		keyFile = recoveryKeyFile
+	} else if tokenKeyFile != "" {
+		kind = kindSharedToken
+		keyFile = tokenKeyFile
 	}
 
 	keyMaterial, err := os.ReadFile(keyFile)
@@ -81,12 +95,16 @@ func main() {
 		fmt.Fprintf(os.Stderr, "read key file: %v\n", err)
 		os.Exit(1)
 	}
-	keyMaterial = bytes.TrimRight(keyMaterial, "\r\n")
+	if kind != kindSharedToken {
+		keyMaterial = bytes.TrimRight(keyMaterial, "\r\n")
+	}
 	defer wipe(keyMaterial)
 
 	var plaintext []byte
-	if kind == 2 {
+	if kind == kindRecoveryVault {
 		plaintext, err = decryptRecoveryFile(flag.Arg(0), keyMaterial)
+	} else if kind == kindSharedToken {
+		plaintext, err = decryptSharedTokenFile(flag.Arg(0), keyMaterial)
 	} else {
 		plaintext, err = decryptFile(flag.Arg(0), keyMaterial)
 	}
@@ -106,11 +124,11 @@ func main() {
 }
 
 func decryptFile(path string, masterPassword []byte) ([]byte, error) {
-	return decryptFileKind(path, masterPassword, 1)
+	return decryptFileKind(path, masterPassword, kindMainVault)
 }
 
 func decryptRecoveryFile(path string, recoveryKey []byte) ([]byte, error) {
-	plaintext, err := decryptFileKind(path, recoveryKey, 2)
+	plaintext, err := decryptFileKind(path, recoveryKey, kindRecoveryVault)
 	if err != nil {
 		return nil, err
 	}
@@ -130,6 +148,13 @@ func decryptRecoveryFile(path string, recoveryKey []byte) ([]byte, error) {
 	return plaintext, nil
 }
 
+func decryptSharedTokenFile(path string, tokenMasterKey []byte) ([]byte, error) {
+	if len(tokenMasterKey) != 32 {
+		return nil, errors.New("token master key must be exactly 32 bytes")
+	}
+	return decryptFileKind(path, tokenMasterKey, kindSharedToken)
+}
+
 func decryptFileKind(path string, keyMaterial []byte, kind byte) ([]byte, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -147,7 +172,7 @@ func decryptFileKind(path string, keyMaterial []byte, kind byte) ([]byte, error)
 	if err := validateKDFForKind(parsed.Metadata, kind); err != nil {
 		return nil, err
 	}
-	key, err := deriveKey(keyMaterial, parsed.Salt, parsed.Metadata)
+	key, err := deriveKey(keyMaterial, parsed.Salt, parsed.Metadata, kind)
 	if err != nil {
 		return nil, err
 	}
@@ -238,22 +263,26 @@ func validateMetadata(meta metadata) error {
 }
 
 func validateKDFForKind(meta metadata, kind byte) error {
-	if kind == 1 && meta.KDF == "hkdf-sha256" {
+	if kind == kindMainVault && meta.KDF == "hkdf-sha256" {
 		return errors.New("HKDF is not supported for main vaults")
 	}
-	if kind == 2 && meta.KDF != "hkdf-sha256" {
-		return errors.New("reference tool supports only HKDF recovery vaults")
+	if (kind == kindRecoveryVault || kind == kindSharedToken) && meta.KDF != "hkdf-sha256" {
+		return errors.New("reference tool supports only HKDF recovery and shared-token vaults")
 	}
 	return nil
 }
 
-func deriveKey(keyMaterial, salt []byte, meta metadata) ([]byte, error) {
+func deriveKey(keyMaterial, salt []byte, meta metadata, kind byte) ([]byte, error) {
 	if meta.KDF == "argon2id" {
 		return argon2.IDKey(keyMaterial, salt, meta.Argon2Time, meta.Argon2MemoryKiB, meta.Argon2Threads, uint32(meta.KeySize)), nil // #nosec G115 -- validateMetadata requires the only supported key size, 32.
 	}
 	if meta.KDF == "hkdf-sha256" {
+		info := "myminivault:recovery-vault"
+		if kind == kindSharedToken {
+			info = "myminivault:shared-token-vault"
+		}
 		key := make([]byte, meta.KeySize)
-		if _, err := io.ReadFull(hkdf.New(sha256.New, keyMaterial, salt, []byte("myminivault:recovery-vault")), key); err != nil {
+		if _, err := io.ReadFull(hkdf.New(sha256.New, keyMaterial, salt, []byte(info)), key); err != nil {
 			return nil, err
 		}
 		return key, nil

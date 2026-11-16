@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Standalone MYMV v2 main-vault decryptor.
+"""Standalone MYMV v2 main, recovery, and shared-token vault decryptor.
 
 This script is a Python reading companion to docs/format.md. It intentionally
 does not call the myminivault Go code. AES-GCM support requires:
@@ -10,14 +10,18 @@ does not call the myminivault Go code. AES-GCM support requires:
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
+import hmac
 import json
 import struct
 import sys
 from pathlib import Path
 
 try:
+    from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 except ImportError as exc:  # pragma: no cover - exercised only without dependency
     raise SystemExit(
         "missing dependency: install with `python3 -m pip install cryptography`"
@@ -35,19 +39,49 @@ HEADER_SIZE = 8
 SALT_SIZE = 16
 NONCE_SIZE = 12
 CHECKSUM_SIZE = 32
+KIND_MAIN_VAULT = 1
+KIND_RECOVERY_VAULT = 2
+KIND_SHARED_TOKEN = 3
 
 
 def decrypt_file(path: Path, password: bytes) -> bytes:
+    return decrypt_file_kind(path, password, KIND_MAIN_VAULT)
+
+
+def decrypt_recovery_file(path: Path, recovery_key: bytes) -> bytes:
+    plaintext = decrypt_file_kind(path, recovery_key, KIND_RECOVERY_VAULT)
+    vault = json.loads(plaintext)
+    recovery = vault.get("recovery")
+    if not isinstance(recovery, dict) or not isinstance(recovery.get("recovery_key_hash"), str):
+        raise ValueError("missing recovery key verifier")
+    # Recovery keys contain 32 random bytes; this matches the stored verifier.
+    expected = base64.b64decode(recovery["recovery_key_hash"], validate=True)
+    if not hmac.compare_digest(expected, hashlib.sha256(recovery_key).digest()):
+        raise ValueError("recovery key verifier mismatch")
+    return plaintext
+
+
+def decrypt_shared_token_file(path: Path, token_master_key: bytes) -> bytes:
+    if len(token_master_key) != 32:
+        raise ValueError("token master key must be exactly 32 bytes")
+    return decrypt_file_kind(path, token_master_key, KIND_SHARED_TOKEN)
+
+
+def decrypt_file_kind(path: Path, key_material: bytes, expected_kind: int) -> bytes:
     data = path.read_bytes()
     kind, salt, ciphertext, aad, metadata = parse_mymv2(data)
-    if kind != 1:
-        raise ValueError(f"unsupported container kind {kind}: expected main vault")
+    if kind != expected_kind:
+        raise ValueError(f"unsupported container kind {kind}: expected {expected_kind}")
+    if kind == KIND_MAIN_VAULT and metadata["kdf"] == "hkdf-sha256":
+        raise ValueError("HKDF is not supported for main vaults")
+    if kind in (KIND_RECOVERY_VAULT, KIND_SHARED_TOKEN) and metadata["kdf"] != "hkdf-sha256":
+        raise ValueError("reference tool supports only HKDF recovery and shared-token vaults")
 
-    key = derive_key(password, salt, metadata)
+    key = derive_key(key_material, salt, metadata, kind)
     return strip_checksum(decrypt_payload(ciphertext, key, aad))
 
 
-def derive_key(password: bytes, salt: bytes, metadata: dict[str, object]) -> bytes:
+def derive_key(key_material: bytes, salt: bytes, metadata: dict[str, object], kind: int) -> bytes:
     if metadata["kdf"] == "argon2id":
         if Argon2id is None:
             raise ValueError("installed cryptography package does not provide Argon2id")
@@ -57,9 +91,19 @@ def derive_key(password: bytes, salt: bytes, metadata: dict[str, object]) -> byt
             iterations=metadata["argon2_time"],
             lanes=metadata["argon2_threads"],
             memory_cost=metadata["argon2_memory_kib"],
-        ).derive(password)
+        ).derive(key_material)
+    if metadata["kdf"] == "hkdf-sha256":
+        info = b"myminivault:recovery-vault"
+        if kind == KIND_SHARED_TOKEN:
+            info = b"myminivault:shared-token-vault"
+        return HKDF(
+            algorithm=hashes.SHA256(),
+            length=metadata["key_size"],
+            salt=salt,
+            info=info,
+        ).derive(key_material)
     return hashlib.scrypt(
-        password,
+        key_material,
         salt=salt,
         n=metadata["scrypt_n"],
         r=metadata["scrypt_r"],
@@ -114,6 +158,8 @@ def validate_metadata(metadata: dict[str, object]) -> None:
         for key in ("scrypt_n", "scrypt_r", "scrypt_p"):
             if not isinstance(metadata.get(key), int) or metadata[key] < 1:
                 raise ValueError(f"invalid {key}")
+    elif metadata.get("kdf") == "hkdf-sha256":
+        pass
     else:
         raise ValueError(f"unsupported metadata kdf={metadata.get('kdf')!r}")
 
@@ -138,13 +184,23 @@ def strip_checksum(payload: bytes) -> bytes:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="decrypt a MYMV v2 main vault")
-    parser.add_argument("--password-file", required=True)
+    parser = argparse.ArgumentParser(description="decrypt a MYMV v2 main, recovery, or shared-token vault")
+    key_group = parser.add_mutually_exclusive_group(required=True)
+    key_group.add_argument("--password-file")
+    key_group.add_argument("--recovery-key-file")
+    key_group.add_argument("--token-key-file")
     parser.add_argument("vault")
     args = parser.parse_args()
 
-    password = Path(args.password_file).read_bytes().rstrip(b"\r\n")
-    plaintext = decrypt_file(Path(args.vault), password)
+    if args.token_key_file:
+        key_material = Path(args.token_key_file).read_bytes()
+        plaintext = decrypt_shared_token_file(Path(args.vault), key_material)
+    elif args.recovery_key_file:
+        key_material = Path(args.recovery_key_file).read_bytes().rstrip(b"\r\n")
+        plaintext = decrypt_recovery_file(Path(args.vault), key_material)
+    else:
+        key_material = Path(args.password_file).read_bytes().rstrip(b"\r\n")
+        plaintext = decrypt_file(Path(args.vault), key_material)
     sys.stdout.buffer.write(plaintext + b"\n")
     return 0
 

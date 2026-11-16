@@ -70,10 +70,10 @@ Supporting files:
 - Token writes are staged in `shared-token-vault.json` and imported into
   `vault.db` by master-password commands or `vault sync-tokens`.
 - Standalone Go and Python reference decryptors check MYMV v2 main-vault files
-  with Argon2id or scrypt independently from the production loader. The Go
-  reader also checks the existing HKDF recovery fixture and its embedded
-  recovery-key verifier. Neither reader covers shared-token or legacy formats;
-  the Python reader does not cover recovery or HKDF.
+  with Argon2id or scrypt independently from the production loader. Both
+  readers also check the existing HKDF recovery and shared-token fixtures,
+  including the embedded recovery-key verifier. Neither reader covers legacy
+  formats.
 
 ## Current Non-Goals
 
