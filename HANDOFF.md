@@ -5,15 +5,15 @@ only as needed; Git history and `CHANGELOG.md` contain completed work.
 
 ## Current Work
 
-- Go 1.27.3 alignment and contributor/agent instructions are implemented on `go-1.27.3-alignment`. Check Git state and remote CI before merging; no new release is required for this task.
+- Go 1.27.3 alignment and contributor/agent instructions are complete. CI and Security Scanning passed for `a1bd97c`; the task is being closed into `main` without a release. Check Git state for the final merge and branch cleanup.
 - The preferred toolchain, CI/security/release workflows, README badge, and development guide select Go 1.27.3; the module minimum remains Go 1.27.0.
 - Latest validation: [coverage report](docs/coverage.md), including date, toolchain, and scope. Do not rerun the full suite merely to rediscover these results.
 
 ## Next Task And Instruction
 
-Recommended next task: close the toolchain alignment branch after checking remote CI.
+Recommended next task: review the focused external security-review material for consistency with current code.
 
-> Read AGENTS.md and HANDOFF.md. Check CI and Security Scanning for go-1.27.3-alignment and report any failures. If checks pass, propose merging into main and cleaning up the branch after CodeQL uploads finish. Update this handoff when closing. Do not merge or publish a release without authorization.
+> Read AGENTS.md and HANDOFF.md. Review docs/crypto-review-scope.md, docs/review-request.md, SECURITY.md, and the referenced crypto/container code for factual inconsistencies or missing review boundaries. Report concrete findings with file references. Do not modify code, publish external messages, commit, push, or release without authorization.
 
 ## Sources Of Truth
 
