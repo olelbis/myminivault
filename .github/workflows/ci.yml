@@ -40,6 +40,13 @@ jobs:
       - name: Test
         run: go test ./...
 
+      - name: Race detector
+        run: go test -race ./...
+
+      - name: Fuzz container parser
+        if: matrix.os == 'ubuntu-latest'
+        run: go test ./internal/container -run='^$' -fuzz=FuzzParse -fuzztime=30s
+
   coverage:
     name: Coverage report
     runs-on: ubuntu-latest

@@ -962,3 +962,17 @@ func TestSharedVaultKDFConfigUsesHKDFContext(t *testing.T) {
 		t.Fatalf("HKDF config = %+v, want shared-token-vault/32", cfg.HKDF)
 	}
 }
+
+func TestSaveEncryptedVaultRejectsNonAES256KeySize(t *testing.T) {
+	opts := tokenTestOptions(bytesOf(0x33, 32))
+	opts.KDF = vaultcrypto.KDFConfig{Name: container.KDFScrypt, Scrypt: vaultcrypto.ScryptConfig{N: 4, R: 1, P: 1, KeySize: 16}}
+	err := SaveEncryptedVault(tokenTestVault(), filepath.Join(t.TempDir(), "shared-token-vault.json"), opts)
+	if err == nil || !strings.Contains(err.Error(), "AES-256-GCM") {
+		t.Fatalf("SaveEncryptedVault: %v, want AES-256-GCM rejection", err)
+	}
+	opts.KDF.Scrypt.KeySize = 32
+	err = SaveEncryptedVault(tokenTestVault(), filepath.Join(t.TempDir(), "shared-token-vault.json"), opts)
+	if err == nil || !strings.Contains(err.Error(), "not allowed for new shared token vaults") {
+		t.Fatalf("SaveEncryptedVault: %v, want token KDF rejection", err)
+	}
+}

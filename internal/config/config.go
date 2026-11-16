@@ -94,25 +94,16 @@ func Validate(cfg Config) error {
 	if cfg.ScryptN < 32768 || cfg.ScryptN > 1048576 || !IsPowerOfTwo(cfg.ScryptN) {
 		return errors.New("scrypt_n must be a power of two between 32768 and 1048576")
 	}
-	if cfg.ScryptR < 1 || cfg.ScryptR > 16 {
-		return errors.New("scrypt_r must be between 1 and 16")
+	if cfg.KeySize != 32 {
+		return errors.New("key_size must be 32 for AES-256-GCM")
 	}
-	if cfg.ScryptP < 1 || cfg.ScryptP > 8 {
-		return errors.New("scrypt_p must be between 1 and 8")
-	}
-	if cfg.KeySize != 16 && cfg.KeySize != 24 && cfg.KeySize != 32 {
-		return errors.New("key_size must be 16, 24, or 32")
+	if err := vaultcrypto.ValidateScryptConfig(cfg.ScryptConfig()); err != nil {
+		return err
 	}
 	switch cfg.KDF {
 	case KDFArgon2id:
-		if cfg.Argon2MemoryKiB < 19*1024 || cfg.Argon2MemoryKiB > 256*1024 {
-			return errors.New("argon2_memory_kib must be between 19456 and 262144")
-		}
-		if cfg.Argon2Time < 1 || cfg.Argon2Time > 8 {
-			return errors.New("argon2_time must be between 1 and 8")
-		}
-		if cfg.Argon2Threads < 1 || cfg.Argon2Threads > 8 {
-			return errors.New("argon2_threads must be between 1 and 8")
+		if err := vaultcrypto.ValidateArgon2idConfig(cfg.KDFConfig().Argon2id); err != nil {
+			return err
 		}
 	case KDFScrypt:
 	default:
@@ -160,7 +151,7 @@ func (cfg Config) KDFConfig() vaultcrypto.KDFConfig {
 			MemoryKiB: cfg.Argon2MemoryKiB,
 			Time:      cfg.Argon2Time,
 			Threads:   cfg.Argon2Threads,
-			KeySize:   uint32(cfg.KeySize), // #nosec G115 -- Config.Validate bounds key_size to 1..32 before use.
+			KeySize:   uint32(cfg.KeySize), // #nosec G115 -- Config.Validate requires key_size to be exactly 32 before use.
 		},
 	}
 }

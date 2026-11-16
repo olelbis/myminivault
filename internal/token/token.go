@@ -119,6 +119,12 @@ func SaveEncryptedVault(vault *model.ExtendedVault, tokenVaultPath string, opts 
 
 	salt := vaultcrypto.Random(opts.SaltSize)
 	meta := containerMetadata(opts)
+	if meta.KeySize != 32 {
+		return fmt.Errorf("key size %d cannot be written as AES-256-GCM", meta.KeySize)
+	}
+	if meta.KDF != container.KDFHKDFSHA256 {
+		return fmt.Errorf("KDF %q is not allowed for new shared token vaults", meta.KDF)
+	}
 	key, err := vaultcrypto.DeriveKeyWithConfig(tokenKey, salt, kdfConfigFromMetadata(meta, opts.Scrypt))
 	if err != nil {
 		return err
