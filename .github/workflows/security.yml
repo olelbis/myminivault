@@ -2,9 +2,23 @@ name: Security Scanning
 
 on:
   push:
+    branches:
+      - main
+    paths-ignore:
+      - '**/*.md'
+      - docs/**
+      - .github/ISSUE_TEMPLATE/**
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - docs/**
+      - .github/ISSUE_TEMPLATE/**
   schedule:
     - cron: '17 4 * * 1'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read

@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Reduced duplicate CI/security runs for PR branches, skipped documentation-only changes, canceled superseded PR runs, limited race testing to Linux, and grouped future Dependabot version updates by Go modules, CodeQL Actions, and other Actions.
 - Aligned scrypt write bounds with container reads, required 32-byte keys for new AES-256-GCM files, and rejected HKDF for main-vault reads.
 - Marked Unix-only file locking explicitly and removed the obsolete Windows no-follow implementation; Windows remains unsupported.
 - Added race detection and bounded container fuzzing to CI, with weekly Dependabot checks for Go modules and GitHub Actions.

@@ -142,9 +142,14 @@ go test ./internal/crypto
 go test ./internal/config
 ```
 
-CI also runs `go test -race ./...` on Linux and macOS, plus a bounded
-30-second `FuzzParse` run on Linux. Dependabot checks Go modules and GitHub
-Actions weekly.
+CI runs `go test -race ./...` and a bounded 30-second `FuzzParse` run on Linux;
+normal tests still run on Linux and macOS. CI and security scanning run once per
+code PR update and on code pushes to `main`, canceling superseded PR runs. They
+skip changes limited to Markdown, `docs/`, or issue templates. GitHub Pages has
+its own site workflow. Dependabot checks Go modules and GitHub Actions weekly,
+grouping routine version updates into Go modules, CodeQL Actions, and other
+Actions. If required status checks are introduced, revisit the path filters:
+GitHub leaves filtered required checks pending.
 
 Run one focused test by name:
 

@@ -2,7 +2,21 @@ name: CI
 
 on:
   push:
+    branches:
+      - main
+    paths-ignore:
+      - '**/*.md'
+      - docs/**
+      - .github/ISSUE_TEMPLATE/**
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - docs/**
+      - .github/ISSUE_TEMPLATE/**
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
@@ -41,6 +55,7 @@ jobs:
         run: go test ./...
 
       - name: Race detector
+        if: matrix.os == 'ubuntu-latest'
         run: go test -race ./...
 
       - name: Fuzz container parser
