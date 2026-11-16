@@ -85,6 +85,16 @@ func TestKDFConfigForContainerAcceptsHKDFMetadata(t *testing.T) {
 	}
 }
 
+func TestKDFConfigForContainerRejectsHKDFMainVault(t *testing.T) {
+	meta := container.DefaultMetadata(16)
+	meta.KDF = container.KDFHKDFSHA256
+	meta.KeySize = 32
+	_, err := KDFConfigForContainer(container.Parsed{Version: container.Version, Kind: container.KindMainVault, Metadata: meta}, ScryptConfig{N: 2, R: 1, P: 1, KeySize: 32})
+	if err == nil || !strings.Contains(err.Error(), "not allowed for main vault") {
+		t.Fatalf("error = %v, want main-vault KDF rejection", err)
+	}
+}
+
 func TestKDFConfigForContainerRejectsUnsupportedKDF(t *testing.T) {
 	parsed := container.Parsed{
 		Version: container.Version,
@@ -233,7 +243,11 @@ func TestKDFConfigForContainerRejectsNegativeKeySizes(t *testing.T) {
 
 	for name, meta := range tests {
 		t.Run(name, func(t *testing.T) {
-			_, err := KDFConfigForContainer(container.Parsed{Version: container.Version, Kind: container.KindMainVault, Metadata: meta}, ScryptConfig{N: 2, R: 1, P: 1, KeySize: 32})
+			kind := container.KindMainVault
+			if name == "hkdf" {
+				kind = container.KindRecoveryVault
+			}
+			_, err := KDFConfigForContainer(container.Parsed{Version: container.Version, Kind: kind, Metadata: meta}, ScryptConfig{N: 2, R: 1, P: 1, KeySize: 32})
 			if err == nil || !strings.Contains(err.Error(), "key size") {
 				t.Fatalf("error = %v, want key size error", err)
 			}

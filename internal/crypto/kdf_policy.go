@@ -41,6 +41,12 @@ func KDFConfigForContainer(parsed container.Parsed, fallback ScryptConfig) (KDFC
 	if meta.NonceSize != 12 {
 		return KDFConfig{}, fmt.Errorf("unsupported nonce size %d", meta.NonceSize)
 	}
+	if parsed.Kind != container.KindMainVault && parsed.Kind != container.KindRecoveryVault && parsed.Kind != container.KindSharedTokenVault {
+		return KDFConfig{}, fmt.Errorf("unsupported container kind %d", parsed.Kind)
+	}
+	if parsed.Kind == container.KindMainVault && meta.KDF == container.KDFHKDFSHA256 {
+		return KDFConfig{}, fmt.Errorf("KDF %q is not allowed for main vault", meta.KDF)
+	}
 
 	switch meta.KDF {
 	case container.KDFScrypt:
@@ -60,7 +66,7 @@ func KDFConfigForContainer(parsed container.Parsed, fallback ScryptConfig) (KDFC
 			Threads:   meta.Argon2Threads,
 			KeySize:   keySize,
 		}
-		if err := validateArgon2idConfig(cfg); err != nil {
+		if err := ValidateArgon2idConfig(cfg); err != nil {
 			return KDFConfig{}, err
 		}
 		return KDFConfig{Name: container.KDFArgon2id, Argon2id: cfg}, nil
@@ -111,13 +117,14 @@ func scryptConfigFromMetadata(meta container.Metadata, fallback ScryptConfig) (S
 			KeySize: meta.KeySize,
 		}
 	}
-	if err := validateScryptConfig(cfg); err != nil {
+	if err := ValidateScryptConfig(cfg); err != nil {
 		return ScryptConfig{}, err
 	}
 	return cfg, nil
 }
 
-func validateScryptConfig(cfg ScryptConfig) error {
+// ValidateScryptConfig applies the same bounds to new writes and container reads.
+func ValidateScryptConfig(cfg ScryptConfig) error {
 	if cfg.N <= 1 || cfg.N&(cfg.N-1) != 0 {
 		return fmt.Errorf("invalid scrypt N %d", cfg.N)
 	}
@@ -136,7 +143,8 @@ func validateScryptConfig(cfg ScryptConfig) error {
 	return nil
 }
 
-func validateArgon2idConfig(cfg Argon2idConfig) error {
+// ValidateArgon2idConfig applies the same bounds to new writes and container reads.
+func ValidateArgon2idConfig(cfg Argon2idConfig) error {
 	if cfg.MemoryKiB < minArgon2MemoryKiB || cfg.MemoryKiB > maxArgon2MemoryKiB {
 		return fmt.Errorf("argon2 memory %d KiB outside allowed range %d..%d", cfg.MemoryKiB, minArgon2MemoryKiB, maxArgon2MemoryKiB)
 	}

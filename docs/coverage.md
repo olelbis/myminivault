@@ -26,6 +26,11 @@ GOTOOLCHAIN=go1.27.3 go tool cover -func=/tmp/myminivault-go1273-internal.out
 
 The README badge is a manually maintained snapshot of internal package coverage; the CI artifact contains the measurement for each run. CLI smoke tests execute a separately compiled, uninstrumented `vault` binary, so they check behavior without contributing statement coverage to `cmd/vault`.
 
+On 2026-11-16, the Claude review findings 1–5 branch measured `86.2%` for
+`./internal/...` with Go `1.27.3` on macOS arm64 using
+`go test -covermode=atomic -coverprofile=/tmp/myminivault-review-1-5-coverage.out ./internal/...`.
+This scope excludes the CLI package and retains the historical baselines above.
+
 CI enforces an internal package coverage floor of `80.0%`. Full repository coverage remains informational because subprocess-based CLI smoke tests protect real behavior without raising statement coverage in `cmd/vault`.
 
 As command-independent logic moves into `internal/...` packages, `cmd/vault` should become thinner while internal package coverage remains the main quality signal.

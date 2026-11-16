@@ -196,6 +196,12 @@ func SaveBytes(vault *model.ExtendedVault, password []byte, salt []byte, opts Op
 	}
 
 	meta := containerMetadata(opts)
+	if opts.KDF.Name != "" && opts.KDF.Name != container.KDFArgon2id && opts.KDF.Name != container.KDFScrypt {
+		return fmt.Errorf("KDF %q is not allowed for new main vaults", opts.KDF.Name)
+	}
+	if meta.KeySize != 32 {
+		return fmt.Errorf("key size %d cannot be written as AES-256-GCM", meta.KeySize)
+	}
 	masterKey, err := vaultcrypto.DeriveKeyWithConfig(password, salt, kdfConfigFromMetadata(meta, opts.Scrypt))
 	if err != nil {
 		return err

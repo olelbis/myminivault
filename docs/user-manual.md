@@ -579,15 +579,19 @@ used for new main-vault writes only when `kdf` is explicitly set to `scrypt`.
 Config validation:
 
 - `scrypt_n` must be a power of two between `32768` and `1048576`
-- `scrypt_r` must be between `1` and `16`
-- `scrypt_p` must be between `1` and `8`
-- `key_size` must be `16`, `24`, or `32`
+- `scrypt_r` must be between `1` and `8`
+- `scrypt_p` must be between `1` and `16`
+- `key_size` must be `32` for new AES-256-GCM files
 - `kdf` must be `argon2id` or `scrypt`
 - `argon2_memory_kib` must be between `19456` and `262144`
 - `argon2_time` must be between `1` and `8`
 - `argon2_threads` must be between `1` and `8`
 - `max_backups` must be between `1` and `100`
 - `token_key_storage` must be `auto`, `file`, or `keychain`
+
+If an older vault was written with `key_size` 16 or 24, set the current config
+to 32 before unlocking it; the authenticated older parameters remain readable,
+and a normal save rewrites the vault with a 32-byte key.
 - `rollback_mode` must be `off`, `warn`, or `block`
 
 Manual timestamped backups keep only the newest `max_backups` files.

@@ -72,6 +72,11 @@ The v2 metadata JSON contains non-sensitive crypto and layout information:
 
 Load paths validate the algorithm, KDF, payload layout, nonce size, and bounded
 KDF parameters before deriving keys from v2 metadata.
+New writes require a 32-byte AES-256-GCM key. Older authenticated files that
+used 16- or 24-byte keys remain readable so they can be rewritten after unlock.
+HKDF-SHA256 is rejected for main-vault reads. Deprecated recovery and
+shared-token files with password-based KDFs remain readable for migration;
+new recovery and shared-token writes use HKDF-SHA256 only.
 
 Metadata must not contain stored keys, values, recovery metadata, compact
 tokens, token secrets, or encrypted vault metadata.

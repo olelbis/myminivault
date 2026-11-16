@@ -16,9 +16,11 @@ func TestValidateRejectsUnsafeValues(t *testing.T) {
 	tests := map[string]Config{
 		"scrypt_n too low":     withConfigChange(func(cfg Config) Config { cfg.ScryptN = 16384; return cfg }),
 		"scrypt_n not power":   withConfigChange(func(cfg Config) Config { cfg.ScryptN = 65535; return cfg }),
-		"scrypt_r too high":    withConfigChange(func(cfg Config) Config { cfg.ScryptR = 17; return cfg }),
-		"scrypt_p too high":    withConfigChange(func(cfg Config) Config { cfg.ScryptP = 9; return cfg }),
+		"scrypt_r too high":    withConfigChange(func(cfg Config) Config { cfg.ScryptR = 9; return cfg }),
+		"scrypt_p too high":    withConfigChange(func(cfg Config) Config { cfg.ScryptP = 17; return cfg }),
 		"invalid key size":     withConfigChange(func(cfg Config) Config { cfg.KeySize = 31; return cfg }),
+		"AES-128 key size":     withConfigChange(func(cfg Config) Config { cfg.KeySize = 16; return cfg }),
+		"AES-192 key size":     withConfigChange(func(cfg Config) Config { cfg.KeySize = 24; return cfg }),
 		"max_backups too low":  withConfigChange(func(cfg Config) Config { cfg.MaxBackups = 0; return cfg }),
 		"max_backups too high": withConfigChange(func(cfg Config) Config { cfg.MaxBackups = 101; return cfg }),
 		"token key storage":    withConfigChange(func(cfg Config) Config { cfg.TokenKeyStorage = "sometimes"; return cfg }),
@@ -57,7 +59,7 @@ func TestLoadUsesDefaultsWhenFileIsMissing(t *testing.T) {
 
 func TestLoadAppliesValidOverride(t *testing.T) {
 	withTempWorkingDir(t, func() {
-		writeConfigFile(t, `{"scrypt_n":65536,"scrypt_r":8,"scrypt_p":2,"key_size":24,"max_backups":10}`)
+		writeConfigFile(t, `{"scrypt_n":65536,"scrypt_r":8,"scrypt_p":2,"key_size":32,"max_backups":10}`)
 
 		cfg, err := Load()
 		if err != nil {
@@ -67,7 +69,6 @@ func TestLoadAppliesValidOverride(t *testing.T) {
 		want := Default
 		want.ScryptN = 65536
 		want.ScryptP = 2
-		want.KeySize = 24
 		want.MaxBackups = 10
 		if cfg != want {
 			t.Fatalf("config = %+v, want %+v", cfg, want)

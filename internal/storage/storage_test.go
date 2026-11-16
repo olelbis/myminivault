@@ -5,12 +5,14 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/olelbis/myminivault/internal/config"
 	"github.com/olelbis/myminivault/internal/container"
 	vaultcrypto "github.com/olelbis/myminivault/internal/crypto"
 	"github.com/olelbis/myminivault/internal/model"
@@ -18,6 +20,48 @@ import (
 )
 
 var testScrypt = vaultcrypto.ScryptConfig{N: 2, R: 1, P: 1, KeySize: 32}
+
+func TestConfiguredKDFBoundaryRoundTrips(t *testing.T) {
+	cases := []struct {
+		name   string
+		change func(*config.Config)
+	}{
+		{"scrypt N min", func(c *config.Config) { c.KDF = config.KDFScrypt; c.ScryptN, c.ScryptR, c.ScryptP = 32768, 1, 1 }},
+		{"scrypt N max", func(c *config.Config) { c.KDF = config.KDFScrypt; c.ScryptN, c.ScryptR, c.ScryptP = 1<<20, 1, 1 }},
+		{"scrypt r min", func(c *config.Config) { c.KDF = config.KDFScrypt; c.ScryptN, c.ScryptR, c.ScryptP = 32768, 1, 1 }},
+		{"scrypt r max", func(c *config.Config) { c.KDF = config.KDFScrypt; c.ScryptN, c.ScryptR, c.ScryptP = 32768, 8, 1 }},
+		{"scrypt p min", func(c *config.Config) { c.KDF = config.KDFScrypt; c.ScryptN, c.ScryptR, c.ScryptP = 32768, 1, 1 }},
+		{"scrypt p max", func(c *config.Config) { c.KDF = config.KDFScrypt; c.ScryptN, c.ScryptR, c.ScryptP = 32768, 1, 16 }},
+		{"argon memory min", func(c *config.Config) { c.Argon2MemoryKiB, c.Argon2Time, c.Argon2Threads = 19*1024, 1, 1 }},
+		{"argon memory max", func(c *config.Config) { c.Argon2MemoryKiB, c.Argon2Time, c.Argon2Threads = 256*1024, 1, 1 }},
+		{"argon time min", func(c *config.Config) { c.Argon2MemoryKiB, c.Argon2Time, c.Argon2Threads = 19*1024, 1, 1 }},
+		{"argon time max", func(c *config.Config) { c.Argon2MemoryKiB, c.Argon2Time, c.Argon2Threads = 19*1024, 8, 1 }},
+		{"argon threads min", func(c *config.Config) { c.Argon2MemoryKiB, c.Argon2Time, c.Argon2Threads = 19*1024, 1, 1 }},
+		{"argon threads max", func(c *config.Config) { c.Argon2MemoryKiB, c.Argon2Time, c.Argon2Threads = 19*1024, 1, 8 }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := config.Default
+			tc.change(&cfg)
+			if err := config.Validate(cfg); err != nil {
+				t.Fatalf("config validation: %v", err)
+			}
+			opts := storageTestOptions(t.TempDir())
+			opts.KDF, opts.Scrypt = cfg.KDFConfig(), cfg.ScryptConfig()
+			vault := &model.ExtendedVault{Data: map[string]string{"BOUNDARY": tc.name}}
+			if err := Save(vault, "password", []byte("1234567890123456"), opts); err != nil {
+				t.Fatalf("save: %v", err)
+			}
+			loaded, _, err := Load("password", opts)
+			if err != nil {
+				t.Fatalf("load: %v", err)
+			}
+			if got := loaded.Data["BOUNDARY"]; got != tc.name {
+				t.Fatalf("value = %q, want %q", got, tc.name)
+			}
+		})
+	}
+}
 
 func TestSaveLoadRoundTrip(t *testing.T) {
 	opts := storageTestOptions(t.TempDir())
@@ -80,7 +124,7 @@ func TestSaveWritesConfiguredNonDefaultKDFMetadata(t *testing.T) {
 	opts := storageTestOptions(t.TempDir())
 	opts.KDF = vaultcrypto.KDFConfig{
 		Name:   container.KDFScrypt,
-		Scrypt: vaultcrypto.ScryptConfig{N: 4, R: 1, P: 1, KeySize: 24},
+		Scrypt: vaultcrypto.ScryptConfig{N: 4, R: 1, P: 1, KeySize: 32},
 	}
 	vault := &model.ExtendedVault{
 		Data: map[string]string{"API_KEY": "secret"},
@@ -102,11 +146,30 @@ func TestSaveWritesConfiguredNonDefaultKDFMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse saved vault: %v", err)
 	}
-	if parsed.Metadata.KDF != container.KDFScrypt || parsed.Metadata.ScryptN != 4 || parsed.Metadata.ScryptR != 1 || parsed.Metadata.ScryptP != 1 || parsed.Metadata.KeySize != 24 {
+	if parsed.Metadata.KDF != container.KDFScrypt || parsed.Metadata.ScryptN != 4 || parsed.Metadata.ScryptR != 1 || parsed.Metadata.ScryptP != 1 || parsed.Metadata.KeySize != 32 {
 		t.Fatalf("metadata = %+v, want configured scrypt", parsed.Metadata)
 	}
 	if parsed.Metadata.Argon2MemoryKiB != 0 || parsed.Metadata.Argon2Time != 0 || parsed.Metadata.Argon2Threads != 0 {
 		t.Fatalf("metadata = %+v, want no argon2 fields for scrypt", parsed.Metadata)
+	}
+}
+
+func TestSaveRejectsNonAES256KeySizes(t *testing.T) {
+	for _, size := range []int{16, 24} {
+		t.Run(fmt.Sprint(size), func(t *testing.T) {
+			opts := storageTestOptions(t.TempDir())
+			opts.KDF = vaultcrypto.KDFConfig{Name: container.KDFScrypt, Scrypt: vaultcrypto.ScryptConfig{N: 4, R: 1, P: 1, KeySize: size}}
+			err := Save(&model.ExtendedVault{Data: map[string]string{"A": "B"}}, "password", []byte("1234567890123456"), opts)
+			if err == nil || !strings.Contains(err.Error(), "AES-256-GCM") {
+				t.Fatalf("Save key size %d: %v, want AES-256-GCM rejection", size, err)
+			}
+		})
+	}
+	opts := storageTestOptions(t.TempDir())
+	opts.KDF = vaultcrypto.HKDFSHA256Config("myminivault:main-vault", 32)
+	err := Save(&model.ExtendedVault{Data: map[string]string{"A": "B"}}, "password", []byte("1234567890123456"), opts)
+	if err == nil || !strings.Contains(err.Error(), "not allowed for new main vaults") {
+		t.Fatalf("Save with HKDF: %v, want main-vault KDF rejection", err)
 	}
 }
 

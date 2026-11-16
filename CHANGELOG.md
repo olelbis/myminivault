@@ -4,6 +4,9 @@
 
 ### Changed
 
+- Aligned scrypt write bounds with container reads, required 32-byte keys for new AES-256-GCM files, and rejected HKDF for main-vault reads.
+- Marked Unix-only file locking explicitly and removed the obsolete Windows no-follow implementation; Windows remains unsupported.
+- Added race detection and bounded container fuzzing to CI, with weekly Dependabot checks for Go modules and GitHub Actions.
 - Aligned the preferred Go toolchain, CI/security/release workflows, and current development documentation with Go `1.27.3`, retaining the Go `1.27.0` minimum.
 - Added concise agent, contributor, and handoff instructions for focused development sessions.
 

@@ -142,6 +142,10 @@ go test ./internal/crypto
 go test ./internal/config
 ```
 
+CI also runs `go test -race ./...` on Linux and macOS, plus a bounded
+30-second `FuzzParse` run on Linux. Dependabot checks Go modules and GitHub
+Actions weekly.
+
 Run one focused test by name:
 
 ```bash
