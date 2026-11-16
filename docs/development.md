@@ -273,13 +273,13 @@ git pull
 git switch -c <task-name>
 ```
 
-Keep branches small. The current project workflow normally uses an explicit `--no-ff` merge commit so completed work remains visible in history.
+Keep branches small and close every task branch through a GitHub pull request. The user follows remote CI and performs the merge; the agent commits and pushes the authorized work, opens or updates the PR, and reports the link. Passing checks alone do not authorize the agent to merge.
 
 Docs-only maintenance can be committed directly on `main` when it only changes documentation or handoff notes and does not change Go code, workflows, release assets, generated package contents, CLI-visible behavior, version numbers, or tests. Examples include backlog cleanup, README wording, user manual clarification, development notes, and threat-model wording that documents existing behavior.
 
 Do not create a release for every documentation, test, or internal-only commit. Keep those entries under `Unreleased` or mention them in the next functional release so `CHANGELOG.md` remains useful to readers deciding whether to upgrade.
 
-Create a normal task branch and release tag when a change affects executable behavior, packaging, CI workflows, versioned man-page content, or generated release artifacts. Test-only changes usually do not need an immediate release unless they accompany a behavior change.
+Create a normal task branch when a change affects executable behavior, packaging, CI workflows, versioned man-page content, or generated release artifacts. Create a release tag only when a release is explicitly authorized. Test-only changes usually do not need an immediate release unless they accompany a behavior change.
 
 ## Release Workflow
 
@@ -290,13 +290,11 @@ For each completed branch:
 3. Run `go test -count=1 ./...` when behavior or smoke-test expectations changed; use the normal cached command for quick iteration.
 4. Commit the branch.
 5. Push the branch.
-6. Merge to `main` with an explicit merge commit (`git merge --no-ff <branch>`).
-7. Run `go test ./...` again on `main`.
-8. Create and push the release tag.
-9. Create the GitHub release with a title matching only the tag, such as `v0.13.1`.
-10. Wait for the release package workflow to upload archives, `.deb`, `.rpm`, `.pkg`, per-target SPDX JSON SBOMs, per-target checksums, the aggregate `SHA256SUMS` manifest, and artifact attestations.
-11. Verify one packaged binary or release build with `vault help`; it should show the tag version injected by `-X main.vaultVersion=<version>`.
-12. Delete the completed branch locally and remotely.
+6. Open or update a GitHub PR and report its link and local validation. The user follows CI and performs the merge.
+7. After the user confirms the merge and requests cleanup, verify the PR is merged, fetch the remote, and fast-forward local `main`. Do not create a separate local merge. Check PR status for squash/rebase merges too.
+8. Delete the completed local/remote branch only after its CodeQL uploads have finished; defer cleanup if they are still running.
+9. If a release is explicitly authorized, create and push its tag and publish the GitHub release with a title matching only the tag, such as `v0.14.0`.
+10. For that release, verify package workflow results and one packaged binary's `vault help` version. Expected assets include archives, `.deb`, `.rpm`, `.pkg`, SPDX JSON SBOMs, checksums, and artifact attestations.
 
 Current versioning style:
 

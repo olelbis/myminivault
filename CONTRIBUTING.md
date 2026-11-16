@@ -44,3 +44,8 @@ users. Keep unrelated formatting and refactors out of the change.
 Releases are grouped by the maintainer. A contribution does not need its own
 version bump or release tag. Wait for branch CodeQL uploads to finish before
 deleting remote branches after merging.
+
+Every task branch is submitted through a GitHub pull request. The maintainer
+reviews remote CI and performs the merge. An assisting agent prepares commits,
+pushes changes, and opens or updates the PR; it cleans up merged branches after
+the maintainer confirms the merge and requests cleanup.

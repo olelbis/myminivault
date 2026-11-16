@@ -30,7 +30,10 @@
 
 - Commit, push, merge, tag, and publish only when authorized by the user or the agreed task scope.
 - Prefer grouped releases; do not release every documentation, test, or internal-only change.
-- Use `--no-ff` for task-branch merges. Release titles contain only the version tag.
+- Close every task branch through a GitHub pull request. Prepare the authorized commits, push the branch, open/update the PR, and report its link and local validation.
+- The user follows remote CI and performs the PR merge. Never merge locally or through GitHub unless the user explicitly delegates that merge; a report that checks passed alone is not merge authorization.
+- After the user confirms the merge and authorizes cleanup, verify the PR is merged, fetch and fast-forward local `main`, then delete the merged local/remote branch when CodeQL uploads have finished. Account for squash/rebase merges through PR status rather than ancestry alone.
+- Commit and push any agreed follow-up changes before handing the PR back to the user. Release titles contain only the version tag.
 - Before deleting a remote branch, confirm its CodeQL run has finished uploading results; deleting it early can fail the upload.
 - The user normally checks remote CI. Report pending checks instead of waiting for them unless asked; defer remote cleanup when required.
 - Preserve historical changelog and validation results; do not relabel old measurements with a new toolchain.

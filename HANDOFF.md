@@ -5,7 +5,8 @@ only as needed; Git history and `CHANGELOG.md` contain completed work.
 
 ## Current Work
 
-- Go 1.27.3 alignment and contributor/agent instructions are complete. CI and Security Scanning passed for `a1bd97c`; the task is being closed into `main` without a release. Check Git state for the final merge and branch cleanup.
+- Go 1.27.3 alignment and contributor/agent instructions were merged and pushed to `main` as `f7c2e25`; the task branch was cleaned up.
+- Workflow rule: every task branch ends in a PR. The user handles CI and merge; the agent prepares authorized commits/pushes and performs cleanup after merge confirmation. See `AGENTS.md`.
 - The preferred toolchain, CI/security/release workflows, README badge, and development guide select Go 1.27.3; the module minimum remains Go 1.27.0.
 - Latest validation: [coverage report](docs/coverage.md), including date, toolchain, and scope. Do not rerun the full suite merely to rediscover these results.
 
