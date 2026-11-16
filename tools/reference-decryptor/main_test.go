@@ -57,7 +57,7 @@ func TestReferenceDecryptorRejectsTamperedAAD(t *testing.T) {
 func TestReferenceDecryptorReadsRecoveryHKDFFixture(t *testing.T) {
 	path := writeCompatFixture(t, "mymv-v2-recovery-hkdf.b64")
 	key := []byte("compat-recovery-key-hkdf-000000")
-	plaintext, err := decryptFileKind(path, key, 2)
+	plaintext, err := decryptRecoveryFile(path, key)
 	if err != nil {
 		t.Fatalf("decryptFileKind recovery: %v", err)
 	}
@@ -66,7 +66,7 @@ func TestReferenceDecryptorReadsRecoveryHKDFFixture(t *testing.T) {
 			t.Fatalf("recovery plaintext does not contain %q", want)
 		}
 	}
-	if _, err := decryptFileKind(path, []byte("wrong-recovery-key"), 2); err == nil {
+	if _, err := decryptRecoveryFile(path, []byte("wrong-recovery-key")); err == nil {
 		t.Fatal("expected wrong recovery key to fail")
 	}
 	if _, err := decryptFileKind(path, key, 1); err == nil {
@@ -84,7 +84,7 @@ func TestReferenceDecryptorRejectsTamperedRecoveryAAD(t *testing.T) {
 	if err := os.WriteFile(path, data, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := decryptFileKind(path, []byte("compat-recovery-key-hkdf-000000"), 1); err == nil {
+	if _, err := decryptRecoveryFile(path, []byte("compat-recovery-key-hkdf-000000")); err == nil {
 		t.Fatal("expected tampered recovery kind to fail")
 	}
 }

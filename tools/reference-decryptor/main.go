@@ -76,15 +76,20 @@ func main() {
 		keyFile = recoveryKeyFile
 	}
 
-	password, err := os.ReadFile(keyFile)
+	keyMaterial, err := os.ReadFile(keyFile)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "read password file: %v\n", err)
+		fmt.Fprintf(os.Stderr, "read key file: %v\n", err)
 		os.Exit(1)
 	}
-	password = bytes.TrimRight(password, "\r\n")
-	defer wipe(password)
+	keyMaterial = bytes.TrimRight(keyMaterial, "\r\n")
+	defer wipe(keyMaterial)
 
-	plaintext, err := decryptFileKind(flag.Arg(0), password, kind)
+	var plaintext []byte
+	if kind == 2 {
+		plaintext, err = decryptRecoveryFile(flag.Arg(0), keyMaterial)
+	} else {
+		plaintext, err = decryptFile(flag.Arg(0), keyMaterial)
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "decrypt: %v\n", err)
 		os.Exit(1)
@@ -100,11 +105,32 @@ func main() {
 	}
 }
 
-func decryptFile(path string, password []byte) ([]byte, error) {
-	return decryptFileKind(path, password, 1)
+func decryptFile(path string, masterPassword []byte) ([]byte, error) {
+	return decryptFileKind(path, masterPassword, 1)
 }
 
-func decryptFileKind(path string, password []byte, kind byte) ([]byte, error) {
+func decryptRecoveryFile(path string, recoveryKey []byte) ([]byte, error) {
+	plaintext, err := decryptFileKind(path, recoveryKey, 2)
+	if err != nil {
+		return nil, err
+	}
+	var vault struct {
+		Recovery *struct {
+			KeyHash []byte `json:"recovery_key_hash"`
+		} `json:"recovery"`
+	}
+	if err := json.Unmarshal(plaintext, &vault); err != nil {
+		return nil, fmt.Errorf("invalid recovery payload: %w", err)
+	}
+	// Recovery keys contain 32 random bytes; this must match the stored verifier.
+	hash := sha256.Sum256(recoveryKey)
+	if vault.Recovery == nil || subtle.ConstantTimeCompare(vault.Recovery.KeyHash, hash[:]) != 1 {
+		return nil, errors.New("recovery key verifier mismatch")
+	}
+	return plaintext, nil
+}
+
+func decryptFileKind(path string, keyMaterial []byte, kind byte) ([]byte, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -121,7 +147,7 @@ func decryptFileKind(path string, password []byte, kind byte) ([]byte, error) {
 	if err := validateKDFForKind(parsed.Metadata, kind); err != nil {
 		return nil, err
 	}
-	key, err := deriveKey(password, parsed.Salt, parsed.Metadata)
+	key, err := deriveKey(keyMaterial, parsed.Salt, parsed.Metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -132,27 +158,7 @@ func decryptFileKind(path string, password []byte, kind byte) ([]byte, error) {
 		return nil, err
 	}
 
-	plaintext, err := stripChecksum(payload)
-	if err != nil {
-		return nil, err
-	}
-	if kind == 2 {
-		var vault struct {
-			Recovery *struct {
-				KeyHash []byte `json:"recovery_key_hash"`
-			} `json:"recovery"`
-		}
-		if err := json.Unmarshal(plaintext, &vault); err != nil {
-			return nil, fmt.Errorf("invalid recovery payload: %w", err)
-		}
-		// Recovery keys contain 32 random bytes; this must match the stored verifier.
-		// codeql[go/weak-sensitive-data-hashing]
-		hash := sha256.Sum256(password)
-		if vault.Recovery == nil || subtle.ConstantTimeCompare(vault.Recovery.KeyHash, hash[:]) != 1 {
-			return nil, errors.New("recovery key verifier mismatch")
-		}
-	}
-	return plaintext, nil
+	return stripChecksum(payload)
 }
 
 func parseMYMV2(data []byte) (parsedContainer, error) {
@@ -241,18 +247,18 @@ func validateKDFForKind(meta metadata, kind byte) error {
 	return nil
 }
 
-func deriveKey(password, salt []byte, meta metadata) ([]byte, error) {
+func deriveKey(keyMaterial, salt []byte, meta metadata) ([]byte, error) {
 	if meta.KDF == "argon2id" {
-		return argon2.IDKey(password, salt, meta.Argon2Time, meta.Argon2MemoryKiB, meta.Argon2Threads, uint32(meta.KeySize)), nil // #nosec G115 -- validateMetadata requires the only supported key size, 32.
+		return argon2.IDKey(keyMaterial, salt, meta.Argon2Time, meta.Argon2MemoryKiB, meta.Argon2Threads, uint32(meta.KeySize)), nil // #nosec G115 -- validateMetadata requires the only supported key size, 32.
 	}
 	if meta.KDF == "hkdf-sha256" {
 		key := make([]byte, meta.KeySize)
-		if _, err := io.ReadFull(hkdf.New(sha256.New, password, salt, []byte("myminivault:recovery-vault")), key); err != nil {
+		if _, err := io.ReadFull(hkdf.New(sha256.New, keyMaterial, salt, []byte("myminivault:recovery-vault")), key); err != nil {
 			return nil, err
 		}
 		return key, nil
 	}
-	return scrypt.Key(password, salt, meta.ScryptN, meta.ScryptR, meta.ScryptP, meta.KeySize)
+	return scrypt.Key(keyMaterial, salt, meta.ScryptN, meta.ScryptR, meta.ScryptP, meta.KeySize)
 }
 
 func decryptPayload(ciphertext, key, aad []byte) ([]byte, error) {
