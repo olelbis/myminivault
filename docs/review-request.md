@@ -54,13 +54,14 @@ Primary code:
 - `internal/sync`
 - `internal/model`
 
-Reference readers (both read MYMV v2 main vaults with Argon2id or scrypt and the HKDF recovery/shared-token fixtures; neither covers legacy files):
+Reference readers (both read MYMV v2 main vaults with Argon2id or scrypt, the HKDF recovery/shared-token fixtures, and the MYMV v1 main-vault fixture with explicit fallback scrypt parameters; neither covers headerless legacy files):
 
 - `tools/reference-decryptor`
 - `tools/reference-decryptor-python`
 - `tools/reference-decryptor/testdata/main-vault-v2.b64`
 - `internal/storage/testdata/compat/mymv-v2-recovery-hkdf.b64`
 - `internal/storage/testdata/compat/mymv-v2-shared-token-hkdf.b64`
+- `internal/storage/testdata/compat/mymv-v1-main.b64`
 
 ## How To Report Feedback
 
@@ -99,12 +100,13 @@ Docs:
 - docs/crypto-review-scope.md
 - docs/security.md
 
-Reference readers (MYMV v2 main-vault Argon2id/scrypt and HKDF recovery/shared-token):
+Reference readers (MYMV v2 main-vault Argon2id/scrypt, HKDF recovery/shared-token, and MYMV v1 main-vault with explicit scrypt fallback):
 - tools/reference-decryptor
 - tools/reference-decryptor-python
 - tools/reference-decryptor/testdata/main-vault-v2.b64
 - internal/storage/testdata/compat/mymv-v2-recovery-hkdf.b64
 - internal/storage/testdata/compat/mymv-v2-shared-token-hkdf.b64
+- internal/storage/testdata/compat/mymv-v1-main.b64
 
 I am especially interested in mistakes around AAD usage, KDF metadata
 validation, nonce handling, file-format parsing, recovery semantics,

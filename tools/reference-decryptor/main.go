@@ -26,6 +26,7 @@ import (
 
 const (
 	currentVersion    byte = 2
+	legacyVersion     byte = 1
 	headerSize             = 8
 	saltSize               = 16
 	nonceSize              = 12
@@ -65,9 +66,13 @@ func main() {
 	var passwordFile string
 	var recoveryKeyFile string
 	var tokenKeyFile string
+	var legacyScryptN, legacyScryptR, legacyScryptP int
 	flag.StringVar(&passwordFile, "password-file", "", "file containing the master password, without requiring it in process arguments")
 	flag.StringVar(&recoveryKeyFile, "recovery-key-file", "", "file containing a recovery key for a recovery vault")
 	flag.StringVar(&tokenKeyFile, "token-key-file", "", "file containing a raw 32-byte token master key for a shared-token vault")
+	flag.IntVar(&legacyScryptN, "legacy-scrypt-n", 0, "scrypt N for a MYMV v1 main vault (requires R and P)")
+	flag.IntVar(&legacyScryptR, "legacy-scrypt-r", 0, "scrypt R for a MYMV v1 main vault (requires N and P)")
+	flag.IntVar(&legacyScryptP, "legacy-scrypt-p", 0, "scrypt P for a MYMV v1 main vault (requires N and R)")
 	flag.Parse()
 
 	provided := 0
@@ -78,6 +83,11 @@ func main() {
 	}
 	if flag.NArg() != 1 || provided != 1 {
 		fmt.Fprintln(os.Stderr, "usage: reference-decryptor (--password-file <file> | --recovery-key-file <file> | --token-key-file <file>) <vault-file>")
+		os.Exit(2)
+	}
+	legacyRequested := legacyScryptN != 0 || legacyScryptR != 0 || legacyScryptP != 0
+	if legacyRequested && (passwordFile == "" || legacyScryptN < 2 || legacyScryptR < 1 || legacyScryptP < 1) {
+		fmt.Fprintln(os.Stderr, "MYMV v1 requires --password-file and positive --legacy-scrypt-n, --legacy-scrypt-r, and --legacy-scrypt-p")
 		os.Exit(2)
 	}
 	kind := byte(kindMainVault)
@@ -105,6 +115,8 @@ func main() {
 		plaintext, err = decryptRecoveryFile(flag.Arg(0), keyMaterial)
 	} else if kind == kindSharedToken {
 		plaintext, err = decryptSharedTokenFile(flag.Arg(0), keyMaterial)
+	} else if legacyRequested {
+		plaintext, err = decryptV1MainFile(flag.Arg(0), keyMaterial, legacyScryptN, legacyScryptR, legacyScryptP)
 	} else {
 		plaintext, err = decryptFile(flag.Arg(0), keyMaterial)
 	}
@@ -125,6 +137,30 @@ func main() {
 
 func decryptFile(path string, masterPassword []byte) ([]byte, error) {
 	return decryptFileKind(path, masterPassword, kindMainVault)
+}
+
+func decryptV1MainFile(path string, masterPassword []byte, n, r, p int) ([]byte, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	if len(data) < headerSize+saltSize+nonceSize {
+		return nil, errors.New("MYMV v1 container too short")
+	}
+	if !bytes.Equal(data[:len(magic)], magic) || data[4] != legacyVersion || data[5] != kindMainVault || data[6] != 0 || data[7] != 0 {
+		return nil, errors.New("expected MYMV v1 main vault header")
+	}
+	key, err := scrypt.Key(masterPassword, data[headerSize:headerSize+saltSize], n, r, p, 32)
+	if err != nil {
+		return nil, err
+	}
+	defer wipe(key)
+	// MYMV v1 has no authenticated header; AES-GCM authenticates only its payload.
+	payload, err := decryptPayload(data[headerSize+saltSize:], key, nil)
+	if err != nil {
+		return nil, err
+	}
+	return stripChecksum(payload)
 }
 
 func decryptRecoveryFile(path string, recoveryKey []byte) ([]byte, error) {

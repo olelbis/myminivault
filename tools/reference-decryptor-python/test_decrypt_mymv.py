@@ -13,6 +13,7 @@ from decrypt_mymv import (
     decrypt_file,
     decrypt_recovery_file,
     decrypt_shared_token_file,
+    decrypt_v1_main_file,
     parse_mymv2,
 )
 
@@ -39,6 +40,26 @@ class ReferenceDecryptorPythonTest(unittest.TestCase):
         self.assertIn('"API_KEY": "fixture-secret"', plaintext)
         self.assertIn('"version": "fixture-v0"', plaintext)
         self.assertIn('"vault_id": "fixture-vault"', plaintext)
+
+    def test_reads_mymv_v1_main_fixture(self):
+        path = self.write_fixture("mymv-v1-main.b64")
+        vault = json.loads(decrypt_v1_main_file(path, b"compat-password", 2, 1, 1))
+        self.assertEqual(vault["data"]["API_KEY"], "compat-main-secret")
+        self.assertEqual(vault["metadata"]["version"], "compat-v0")
+        with self.assertRaises(Exception):
+            decrypt_v1_main_file(path, b"wrong-password", 2, 1, 1)
+        with self.assertRaises(Exception):
+            decrypt_v1_main_file(path, b"compat-password", 4, 1, 1)
+        with self.assertRaises(ValueError):
+            decrypt_file(path, b"compat-password")
+
+    def test_rejects_mymv_v1_kind_change(self):
+        path = self.write_fixture("mymv-v1-main.b64")
+        data = bytearray(path.read_bytes())
+        data[5] = 2
+        path.write_bytes(data)
+        with self.assertRaises(ValueError):
+            decrypt_v1_main_file(path, b"compat-password", 2, 1, 1)
 
     def test_rejects_wrong_password(self):
         root = Path(__file__).resolve().parents[2]

@@ -31,6 +31,50 @@ func TestReferenceDecryptorReadsCompatibilityFixture(t *testing.T) {
 	}
 }
 
+func TestReferenceDecryptorReadsMYMV1MainFixture(t *testing.T) {
+	path := writeCompatFixture(t, "mymv-v1-main.b64")
+	plaintext, err := decryptV1MainFile(path, []byte("compat-password"), 2, 1, 1)
+	if err != nil {
+		t.Fatalf("decryptV1MainFile: %v", err)
+	}
+	var vault struct {
+		Data     map[string]string `json:"data"`
+		Metadata struct {
+			Version string `json:"version"`
+		} `json:"metadata"`
+	}
+	if err := json.Unmarshal(plaintext, &vault); err != nil {
+		t.Fatal(err)
+	}
+	if vault.Data["API_KEY"] != "compat-main-secret" || vault.Metadata.Version != "compat-v0" {
+		t.Fatalf("unexpected MYMV v1 fixture contents: %+v", vault)
+	}
+	if _, err := decryptV1MainFile(path, []byte("wrong-password"), 2, 1, 1); err == nil {
+		t.Fatal("expected wrong password to fail")
+	}
+	if _, err := decryptV1MainFile(path, []byte("compat-password"), 4, 1, 1); err == nil {
+		t.Fatal("expected wrong fallback scrypt parameters to fail")
+	}
+	if _, err := decryptFile(path, []byte("compat-password")); err == nil {
+		t.Fatal("expected v1 file to be rejected by v2 reader")
+	}
+}
+
+func TestReferenceDecryptorRejectsMYMV1KindChange(t *testing.T) {
+	path := writeCompatFixture(t, "mymv-v1-main.b64")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data[5] = kindRecoveryVault
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := decryptV1MainFile(path, []byte("compat-password"), 2, 1, 1); err == nil {
+		t.Fatal("expected changed v1 kind to be rejected")
+	}
+}
+
 func TestReferenceDecryptorRejectsWrongPassword(t *testing.T) {
 	vaultPath := writeFixture(t, "main-vault-v2.b64")
 
