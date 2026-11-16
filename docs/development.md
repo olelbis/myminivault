@@ -212,8 +212,8 @@ compatibility.
 ## Reference Decryptor
 
 `tools/reference-decryptor` is a minimal standalone reader for documented
-`MYMV` v2 main vaults and HKDF recovery vaults. It intentionally avoids
-importing myminivault internal packages, so it can catch drift between
+`MYMV` v2 main vaults and HKDF recovery/shared-token vaults. It intentionally
+avoids importing myminivault internal packages, so it can catch drift between
 `docs/format.md` and the production loader.
 
 Run its compatibility fixture tests:
@@ -233,22 +233,29 @@ Manual usage:
 ```bash
 go run ./tools/reference-decryptor --password-file /path/to/password.txt /path/to/vault.db
 go run ./tools/reference-decryptor --recovery-key-file /path/to/recovery-key.txt /path/to/vault.db.recovery
+go run ./tools/reference-decryptor --token-key-file /path/to/raw-token-key /path/to/shared-token-vault.json
 ```
 
 The main-vault fixture uses the password `fixture-password`; the HKDF recovery
 fixture in `internal/storage/testdata/compat` uses the fake key
-`compat-recovery-key-hkdf-000000`. These fixtures are test data, not examples
-of safe production credentials.
+`compat-recovery-key-hkdf-000000`. The shared-token HKDF fixture uses the fake
+raw 32-byte token master key `0123456789abcdef0123456789abcdef`. The
+`--token-key-file` input must contain exactly 32 raw bytes; it is not trimmed
+or decoded. These fixtures are test data, not examples of safe production
+credentials.
 
 A Python reference reader is also available under
 `tools/reference-decryptor-python`. It uses Python's standard-library scrypt
-implementation for compatibility fixtures plus the external `cryptography`
-package for AES-GCM and Argon2id when supported by the installed version:
+implementation plus the external `cryptography` package for AES-GCM, HKDF,
+and Argon2id when supported by the installed version. It covers the same
+MYMV v2 main, HKDF recovery, and HKDF shared-token fixtures as the Go reader:
 
 ```bash
 python3 -m pip install -r tools/reference-decryptor-python/requirements.txt
 python3 -m unittest discover -s tools/reference-decryptor-python
 python3 tools/reference-decryptor-python/decrypt_mymv.py --password-file /path/to/password.txt /path/to/vault.db
+python3 tools/reference-decryptor-python/decrypt_mymv.py --recovery-key-file /path/to/recovery-key.txt /path/to/vault.db.recovery
+python3 tools/reference-decryptor-python/decrypt_mymv.py --token-key-file /path/to/raw-token-key /path/to/shared-token-vault.json
 ```
 
 A Java reference reader is feasible, but it should use an explicit crypto

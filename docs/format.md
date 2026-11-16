@@ -261,11 +261,13 @@ A broader compatibility fixture corpus for the production loaders lives in
 `internal/storage/testdata/compat/`. See [Migration Policy](migration-policy.md)
 for the current compatibility and future migration rules.
 
-The Go reference decryptor also reads
+Both reference decryptors also read
 `internal/storage/testdata/compat/mymv-v2-recovery-hkdf.b64` using the fake
-recovery key documented in [Development](development.md). It checks the HKDF
+recovery key documented in [Development](development.md). They check the HKDF
 context, authenticated container, checksum, and embedded recovery-key verifier.
-The Python reader does not cover this recovery fixture.
+They also read `internal/storage/testdata/compat/mymv-v2-shared-token-hkdf.b64`
+with the fake raw token master key documented there, checking the distinct
+shared-token HKDF context. Neither reader covers legacy formats.
 
 ## Non-Goals
 
