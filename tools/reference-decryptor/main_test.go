@@ -54,6 +54,58 @@ func TestReferenceDecryptorRejectsTamperedAAD(t *testing.T) {
 	}
 }
 
+func TestReferenceDecryptorReadsRecoveryHKDFFixture(t *testing.T) {
+	path := writeCompatFixture(t, "mymv-v2-recovery-hkdf.b64")
+	key := []byte("compat-recovery-key-hkdf-000000")
+	plaintext, err := decryptFileKind(path, key, 2)
+	if err != nil {
+		t.Fatalf("decryptFileKind recovery: %v", err)
+	}
+	for _, want := range []string{`"API_KEY": "compat-recovery-hkdf-secret"`, `"vault_id": "compat-recovery-hkdf-vault"`} {
+		if !strings.Contains(string(plaintext), want) {
+			t.Fatalf("recovery plaintext does not contain %q", want)
+		}
+	}
+	if _, err := decryptFileKind(path, []byte("wrong-recovery-key"), 2); err == nil {
+		t.Fatal("expected wrong recovery key to fail")
+	}
+	if _, err := decryptFileKind(path, key, 1); err == nil {
+		t.Fatal("expected recovery file to be rejected as main vault")
+	}
+}
+
+func TestReferenceDecryptorRejectsTamperedRecoveryAAD(t *testing.T) {
+	path := writeCompatFixture(t, "mymv-v2-recovery-hkdf.b64")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data[5] = 1
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := decryptFileKind(path, []byte("compat-recovery-key-hkdf-000000"), 1); err == nil {
+		t.Fatal("expected tampered recovery kind to fail")
+	}
+}
+
+func writeCompatFixture(t *testing.T, name string) string {
+	t.Helper()
+	encoded, err := os.ReadFile(filepath.Join("..", "..", "internal", "storage", "testdata", "compat", name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(encoded)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "vault.db.recovery")
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
 func writeFixture(t *testing.T, name string) string {
 	t.Helper()
 
