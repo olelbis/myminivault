@@ -14,7 +14,7 @@ only as needed; Git history and `CHANGELOG.md` contain completed work.
 
 Recommended next task: review the focused external security-review material for consistency with current code.
 
-> Read AGENTS.md and HANDOFF.md. Review docs/crypto-review-scope.md, docs/review-request.md, SECURITY.md, and the referenced crypto/container code for factual inconsistencies or missing review boundaries. Report concrete findings with file references. Do not modify code, publish external messages, commit, push, or release without authorization.
+> Project: myminivault. Working directory: <absolute path to the myminivault checkout; resolve before starting>. Read AGENTS.md and HANDOFF.md. Review docs/crypto-review-scope.md, docs/review-request.md, SECURITY.md, and the referenced crypto/container code for factual inconsistencies or missing review boundaries. Report concrete findings with file references. Do not modify code, publish external messages, commit, push, or release without authorization.
 
 ## Sources Of Truth
 

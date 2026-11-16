@@ -42,6 +42,7 @@
 ## Task Closure
 
 - End every completed task with the recommended next task and a concise, copy-ready instruction for the next chat.
+- Include the project name and absolute working directory in every copy-ready handoff instruction. Use the actual checkout path in the response; in committed documentation, use a portable placeholder that the next session must resolve.
 - Record that same next task and instruction in `HANDOFF.md`, including scope, relevant files, required checks, and any explicit limits on commit/push/release actions.
 - Recommend the next task without starting it automatically. The handoff instruction is a proposal, not authorization.
 - If no further task is known, say so and provide an instruction to review the ordered backlog and propose the next priority.
