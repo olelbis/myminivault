@@ -14,7 +14,7 @@ an experimental single-user local CLI vault written in Go.
 
 Scope:
 
-- Argon2id + AES-256-GCM for new saves, with scrypt compatibility reads
+- AES-256-GCM with Argon2id by default for new password-based main-vault saves; explicit scrypt writes and compatibility reads; HKDF-SHA256 for new recovery and shared-token saves
 - `MYMV` v2 cleartext header authenticated as AES-GCM AAD
 - encrypted main-vault payload format
 - recovery snapshot encryption
@@ -54,7 +54,7 @@ Primary code:
 - `internal/sync`
 - `internal/model`
 
-Reference readers:
+Reference readers (MYMV v2 main-vault files with Argon2id or scrypt only; no recovery, shared-token, HKDF, or legacy coverage):
 
 - `tools/reference-decryptor`
 - `tools/reference-decryptor-python`
@@ -85,7 +85,7 @@ I am looking for focused review of the crypto/file-format layer of myminivault,
 an experimental local Go CLI vault.
 
 Scope:
-- Argon2id + AES-256-GCM for new saves, with scrypt compatibility reads
+- AES-256-GCM with Argon2id by default for new password-based main-vault saves; explicit scrypt writes and compatibility reads; HKDF-SHA256 for new recovery and shared-token saves
 - MYMV v2 cleartext header authenticated as AES-GCM AAD
 - encrypted main-vault payload format
 - recovery snapshot encryption
@@ -97,7 +97,7 @@ Docs:
 - docs/crypto-review-scope.md
 - docs/security.md
 
-Reference readers:
+Reference readers (MYMV v2 main-vault Argon2id/scrypt only):
 - tools/reference-decryptor
 - tools/reference-decryptor-python
 - tools/reference-decryptor/testdata/main-vault-v2.b64

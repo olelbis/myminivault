@@ -56,7 +56,7 @@ Supporting files:
 ## Current Design Summary
 
 - Master vault data is encrypted with AES-256-GCM.
-- Main-vault encryption keys for new password-based saves are derived with Argon2id; scrypt remains readable for deprecated compatibility files.
+- Main-vault encryption keys use Argon2id by default for new password-based saves. An explicit scrypt configuration can still write new main-vault files; scrypt also remains readable for compatibility.
 - Recovery and shared-token vault encryption keys for new high-entropy-key saves are derived with HKDF-SHA256.
 - Current encrypted files use a cleartext `MYMV` v2 header.
 - The `MYMV` v2 header, metadata JSON, and salt are authenticated as AES-GCM
@@ -70,8 +70,9 @@ Supporting files:
 - Token writes are staged in `shared-token-vault.json` and imported into
   `vault.db` by master-password commands or `vault sync-tokens`.
 - Standalone Go and Python reference decryptors plus a compatibility fixture are
-  available under `tools/` to check the documented format independently from the
-  production loader.
+  available under `tools/` to check MYMV v2 main-vault files with Argon2id or
+  scrypt independently from the production loader. They do not cover recovery
+  or shared-token containers, HKDF, or legacy formats.
 
 ## Current Non-Goals
 

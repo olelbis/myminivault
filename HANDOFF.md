@@ -5,16 +5,16 @@ only as needed; Git history and `CHANGELOG.md` contain completed work.
 
 ## Current Work
 
-- Go 1.27.3 alignment and contributor/agent instructions were merged and pushed to `main` as `f7c2e25`; the task branch was cleaned up.
+- The focused security-review documents were corrected for KDF write profiles, reference-reader coverage, and the current staticcheck CI job. Agent instructions now ask the user to close a completed task chat before unrelated work.
 - Workflow rule: every task branch ends in a PR. The user handles CI and merge; the agent prepares authorized commits/pushes and performs cleanup after merge confirmation. See `AGENTS.md`.
 - The preferred toolchain, CI/security/release workflows, README badge, and development guide select Go 1.27.3; the module minimum remains Go 1.27.0.
 - Latest validation: [coverage report](docs/coverage.md), including date, toolchain, and scope. Do not rerun the full suite merely to rediscover these results.
 
 ## Next Task And Instruction
 
-Recommended next task: review the focused external security-review material for consistency with current code.
+Recommended next task: review the ordered backlog and propose the next priority after these documentation changes are handled.
 
-> Project: myminivault. Working directory: <absolute path to the myminivault checkout; resolve before starting>. Read AGENTS.md and HANDOFF.md. Review docs/crypto-review-scope.md, docs/review-request.md, SECURITY.md, and the referenced crypto/container code for factual inconsistencies or missing review boundaries. Report concrete findings with file references. Do not modify code, publish external messages, commit, push, or release without authorization.
+> Project: myminivault. Working directory: <absolute path to the myminivault checkout; resolve before starting>. Read AGENTS.md, HANDOFF.md, and the ordered backlog. Check the local changes in docs/crypto-review-scope.md, docs/review-request.md, and SECURITY.md, including link/content review and `git diff --check`, then propose the next priority. Do not modify code, commit, push, publish, or release without authorization.
 
 ## Sources Of Truth
 
