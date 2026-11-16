@@ -23,7 +23,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
-          go-version: '1.27.2'
+          go-version: '1.27.3'
           cache: true
 
       - name: Check formatting
@@ -51,7 +51,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
-          go-version: '1.27.2'
+          go-version: '1.27.3'
           cache: true
 
       - name: Generate coverage profile
@@ -106,7 +106,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
-          go-version: '1.27.2'
+          go-version: '1.27.3'
           cache: true
 
       - name: Install staticcheck

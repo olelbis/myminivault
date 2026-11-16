@@ -2,7 +2,10 @@
 
 This document captures architecture, test, and release workflow notes for future development sessions.
 
-Use Go `1.27.2` for local validation. The module declares a Go `1.27.0` minimum and prefers toolchain `go1.27.2`; CI, security scanning, and release packaging select `1.27.2` explicitly.
+Start a new session with [HANDOFF.md](../HANDOFF.md) and [AGENTS.md](../AGENTS.md).
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for contribution and pull-request guidance.
+
+Use Go `1.27.3` for local validation. The module declares a Go `1.27.0` minimum and prefers toolchain `go1.27.3`; CI, security scanning, and release packaging select `1.27.3` explicitly.
 
 ## Project Layout
 
