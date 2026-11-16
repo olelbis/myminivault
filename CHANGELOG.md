@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Aligned the preferred Go toolchain, CI/security/release workflows, and current development documentation with Go `1.27.3`, retaining the Go `1.27.0` minimum.
+- Added concise agent, contributor, and handoff instructions for focused development sessions.
+
 ## [v0.14.0] - 2026-10-20
 
 ### Added

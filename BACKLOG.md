@@ -9,7 +9,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Remote: `origin` -> `https://github.com/olelbis/myminivault.git`
 - Current baseline release: `v0.14.0`
 - Grouped maintenance release: prepared on 2026-10-20 with Go `1.27.2`, including guided `restore`, file hardening, and non-mutating diagnostics. See `CHANGELOG.md` for release notes. Published package results must be checked from the release workflow.
-- Current module requirement: Go `1.27.0`, preferred toolchain `go1.27.2`; workflows and development documentation select Go `1.27.2`.
+- Current module requirement: Go `1.27.0`, preferred toolchain `go1.27.3`; workflows and development documentation select Go `1.27.3`.
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
@@ -91,7 +91,7 @@ Reviewed on 2026-10-19 against `main` after the diagnostic startup fix was merge
 
 ### Completed Hardening Milestones
 
-- **Go toolchain alignment:** CI, security scanning (including govulncheck), release packaging, the README badge, and the development guide now explicitly use Go `1.27.2`, matching the preferred module toolchain. GitHub analyzer execution remains validated by CI.
+- **Go toolchain alignment:** CI, security scanning (including govulncheck), release packaging, the README badge, and the development guide now explicitly use Go `1.27.3`, matching the preferred module toolchain. GitHub analyzer execution remains validated by CI.
 
 1. **Deprecated format fixture policy**: completed after the compatibility fixture corpus was made exact with checksum-verified inventory coverage and documented update rules.
 2. **Rollback restore staging hardening**: completed after guided restore began rejecting and preserving pre-existing `vault.db.restore.tmp` paths instead of deleting them before exclusive staging.
@@ -245,7 +245,7 @@ Docs-only candidates:
 
 ## Verification Guide And Historical Results
 
-Latest coverage rerun: 2026-10-24, macOS arm64, explicitly selected `GOTOOLCHAIN=go1.27.3`, with cached test results disabled. Full repository `53.0%`, internal packages `86.3%`, CLI package `29.4%`; unchanged from Go `1.27.2`. Native build and Staticcheck `v0.8.2` also passed. Module/workflow pins still select `1.27.2` pending a separate alignment.
+Latest coverage rerun: 2026-10-24, macOS arm64, explicitly selected `GOTOOLCHAIN=go1.27.3`, with cached test results disabled. Full repository `53.0%`, internal packages `86.3%`, CLI package `29.4%`; unchanged from Go `1.27.2`. Native build and Staticcheck `v0.8.2` also passed. Module/workflow pins are now aligned with `1.27.3`.
 
 The checks below describe the verification process. Historical entries retain their original results; fresh release-preparation measurements from 2026-10-20 are recorded in `docs/coverage.md`: full repository `53.0%`, internal packages `86.3%`, CLI package `29.4%`. Go tests with atomic coverage, both independent readers, and native builds passed with Go `1.27.2`. Release builds inject the version from `VERSION`.
 
