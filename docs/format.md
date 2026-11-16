@@ -210,6 +210,11 @@ Legacy and v1 files use the runtime fallback crypto configuration instead of
 authenticated metadata from the file. When an older file is saved again, current
 releases rewrite it as `MYMV` v2.
 
+The fixed v1 header is `MYMV || 0x01 || kind || 0x0000`. The reference
+readers accept only v1 main vaults and require explicit scrypt N, r, and p
+fallback parameters. Unlike v2, the v1 header and salt are not AES-GCM AAD;
+the header relies on parser checks rather than cryptographic authentication.
+
 Legacy plaintext payloads may be either:
 
 - the current `ExtendedVault` JSON object
@@ -267,7 +272,12 @@ recovery key documented in [Development](development.md). They check the HKDF
 context, authenticated container, checksum, and embedded recovery-key verifier.
 They also read `internal/storage/testdata/compat/mymv-v2-shared-token-hkdf.b64`
 with the fake raw token master key documented there, checking the distinct
-shared-token HKDF context. Neither reader covers legacy formats.
+shared-token HKDF context. Neither reader covers headerless legacy files.
+
+They also read `internal/storage/testdata/compat/mymv-v1-main.b64` with the
+fake password `compat-password` and explicit fallback scrypt parameters
+`N=2, r=1, p=1`. Those deliberately weak values belong only to the test
+fixture. Headerless legacy files remain outside the reference-reader scope.
 
 ## Non-Goals
 

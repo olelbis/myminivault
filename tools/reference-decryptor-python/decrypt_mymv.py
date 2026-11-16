@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Standalone MYMV v2 main, recovery, and shared-token vault decryptor.
+"""Standalone MYMV v1/v2 main, recovery, and shared-token vault decryptor.
 
 This script is a Python reading companion to docs/format.md. It intentionally
 does not call the myminivault Go code. AES-GCM support requires:
@@ -35,6 +35,7 @@ except ImportError:  # pragma: no cover - depends on installed cryptography vers
 
 MAGIC = b"MYMV"
 VERSION = 2
+LEGACY_VERSION = 1
 HEADER_SIZE = 8
 SALT_SIZE = 16
 NONCE_SIZE = 12
@@ -46,6 +47,18 @@ KIND_SHARED_TOKEN = 3
 
 def decrypt_file(path: Path, password: bytes) -> bytes:
     return decrypt_file_kind(path, password, KIND_MAIN_VAULT)
+
+
+def decrypt_v1_main_file(path: Path, password: bytes, n: int, r: int, p: int) -> bytes:
+    data = path.read_bytes()
+    if len(data) < HEADER_SIZE + SALT_SIZE + NONCE_SIZE:
+        raise ValueError("MYMV v1 container too short")
+    if data[:4] != MAGIC or data[4] != LEGACY_VERSION or data[5] != KIND_MAIN_VAULT or data[6:8] != b"\0\0":
+        raise ValueError("expected MYMV v1 main vault header")
+    salt = data[HEADER_SIZE : HEADER_SIZE + SALT_SIZE]
+    key = hashlib.scrypt(password, salt=salt, n=n, r=r, p=p, dklen=32)
+    # MYMV v1 has no authenticated header; AES-GCM authenticates only its payload.
+    return strip_checksum(decrypt_payload(data[HEADER_SIZE + SALT_SIZE :], key, None))
 
 
 def decrypt_recovery_file(path: Path, recovery_key: bytes) -> bytes:
@@ -164,7 +177,7 @@ def validate_metadata(metadata: dict[str, object]) -> None:
         raise ValueError(f"unsupported metadata kdf={metadata.get('kdf')!r}")
 
 
-def decrypt_payload(ciphertext: bytes, key: bytes, aad: bytes) -> bytes:
+def decrypt_payload(ciphertext: bytes, key: bytes, aad: bytes | None) -> bytes:
     if len(ciphertext) < NONCE_SIZE:
         raise ValueError("ciphertext too short")
     nonce = ciphertext[:NONCE_SIZE]
@@ -189,8 +202,19 @@ def main() -> int:
     key_group.add_argument("--password-file")
     key_group.add_argument("--recovery-key-file")
     key_group.add_argument("--token-key-file")
+    parser.add_argument("--legacy-scrypt-n", type=int)
+    parser.add_argument("--legacy-scrypt-r", type=int)
+    parser.add_argument("--legacy-scrypt-p", type=int)
     parser.add_argument("vault")
     args = parser.parse_args()
+
+    legacy_params = (args.legacy_scrypt_n, args.legacy_scrypt_r, args.legacy_scrypt_p)
+    legacy_requested = any(value is not None for value in legacy_params)
+    if legacy_requested and (
+        not args.password_file or any(value is None or value < 1 for value in legacy_params)
+        or args.legacy_scrypt_n < 2
+    ):
+        parser.error("MYMV v1 requires --password-file and positive --legacy-scrypt-n, --legacy-scrypt-r, and --legacy-scrypt-p")
 
     if args.token_key_file:
         key_material = Path(args.token_key_file).read_bytes()
@@ -200,7 +224,10 @@ def main() -> int:
         plaintext = decrypt_recovery_file(Path(args.vault), key_material)
     else:
         key_material = Path(args.password_file).read_bytes().rstrip(b"\r\n")
-        plaintext = decrypt_file(Path(args.vault), key_material)
+        if legacy_requested:
+            plaintext = decrypt_v1_main_file(Path(args.vault), key_material, *legacy_params)
+        else:
+            plaintext = decrypt_file(Path(args.vault), key_material)
     sys.stdout.buffer.write(plaintext + b"\n")
     return 0
 

@@ -212,7 +212,8 @@ compatibility.
 ## Reference Decryptor
 
 `tools/reference-decryptor` is a minimal standalone reader for documented
-`MYMV` v2 main vaults and HKDF recovery/shared-token vaults. It intentionally
+`MYMV` v2 main vaults and HKDF recovery/shared-token vaults, plus MYMV v1
+main vaults with explicit scrypt fallback parameters. It intentionally
 avoids importing myminivault internal packages, so it can catch drift between
 `docs/format.md` and the production loader.
 
@@ -234,6 +235,7 @@ Manual usage:
 go run ./tools/reference-decryptor --password-file /path/to/password.txt /path/to/vault.db
 go run ./tools/reference-decryptor --recovery-key-file /path/to/recovery-key.txt /path/to/vault.db.recovery
 go run ./tools/reference-decryptor --token-key-file /path/to/raw-token-key /path/to/shared-token-vault.json
+go run ./tools/reference-decryptor --password-file /path/to/password.txt --legacy-scrypt-n 2 --legacy-scrypt-r 1 --legacy-scrypt-p 1 /path/to/mymv-v1-main
 ```
 
 The main-vault fixture uses the password `fixture-password`; the HKDF recovery
@@ -244,11 +246,18 @@ raw 32-byte token master key `0123456789abcdef0123456789abcdef`. The
 or decoded. These fixtures are test data, not examples of safe production
 credentials.
 
+The MYMV v1 main-vault fixture uses the fake password `compat-password` and
+deliberately weak fallback scrypt parameters `N=2, r=1, p=1`. Both readers
+require those parameters explicitly because v1 files do not store KDF metadata
+or authenticate their cleartext header. Use the original runtime configuration
+when examining a real v1 file.
+
 A Python reference reader is also available under
 `tools/reference-decryptor-python`. It uses Python's standard-library scrypt
 implementation plus the external `cryptography` package for AES-GCM, HKDF,
 and Argon2id when supported by the installed version. It covers the same
-MYMV v2 main, HKDF recovery, and HKDF shared-token fixtures as the Go reader:
+MYMV v2 main, HKDF recovery, HKDF shared-token, and MYMV v1 main fixtures as
+the Go reader:
 
 ```bash
 python3 -m pip install -r tools/reference-decryptor-python/requirements.txt
@@ -256,6 +265,7 @@ python3 -m unittest discover -s tools/reference-decryptor-python
 python3 tools/reference-decryptor-python/decrypt_mymv.py --password-file /path/to/password.txt /path/to/vault.db
 python3 tools/reference-decryptor-python/decrypt_mymv.py --recovery-key-file /path/to/recovery-key.txt /path/to/vault.db.recovery
 python3 tools/reference-decryptor-python/decrypt_mymv.py --token-key-file /path/to/raw-token-key /path/to/shared-token-vault.json
+python3 tools/reference-decryptor-python/decrypt_mymv.py --password-file /path/to/password.txt --legacy-scrypt-n 2 --legacy-scrypt-r 1 --legacy-scrypt-p 1 /path/to/mymv-v1-main
 ```
 
 A Java reference reader is feasible, but it should use an explicit crypto

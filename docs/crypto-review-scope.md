@@ -72,8 +72,9 @@ Supporting files:
 - Standalone Go and Python reference decryptors check MYMV v2 main-vault files
   with Argon2id or scrypt independently from the production loader. Both
   readers also check the existing HKDF recovery and shared-token fixtures,
-  including the embedded recovery-key verifier. Neither reader covers legacy
-  formats.
+  including the embedded recovery-key verifier. Both readers also check the
+  existing MYMV v1 main-vault fixture with explicit fallback scrypt parameters.
+  Neither reader covers headerless legacy files.
 
 ## Current Non-Goals
 
