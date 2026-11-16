@@ -4,7 +4,18 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    groups:
+      go-modules:
+        patterns:
+          - "*"
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      codeql-actions:
+        patterns:
+          - github/codeql-action/*
+      other-actions:
+        patterns:
+          - "*"
