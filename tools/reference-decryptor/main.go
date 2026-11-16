@@ -145,6 +145,8 @@ func decryptFileKind(path string, password []byte, kind byte) ([]byte, error) {
 		if err := json.Unmarshal(plaintext, &vault); err != nil {
 			return nil, fmt.Errorf("invalid recovery payload: %w", err)
 		}
+		// Recovery keys contain 32 random bytes; this must match the stored verifier.
+		// codeql[go/weak-sensitive-data-hashing]
 		hash := sha256.Sum256(password)
 		if vault.Recovery == nil || subtle.ConstantTimeCompare(vault.Recovery.KeyHash, hash[:]) != 1 {
 			return nil, errors.New("recovery key verifier mismatch")
