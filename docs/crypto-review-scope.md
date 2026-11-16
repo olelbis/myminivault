@@ -69,10 +69,11 @@ Supporting files:
 - New compact tokens are v2 tokens signed with the local token master key, so malformed or forged v2 tokens can be rejected before the shared token vault is loaded.
 - Token writes are staged in `shared-token-vault.json` and imported into
   `vault.db` by master-password commands or `vault sync-tokens`.
-- Standalone Go and Python reference decryptors plus a compatibility fixture are
-  available under `tools/` to check MYMV v2 main-vault files with Argon2id or
-  scrypt independently from the production loader. They do not cover recovery
-  or shared-token containers, HKDF, or legacy formats.
+- Standalone Go and Python reference decryptors check MYMV v2 main-vault files
+  with Argon2id or scrypt independently from the production loader. The Go
+  reader also checks the existing HKDF recovery fixture and its embedded
+  recovery-key verifier. Neither reader covers shared-token or legacy formats;
+  the Python reader does not cover recovery or HKDF.
 
 ## Current Non-Goals
 

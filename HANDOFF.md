@@ -5,16 +5,16 @@ only as needed; Git history and `CHANGELOG.md` contain completed work.
 
 ## Current Work
 
-- The focused security-review documents and [public review issue #1](https://github.com/olelbis/myminivault/issues/1) now agree on KDF write profiles and reference-reader coverage. The issue remains open with no reviewer comments as of 2026-11-16.
+- The Go reference reader now covers the existing HKDF recovery fixture and its embedded verifier. Review documents describe this scope; public [review issue #1](https://github.com/olelbis/myminivault/issues/1) needs the same coverage update after this task is published. The issue had no reviewer comments as of 2026-11-16.
 - Workflow rule: every task branch ends in a PR. The user handles CI and merge; the agent prepares authorized commits/pushes and performs cleanup after merge confirmation. See `AGENTS.md`.
 - The preferred toolchain, CI/security/release workflows, README badge, and development guide select Go 1.27.3; the module minimum remains Go 1.27.0.
 - Latest validation: [coverage report](docs/coverage.md), including date, toolchain, and scope. Do not rerun the full suite merely to rediscover these results.
 
 ## Next Task And Instruction
 
-Recommended next task: triage any new findings in public review issue #1 first. If none appear, evaluate independent reader coverage for the existing HKDF recovery and shared-token fixtures, starting with recovery, as the next focused review follow-up in `BACKLOG.md`.
+Recommended next task: triage any new findings in public review issue #1 first. If none appear, assess whether independent reader coverage of the existing HKDF shared-token fixture would add useful review evidence under `BACKLOG.md`.
 
-> Project: myminivault. Working directory: <absolute path to the myminivault checkout; resolve before starting>. Read AGENTS.md, HANDOFF.md, and the ordered backlog. Check public review issue #1 for new findings and triage them first. If there are none, inspect the Go/Python reference readers and the existing HKDF recovery and shared-token fixtures, then propose a narrow independent-reader extension, starting with recovery. Do not modify code, commit, push, publish, or release without authorization.
+> Project: myminivault. Working directory: <absolute path to the myminivault checkout; resolve before starting>. Read AGENTS.md, HANDOFF.md, and the ordered backlog. Check public review issue #1 for new findings and triage them first. If there are none, inspect the Go reference reader and existing HKDF shared-token fixture, then assess whether a narrow independent-reader extension would improve review evidence. Do not modify code, commit, push, publish, or release without authorization.
 
 ## Sources Of Truth
 

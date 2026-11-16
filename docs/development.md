@@ -211,10 +211,10 @@ compatibility.
 
 ## Reference Decryptor
 
-`tools/reference-decryptor` is a minimal standalone reader for the documented
-`MYMV` v2 main-vault format. It intentionally avoids importing myminivault
-internal packages, so it can catch drift between `docs/format.md` and the
-production loader.
+`tools/reference-decryptor` is a minimal standalone reader for documented
+`MYMV` v2 main vaults and HKDF recovery vaults. It intentionally avoids
+importing myminivault internal packages, so it can catch drift between
+`docs/format.md` and the production loader.
 
 Run its compatibility fixture tests:
 
@@ -232,11 +232,13 @@ Manual usage:
 
 ```bash
 go run ./tools/reference-decryptor --password-file /path/to/password.txt /path/to/vault.db
+go run ./tools/reference-decryptor --recovery-key-file /path/to/recovery-key.txt /path/to/vault.db.recovery
 ```
 
-The checked-in fixture uses the password `fixture-password` and intentionally
-weak compatibility parameters so the test runs quickly. Do not copy those parameters
-into production files.
+The main-vault fixture uses the password `fixture-password`; the HKDF recovery
+fixture in `internal/storage/testdata/compat` uses the fake key
+`compat-recovery-key-hkdf-000000`. These fixtures are test data, not examples
+of safe production credentials.
 
 A Python reference reader is also available under
 `tools/reference-decryptor-python`. It uses Python's standard-library scrypt

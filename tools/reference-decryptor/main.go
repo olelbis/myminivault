@@ -10,14 +10,17 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 
 	"golang.org/x/crypto/argon2"
+	"golang.org/x/crypto/hkdf"
 	"golang.org/x/crypto/scrypt"
 )
 
@@ -57,27 +60,36 @@ type parsedContainer struct {
 
 func main() {
 	var passwordFile string
+	var recoveryKeyFile string
 	flag.StringVar(&passwordFile, "password-file", "", "file containing the master password, without requiring it in process arguments")
+	flag.StringVar(&recoveryKeyFile, "recovery-key-file", "", "file containing a recovery key for a recovery vault")
 	flag.Parse()
 
-	if flag.NArg() != 1 {
-		fmt.Fprintln(os.Stderr, "usage: reference-decryptor --password-file <file> <vault.db>")
+	if flag.NArg() != 1 || (passwordFile == "") == (recoveryKeyFile == "") {
+		fmt.Fprintln(os.Stderr, "usage: reference-decryptor (--password-file <file> | --recovery-key-file <file>) <vault-file>")
 		os.Exit(2)
 	}
-	if passwordFile == "" {
-		fmt.Fprintln(os.Stderr, "missing --password-file")
-		os.Exit(2)
+	kind := byte(1)
+	keyFile := passwordFile
+	if recoveryKeyFile != "" {
+		kind = 2
+		keyFile = recoveryKeyFile
 	}
 
-	password, err := os.ReadFile(passwordFile)
+	keyMaterial, err := os.ReadFile(keyFile)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "read password file: %v\n", err)
+		fmt.Fprintf(os.Stderr, "read key file: %v\n", err)
 		os.Exit(1)
 	}
-	password = bytes.TrimRight(password, "\r\n")
-	defer wipe(password)
+	keyMaterial = bytes.TrimRight(keyMaterial, "\r\n")
+	defer wipe(keyMaterial)
 
-	plaintext, err := decryptFile(flag.Arg(0), password)
+	var plaintext []byte
+	if kind == 2 {
+		plaintext, err = decryptRecoveryFile(flag.Arg(0), keyMaterial)
+	} else {
+		plaintext, err = decryptFile(flag.Arg(0), keyMaterial)
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "decrypt: %v\n", err)
 		os.Exit(1)
@@ -93,7 +105,32 @@ func main() {
 	}
 }
 
-func decryptFile(path string, password []byte) ([]byte, error) {
+func decryptFile(path string, masterPassword []byte) ([]byte, error) {
+	return decryptFileKind(path, masterPassword, 1)
+}
+
+func decryptRecoveryFile(path string, recoveryKey []byte) ([]byte, error) {
+	plaintext, err := decryptFileKind(path, recoveryKey, 2)
+	if err != nil {
+		return nil, err
+	}
+	var vault struct {
+		Recovery *struct {
+			KeyHash []byte `json:"recovery_key_hash"`
+		} `json:"recovery"`
+	}
+	if err := json.Unmarshal(plaintext, &vault); err != nil {
+		return nil, fmt.Errorf("invalid recovery payload: %w", err)
+	}
+	// Recovery keys contain 32 random bytes; this must match the stored verifier.
+	hash := sha256.Sum256(recoveryKey)
+	if vault.Recovery == nil || subtle.ConstantTimeCompare(vault.Recovery.KeyHash, hash[:]) != 1 {
+		return nil, errors.New("recovery key verifier mismatch")
+	}
+	return plaintext, nil
+}
+
+func decryptFileKind(path string, keyMaterial []byte, kind byte) ([]byte, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -103,11 +140,14 @@ func decryptFile(path string, password []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if parsed.Kind != 1 {
-		return nil, fmt.Errorf("unsupported container kind %d: reference tool expects main vault", parsed.Kind)
+	if parsed.Kind != kind {
+		return nil, fmt.Errorf("unsupported container kind %d: expected %d", parsed.Kind, kind)
 	}
 
-	key, err := deriveKey(password, parsed.Salt, parsed.Metadata)
+	if err := validateKDFForKind(parsed.Metadata, kind); err != nil {
+		return nil, err
+	}
+	key, err := deriveKey(keyMaterial, parsed.Salt, parsed.Metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +200,7 @@ func validateMetadata(meta metadata) error {
 	if meta.Algorithm != "AES-256-GCM" {
 		return fmt.Errorf("unsupported algorithm %q", meta.Algorithm)
 	}
-	if meta.KDF != "argon2id" && meta.KDF != "scrypt" {
+	if meta.KDF != "argon2id" && meta.KDF != "scrypt" && meta.KDF != "hkdf-sha256" {
 		return fmt.Errorf("unsupported KDF %q", meta.KDF)
 	}
 	if meta.Payload != "sha256-prefix-json" {
@@ -197,11 +237,28 @@ func validateMetadata(meta metadata) error {
 	return nil
 }
 
-func deriveKey(password, salt []byte, meta metadata) ([]byte, error) {
-	if meta.KDF == "argon2id" {
-		return argon2.IDKey(password, salt, meta.Argon2Time, meta.Argon2MemoryKiB, meta.Argon2Threads, uint32(meta.KeySize)), nil // #nosec G115 -- validateMetadata requires the only supported key size, 32.
+func validateKDFForKind(meta metadata, kind byte) error {
+	if kind == 1 && meta.KDF == "hkdf-sha256" {
+		return errors.New("HKDF is not supported for main vaults")
 	}
-	return scrypt.Key(password, salt, meta.ScryptN, meta.ScryptR, meta.ScryptP, meta.KeySize)
+	if kind == 2 && meta.KDF != "hkdf-sha256" {
+		return errors.New("reference tool supports only HKDF recovery vaults")
+	}
+	return nil
+}
+
+func deriveKey(keyMaterial, salt []byte, meta metadata) ([]byte, error) {
+	if meta.KDF == "argon2id" {
+		return argon2.IDKey(keyMaterial, salt, meta.Argon2Time, meta.Argon2MemoryKiB, meta.Argon2Threads, uint32(meta.KeySize)), nil // #nosec G115 -- validateMetadata requires the only supported key size, 32.
+	}
+	if meta.KDF == "hkdf-sha256" {
+		key := make([]byte, meta.KeySize)
+		if _, err := io.ReadFull(hkdf.New(sha256.New, keyMaterial, salt, []byte("myminivault:recovery-vault")), key); err != nil {
+			return nil, err
+		}
+		return key, nil
+	}
+	return scrypt.Key(keyMaterial, salt, meta.ScryptN, meta.ScryptR, meta.ScryptP, meta.KeySize)
 }
 
 func decryptPayload(ciphertext, key, aad []byte) ([]byte, error) {

@@ -261,6 +261,12 @@ A broader compatibility fixture corpus for the production loaders lives in
 `internal/storage/testdata/compat/`. See [Migration Policy](migration-policy.md)
 for the current compatibility and future migration rules.
 
+The Go reference decryptor also reads
+`internal/storage/testdata/compat/mymv-v2-recovery-hkdf.b64` using the fake
+recovery key documented in [Development](development.md). It checks the HKDF
+context, authenticated container, checksum, and embedded recovery-key verifier.
+The Python reader does not cover this recovery fixture.
+
 ## Non-Goals
 
 The format does not attempt to hide that a file is a myminivault encrypted
