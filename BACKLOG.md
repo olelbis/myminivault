@@ -13,7 +13,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
-- The current task branch is `review-findings-6-8`; commit/push and PR creation are authorized, and the user handles remote CI and merge. Previously completed task branches were merged and deleted.
+- Only `main` remains locally and on GitHub after PRs #18–20 were merged and their branches cleaned up on 2026-11-17. Local `main` is aligned with `origin/main`.
 
 ## Project Assessment
 
@@ -68,7 +68,7 @@ Use this section first when resuming work. The detailed backlog below explains e
 
 ### Immediate Next Work
 
-Updated on 2026-11-17. Findings 6–8 are implemented on `review-findings-6-8` for PR review: dedicated HKDF signing subkey with v3 tokens, six-field/v2 token retirement and reissue guidance, shared KDF metadata validation, and removal of unused compatibility entry points. Finish that PR before starting the queue below. Follow this order; the historical detail below is not a separate queue.
+Updated on 2026-11-17. Findings 6–8 are merged in PR #20: dedicated HKDF signing subkey with v3 tokens, six-field/v2 token retirement and reissue guidance, shared KDF metadata validation, and removal of unused compatibility entry points. Grouped Dependabot PRs #18 and #19 are also merged. Follow this order; the historical detail below is not a separate queue.
 
 1. **Investigate and fix the reported critical token/shared-vault design and correctness issues**
    - A reviewer reports that the shared token vault retains a full copy of main-vault secrets, encrypted with a token key stored beside it in file-backed mode. A restricted token pattern does not limit what those two files expose. Scope the shared vault to keys covered by active tokens, remove it when no tokens remain, and evaluate per-token secret/key separation. Update the threat model and assess macOS Keychain separately; that path was not tested by the reviewer.
