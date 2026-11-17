@@ -47,7 +47,7 @@ func withConfigChange(change func(Config) Config) Config {
 
 func TestLoadUsesDefaultsWhenFileIsMissing(t *testing.T) {
 	withTempWorkingDir(t, func() {
-		cfg, err := Load()
+		cfg, err := LoadFile(FileName)
 		if err != nil {
 			t.Fatalf("Load: %v", err)
 		}
@@ -61,7 +61,7 @@ func TestLoadAppliesValidOverride(t *testing.T) {
 	withTempWorkingDir(t, func() {
 		writeConfigFile(t, `{"scrypt_n":65536,"scrypt_r":8,"scrypt_p":2,"key_size":32,"max_backups":10}`)
 
-		cfg, err := Load()
+		cfg, err := LoadFile(FileName)
 		if err != nil {
 			t.Fatalf("Load: %v", err)
 		}
@@ -80,7 +80,7 @@ func TestLoadAppliesKDFOverride(t *testing.T) {
 	withTempWorkingDir(t, func() {
 		writeConfigFile(t, `{"kdf":"argon2id","argon2_memory_kib":32768,"argon2_time":4,"argon2_threads":2,"key_size":32}`)
 
-		cfg, err := Load()
+		cfg, err := LoadFile(FileName)
 		if err != nil {
 			t.Fatalf("Load: %v", err)
 		}
@@ -116,7 +116,7 @@ func TestLoadAppliesRollbackModeOverride(t *testing.T) {
 	withTempWorkingDir(t, func() {
 		writeConfigFile(t, `{"rollback_mode":"block"}`)
 
-		cfg, err := Load()
+		cfg, err := LoadFile(FileName)
 		if err != nil {
 			t.Fatalf("Load: %v", err)
 		}
@@ -130,7 +130,7 @@ func TestLoadAppliesTokenKeyStorageOverride(t *testing.T) {
 	withTempWorkingDir(t, func() {
 		writeConfigFile(t, `{"token_key_storage":"file"}`)
 
-		cfg, err := Load()
+		cfg, err := LoadFile(FileName)
 		if err != nil {
 			t.Fatalf("Load: %v", err)
 		}
@@ -144,7 +144,7 @@ func TestLoadAppliesAuditLogOverride(t *testing.T) {
 	withTempWorkingDir(t, func() {
 		writeConfigFile(t, `{"audit_log":false}`)
 
-		cfg, err := Load()
+		cfg, err := LoadFile(FileName)
 		if err != nil {
 			t.Fatalf("Load: %v", err)
 		}
@@ -158,7 +158,7 @@ func TestLoadRejectsMalformedJSON(t *testing.T) {
 	withTempWorkingDir(t, func() {
 		writeConfigFile(t, `{"scrypt_n":`)
 
-		_, err := Load()
+		_, err := LoadFile(FileName)
 		if err == nil {
 			t.Fatal("expected Load error")
 		}
@@ -172,7 +172,7 @@ func TestLoadRejectsUnsafeValues(t *testing.T) {
 	withTempWorkingDir(t, func() {
 		writeConfigFile(t, `{"scrypt_n":1024,"scrypt_r":8,"scrypt_p":1,"key_size":32,"max_backups":5}`)
 
-		_, err := Load()
+		_, err := LoadFile(FileName)
 		if err == nil {
 			t.Fatal("expected Load error")
 		}

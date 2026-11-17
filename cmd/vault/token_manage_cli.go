@@ -195,7 +195,7 @@ func generateShortRandomID() string {
 }
 
 func createShortSignedToken(token AccessToken, secretKey []byte) (string, error) {
-	return vaulttoken.CreateShortSignedTokenV2(token, secretKey)
+	return vaulttoken.CreateShortSignedToken(token, secretKey)
 }
 
 func handleRevokeToken(vault *ExtendedVault) {

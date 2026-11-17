@@ -38,6 +38,23 @@ Any future removal must be staged:
   requiring user action
 - remove the read path only after a documented migration window
 
+## Compact Token Retirement
+
+The next release (`Unreleased`) replaces compact token signatures with v3,
+using a dedicated HKDF signing subkey. Six-field legacy tokens and v2 tokens
+are rejected before accessing the token master key or shared vault. The error
+instructs owners to revoke the old record and create a new token with the
+master password. There is no compatibility flag or automatic conversion.
+
+Use `list-tokens` to identify old records, `revoke-token <token-id>` to remove
+them, and `create-token` to issue replacements with the required restrictions.
+Replace saved token strings in scripts and token files. Vault saves and syncs
+do not reissue tokens. Token master-key regeneration is not required.
+
+This retirement applies to short-lived bearer credentials (maximum lifetime:
+24 hours), not encrypted vault containers. The encrypted-file compatibility
+and sunset policy above remains in force; no vault-file migration is needed.
+
 ## Compatibility Fixtures
 
 The compatibility fixture corpus lives in

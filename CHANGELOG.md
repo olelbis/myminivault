@@ -4,6 +4,8 @@
 
 ### Changed
 
+- Separated compact-token signing from shared-vault encryption with a dedicated HKDF-SHA256 subkey and v3 signatures. Retired six-field and v2 compact tokens; owners must revoke and reissue them with the master password.
+- Consolidated KDF metadata validation for reads and writes and removed unused recovery/config compatibility entry points.
 - Reduced duplicate CI/security runs for PR branches, skipped documentation-only changes, canceled superseded PR runs, limited race testing to Linux, and grouped future Dependabot version updates by Go modules, CodeQL Actions, and other Actions.
 - Aligned scrypt write bounds with container reads, required 32-byte keys for new AES-256-GCM files, and rejected HKDF for main-vault reads.
 - Marked Unix-only file locking explicitly and removed the obsolete Windows no-follow implementation; Windows remains unsupported.

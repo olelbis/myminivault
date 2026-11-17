@@ -7,7 +7,7 @@ import (
 	"github.com/olelbis/myminivault/internal/container"
 )
 
-func TestScryptConfigForContainerUsesBoundedV2Metadata(t *testing.T) {
+func TestKDFConfigForContainerUsesBoundedV2Metadata(t *testing.T) {
 	parsed := container.Parsed{
 		Version: container.Version,
 		Kind:    container.KindMainVault,
@@ -25,11 +25,11 @@ func TestScryptConfigForContainerUsesBoundedV2Metadata(t *testing.T) {
 		},
 	}
 
-	cfg, err := ScryptConfigForContainer(parsed, ScryptConfig{N: 2, R: 1, P: 1, KeySize: 32})
+	cfg, err := KDFConfigForContainer(parsed, ScryptConfig{N: 2, R: 1, P: 1, KeySize: 32})
 	if err != nil {
-		t.Fatalf("ScryptConfigForContainer: %v", err)
+		t.Fatalf("KDFConfigForContainer: %v", err)
 	}
-	if cfg.N != 4 || cfg.R != 1 || cfg.P != 1 || cfg.KeySize != 32 {
+	if cfg.Name != container.KDFScrypt || cfg.Scrypt.N != 4 || cfg.Scrypt.R != 1 || cfg.Scrypt.P != 1 || cfg.Scrypt.KeySize != 32 {
 		t.Fatalf("config = %+v, want metadata config", cfg)
 	}
 }
@@ -116,7 +116,7 @@ func TestKDFConfigForContainerRejectsUnsupportedKDF(t *testing.T) {
 	}
 }
 
-func TestScryptConfigForContainerRejectsExcessiveScryptN(t *testing.T) {
+func TestKDFConfigForContainerRejectsExcessiveScryptN(t *testing.T) {
 	parsed := container.Parsed{
 		Version: container.Version,
 		Kind:    container.KindMainVault,
@@ -134,7 +134,7 @@ func TestScryptConfigForContainerRejectsExcessiveScryptN(t *testing.T) {
 		},
 	}
 
-	_, err := ScryptConfigForContainer(parsed, ScryptConfig{N: 2, R: 1, P: 1, KeySize: 32})
+	_, err := KDFConfigForContainer(parsed, ScryptConfig{N: 2, R: 1, P: 1, KeySize: 32})
 	if err == nil || !strings.Contains(err.Error(), "exceeds maximum") {
 		t.Fatalf("error = %v, want max scrypt error", err)
 	}

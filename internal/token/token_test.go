@@ -2,8 +2,10 @@ package token
 
 import (
 	"bytes"
+	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"strings"
@@ -550,7 +552,7 @@ func TestParseAndValidateProductionTokenRejectsForgeryWithoutPersistingUsage(t *
 		t.Fatalf("SaveEncryptedVault: %v", err)
 	}
 
-	signedToken, err := CreateShortSignedToken(accessToken, secretKey)
+	signedToken, err := CreateShortSignedToken(accessToken, bytesOf(0x33, 32))
 	if err != nil {
 		t.Fatalf("CreateShortSignedToken: %v", err)
 	}
@@ -577,7 +579,7 @@ func TestParseAndValidateProductionTokenRejectsForgeryWithoutPersistingUsage(t *
 	}
 }
 
-func TestParseAndValidateProductionTokenV2RejectsForgeryBeforeSharedVaultLoad(t *testing.T) {
+func TestParseAndValidateProductionTokenV3RejectsForgeryBeforeSharedVaultLoad(t *testing.T) {
 	opts := tokenTestOptions(bytesOf(0x11, 32))
 	accessToken := model.AccessToken{
 		TokenID:     "token-id",
@@ -588,15 +590,15 @@ func TestParseAndValidateProductionTokenV2RejectsForgeryBeforeSharedVaultLoad(t 
 		CreatedAt:   time.Now(),
 	}
 
-	signedToken, err := CreateShortSignedTokenV2(accessToken, bytesOf(0x22, 32))
+	signedToken, err := CreateShortSignedToken(accessToken, bytesOf(0x22, 32))
 	if err != nil {
-		t.Fatalf("CreateShortSignedTokenV2: %v", err)
+		t.Fatalf("CreateShortSignedToken: %v", err)
 	}
 	forged := forgeTokenSignature(t, signedToken, "not-the-real-signature")
 
 	_, _, err = ParseAndValidateProductionToken(forged, filepath.Join(t.TempDir(), "missing-shared-vault.json"), opts)
 	if err == nil {
-		t.Fatal("expected forged v2 token to be rejected")
+		t.Fatal("expected forged v3 token to be rejected")
 	}
 	if !strings.Contains(err.Error(), "invalid token signature") {
 		t.Fatalf("error = %v, want signature failure before shared vault load", err)
@@ -629,7 +631,7 @@ func TestParseAndValidateProductionTokenAllowsUnconsumedFinalUse(t *testing.T) {
 		t.Fatalf("SaveEncryptedVault: %v", err)
 	}
 
-	signedToken, err := CreateShortSignedToken(accessToken, secretKey)
+	signedToken, err := CreateShortSignedToken(accessToken, bytesOf(0x33, 32))
 	if err != nil {
 		t.Fatalf("CreateShortSignedToken: %v", err)
 	}
@@ -666,8 +668,8 @@ func TestParseAndValidateProductionTokenRejectsInvalidFields(t *testing.T) {
 	opts := tokenTestOptions(bytesOf(0x33, 32))
 
 	tests := map[string]string{
-		"invalid expiration": "token-id:API_*:not-time:read:5:sig",
-		"invalid max uses":   "token-id:API_*:123:read:not-uses:sig",
+		"invalid expiration": "v3:token-id:API_*:not-time:read:5:sig",
+		"invalid max uses":   "v3:token-id:API_*:123:read:not-uses:sig",
 	}
 
 	for name, payload := range tests {
@@ -691,7 +693,7 @@ func TestParseAndValidateProductionTokenRejectsMissingTokenManagerAndRevokedToke
 		Permissions: []string{"read"},
 		MaxUses:     5,
 	}
-	signedToken, err := CreateShortSignedToken(accessToken, secretKey)
+	signedToken, err := CreateShortSignedToken(accessToken, bytesOf(0x33, 32))
 	if err != nil {
 		t.Fatalf("CreateShortSignedToken: %v", err)
 	}
@@ -862,31 +864,6 @@ func TestContainerMetadataCanWriteArgon2idProfile(t *testing.T) {
 	}
 }
 
-func TestKDFConfigFromMetadataReturnsDeprecatedScryptProfile(t *testing.T) {
-	meta := container.Metadata{KDF: container.KDFScrypt}
-	fallback := vaultcrypto.ScryptConfig{N: 4, R: 1, P: 1, KeySize: 32}
-
-	cfg := kdfConfigFromMetadata(meta, fallback)
-	if cfg.Name != container.KDFScrypt || cfg.Scrypt != fallback {
-		t.Fatalf("config = %+v, want fallback scrypt", cfg)
-	}
-}
-
-func TestKDFConfigFromMetadataReturnsArgon2idProfile(t *testing.T) {
-	meta := container.Metadata{
-		KDF:             container.KDFArgon2id,
-		Argon2MemoryKiB: 96 * 1024,
-		Argon2Time:      4,
-		Argon2Threads:   2,
-		KeySize:         32,
-	}
-
-	cfg := kdfConfigFromMetadata(meta, testScrypt)
-	if cfg.Name != container.KDFArgon2id || cfg.Argon2id.MemoryKiB != 96*1024 || cfg.Argon2id.Time != 4 || cfg.Argon2id.Threads != 2 || cfg.Argon2id.KeySize != 32 {
-		t.Fatalf("config = %+v, want argon2id profile", cfg)
-	}
-}
-
 func appendTokenChecksum(data []byte) []byte {
 	checksum := sha256.Sum256(data)
 	return append(checksum[:], data...)
@@ -900,7 +877,11 @@ func encryptTokenPlaintext(t *testing.T, plaintext, salt []byte, opts Options) [
 		t.Fatalf("MasterKey: %v", err)
 	}
 	meta := container.DefaultMetadata(opts.SaltSize)
-	key, err := vaultcrypto.DeriveKeyWithConfig(tokenKey, salt, kdfConfigFromMetadata(meta, opts.Scrypt))
+	cfg, err := vaultcrypto.KDFConfigForMetadata(container.KindSharedTokenVault, meta, opts.Scrypt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	key, err := vaultcrypto.DeriveKeyWithConfig(tokenKey, salt, cfg)
 	if err != nil {
 		t.Fatalf("DeriveKey: %v", err)
 	}
@@ -974,5 +955,96 @@ func TestSaveEncryptedVaultRejectsNonAES256KeySize(t *testing.T) {
 	err = SaveEncryptedVault(tokenTestVault(), filepath.Join(t.TempDir(), "shared-token-vault.json"), opts)
 	if err == nil || !strings.Contains(err.Error(), "not allowed for new shared token vaults") {
 		t.Fatalf("SaveEncryptedVault: %v, want token KDF rejection", err)
+	}
+}
+
+func TestCompactTokenSigningKeySeparation(t *testing.T) {
+	master := bytesOf(0x33, 32)
+	original := append([]byte(nil), master...)
+	key, err := tokenSigningKey(master)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Independently calculated HKDF-SHA256 vector: zero salt, 32 bytes of 0x33.
+	if got := hex.EncodeToString(key); got != "f4a1622afea687cc6134ff9faf4c5895591e74e34f5caf6b4fed7fc98806b391" {
+		t.Fatalf("unexpected signing subkey: %s", got)
+	}
+	access := model.AccessToken{TokenID: "test-id", KeyPattern: "API_*", ExpiresAt: time.Unix(1900000000, 0), Permissions: []string{"read"}, MaxUses: 2}
+	compact, err := CreateShortSignedToken(access, master)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := base64.RawURLEncoding.DecodeString(compact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parts := strings.Split(string(decoded), ":")
+	payload := strings.Join(parts[:6], ":")
+	if parts[0] != "v3" || !validTokenSignature(payload, parts[6], key) {
+		t.Fatal("token must use the v3 signing subkey")
+	}
+	encryptionKey, err := vaultcrypto.DeriveKeyWithConfig(master, nil, SharedVaultKDFConfig())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, otherKey := range [][]byte{master, encryptionKey} {
+		if validTokenSignature(payload, parts[6], otherKey) {
+			t.Fatal("token signature reused another key's domain")
+		}
+		mac := hmac.New(sha256.New, otherKey)
+		mac.Write([]byte(payload))
+		forged := base64Token(payload + ":" + base64.StdEncoding.EncodeToString(mac.Sum(nil)))
+		_, _, err := ParseAndValidateProductionToken(forged, filepath.Join(t.TempDir(), "missing-vault"), tokenTestOptions(master))
+		if err == nil || !strings.Contains(err.Error(), "invalid token signature") {
+			t.Fatalf("wrong-domain signature: %v", err)
+		}
+	}
+	if !bytes.Equal(master, original) {
+		t.Fatal("signing modified the caller's master key")
+	}
+}
+
+func TestRetiredCompactTokensRejectedBeforeKeyOrVaultAccess(t *testing.T) {
+	for _, payload := range []string{
+		"token-id:API_*:1900000000:read:2:legacy-signature",
+		"v2:token-id:API_*:1900000000:read:2:old-master-key-signature",
+	} {
+		t.Run(strings.Split(payload, ":")[0], func(t *testing.T) {
+			dir := t.TempDir()
+			keyPath := filepath.Join(dir, "missing-key")
+			vaultPath := filepath.Join(dir, "shared-vault")
+			sentinel := []byte("must not be opened or rewritten")
+			if err := os.WriteFile(vaultPath, sentinel, 0600); err != nil {
+				t.Fatal(err)
+			}
+			for _, opts := range []Options{
+				{TokenKeyFile: keyPath},
+				{MasterKey: func() ([]byte, error) { t.Fatal("retired token accessed key provider"); return nil, nil }},
+			} {
+				_, _, err := ParseAndValidateProductionToken(base64Token(payload), vaultPath, opts)
+				if err == nil || !strings.Contains(err.Error(), "retired token format") || !strings.Contains(err.Error(), "create a new token") {
+					t.Fatalf("expected actionable reissue error, got %v", err)
+				}
+			}
+			if _, err := os.Stat(keyPath); !os.IsNotExist(err) {
+				t.Fatalf("retired token created a key: %v", err)
+			}
+			got, err := os.ReadFile(vaultPath)
+			if err != nil || !bytes.Equal(got, sentinel) {
+				t.Fatal("retired token changed shared vault")
+			}
+		})
+	}
+}
+
+func TestCompactTokenRejectsInvalidMasterKeyLength(t *testing.T) {
+	for _, size := range []int{0, 16, 31, 33} {
+		if _, err := CreateShortSignedToken(model.AccessToken{}, bytesOf(0x11, size)); err == nil {
+			t.Fatalf("accepted %d-byte key", size)
+		}
+		_, _, err := ParseAndValidateProductionToken(base64Token("v3:id:*:1900000000:read:1:sig"), filepath.Join(t.TempDir(), "missing-vault"), tokenTestOptions(bytesOf(0x11, size)))
+		if err == nil || !strings.Contains(err.Error(), "invalid token master key length") {
+			t.Fatalf("%d-byte key: %v", size, err)
+		}
 	}
 }
