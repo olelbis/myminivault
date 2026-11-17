@@ -56,12 +56,6 @@ var Default = Config{
 	RollbackMode:    RollbackModeWarn,
 }
 
-// Load returns defaults when the config file is absent, but rejects malformed
-// or unsafe overrides so encryption never starts with surprising parameters.
-func Load() (Config, error) {
-	return LoadFile(FileName)
-}
-
 // LoadFile reads config from path. Missing files return Default.
 func LoadFile(path string) (Config, error) {
 	if _, err := os.Stat(path); err != nil {

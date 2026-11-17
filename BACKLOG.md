@@ -13,7 +13,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
-- Only `main` is currently kept locally and on GitHub; completed task branches were merged and deleted.
+- The current task branch is `review-findings-6-8`; commit/push and PR creation are authorized, and the user handles remote CI and merge. Previously completed task branches were merged and deleted.
 
 ## Project Assessment
 
@@ -68,16 +68,14 @@ Use this section first when resuming work. The detailed backlog below explains e
 
 ### Immediate Next Work
 
-Updated on 2026-11-16 with reviewer findings. Follow this order; the historical detail below is not a separate queue.
+Updated on 2026-11-17. Findings 6–8 are implemented on `review-findings-6-8` for PR review: dedicated HKDF signing subkey with v3 tokens, six-field/v2 token retirement and reissue guidance, shared KDF metadata validation, and removal of unused compatibility entry points. Finish that PR before starting the queue below. Follow this order; the historical detail below is not a separate queue.
 
-1. **Finish Claude review findings 6–8 after the intermediate findings 1–5 PR**
-   - Derive a dedicated compact-token signing subkey, remove duplicate and unused KDF/recovery helpers, and retire six-field compact tokens with documented reissue behavior.
-2. **Investigate and fix the reported critical token/shared-vault design and correctness issues**
+1. **Investigate and fix the reported critical token/shared-vault design and correctness issues**
    - A reviewer reports that the shared token vault retains a full copy of main-vault secrets, encrypted with a token key stored beside it in file-backed mode. A restricted token pattern does not limit what those two files expose. Scope the shared vault to keys covered by active tokens, remove it when no tokens remain, and evaluate per-token secret/key separation. Update the threat model and assess macOS Keychain separately; that path was not tested by the reviewer.
    - The reviewer reproduced token usage counters resetting after a master-vault write, restore being undone by a subsequent shared-vault import, and token-key regeneration leaving the shared vault unreadable while `doctor` reports healthy. Preserve monotonic usage counts, handle pending token writes before rebuilds, and verify key/vault consistency in diagnostics.
    - The reviewer also identified a possible deleted-key resurrection in `ShouldImportSharedValue` when the main value has no update timestamp; this case was not reproduced. Test mirror interruption after delete and enforce tombstones during import.
    - Reproduce with fake secrets in an isolated runtime directory, then design and test the full token create/use/sync/restore/key-rotation lifecycle before changing behavior. Treat this as higher priority than additional format fixtures.
-3. **Maintain the focused external security review**
+2. **Maintain the focused external security review**
    - Keep the public request, scope, file-format specification, independent readers, and compatibility fixtures consistent with current code.
    - Triage concrete reviewer findings first. The project remains self-reviewed and unaudited until independent evidence says otherwise.
 

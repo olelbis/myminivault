@@ -62,25 +62,9 @@ func TestDecryptVaultRoundTrip(t *testing.T) {
 	vault := recoveryTestVault(recoveryKey)
 	encrypted := encryptRecoveryVault(t, vault, recoveryKey, salt, opts)
 
-	loaded, err := DecryptVault(salt, encrypted, recoveryKey, opts)
+	loaded, err := DecryptParsedVault(container.Parsed{Legacy: true, Salt: salt, Ciphertext: encrypted}, []byte(recoveryKey), opts)
 	if err != nil {
 		t.Fatalf("DecryptVault: %v", err)
-	}
-	if loaded.Data["API_KEY"] != "secret" {
-		t.Fatalf("secret = %q, want secret", loaded.Data["API_KEY"])
-	}
-}
-
-func TestDecryptVaultBytesRoundTrip(t *testing.T) {
-	recoveryKey := []byte("RECOVERY-KEY")
-	salt := []byte("1234567890123456")
-	opts := Options{Scrypt: testScrypt}
-	vault := recoveryTestVault(string(recoveryKey))
-	encrypted := encryptRecoveryVault(t, vault, string(recoveryKey), salt, opts)
-
-	loaded, err := DecryptVaultBytes(salt, encrypted, recoveryKey, opts)
-	if err != nil {
-		t.Fatalf("DecryptVaultBytes: %v", err)
 	}
 	if loaded.Data["API_KEY"] != "secret" {
 		t.Fatalf("secret = %q, want secret", loaded.Data["API_KEY"])
@@ -153,13 +137,13 @@ func TestDecryptVaultRejectsWrongKeyAndChecksumMismatch(t *testing.T) {
 	vault := recoveryTestVault(recoveryKey)
 	encrypted := encryptRecoveryVault(t, vault, recoveryKey, salt, opts)
 
-	if _, err := DecryptVault(salt, encrypted, "WRONG-KEY", opts); err == nil {
+	if _, err := DecryptParsedVault(container.Parsed{Legacy: true, Salt: salt, Ciphertext: encrypted}, []byte("WRONG-KEY"), opts); err == nil {
 		t.Fatal("expected wrong recovery key to fail")
 	}
 
 	badPayload := append(bytes.Repeat([]byte{0x01}, sha256.Size), []byte(`{"data":{"API_KEY":"secret"}}`)...)
 	encryptedBadChecksum := encryptPlaintext(t, badPayload, recoveryKey, salt, opts)
-	if _, err := DecryptVault(salt, encryptedBadChecksum, recoveryKey, opts); err == nil {
+	if _, err := DecryptParsedVault(container.Parsed{Legacy: true, Salt: salt, Ciphertext: encryptedBadChecksum}, []byte(recoveryKey), opts); err == nil {
 		t.Fatal("expected checksum mismatch to fail")
 	}
 }
@@ -174,7 +158,7 @@ func TestDecryptVaultRejectsMissingVerifier(t *testing.T) {
 	}
 	encrypted := encryptRecoveryVault(t, vault, recoveryKey, salt, opts)
 
-	if _, err := DecryptVault(salt, encrypted, recoveryKey, opts); err == nil {
+	if _, err := DecryptParsedVault(container.Parsed{Legacy: true, Salt: salt, Ciphertext: encrypted}, []byte(recoveryKey), opts); err == nil {
 		t.Fatal("expected missing recovery verifier to fail")
 	}
 }
@@ -187,7 +171,7 @@ func TestDecryptVaultRejectsInvalidJSON(t *testing.T) {
 	checksum := sha256.Sum256(payload)
 	encrypted := encryptPlaintext(t, append(checksum[:], payload...), recoveryKey, salt, opts)
 
-	if _, err := DecryptVault(salt, encrypted, recoveryKey, opts); err == nil {
+	if _, err := DecryptParsedVault(container.Parsed{Legacy: true, Salt: salt, Ciphertext: encrypted}, []byte(recoveryKey), opts); err == nil {
 		t.Fatal("expected invalid JSON to fail")
 	}
 }

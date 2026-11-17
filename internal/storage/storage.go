@@ -202,7 +202,11 @@ func SaveBytes(vault *model.ExtendedVault, password []byte, salt []byte, opts Op
 	if meta.KeySize != 32 {
 		return fmt.Errorf("key size %d cannot be written as AES-256-GCM", meta.KeySize)
 	}
-	masterKey, err := vaultcrypto.DeriveKeyWithConfig(password, salt, kdfConfigFromMetadata(meta, opts.Scrypt))
+	kdfConfig, err := vaultcrypto.KDFConfigForMetadata(container.KindMainVault, meta, opts.Scrypt)
+	if err != nil {
+		return err
+	}
+	masterKey, err := vaultcrypto.DeriveKeyWithConfig(password, salt, kdfConfig)
 	if err != nil {
 		return err
 	}
@@ -222,7 +226,11 @@ func SaveBytes(vault *model.ExtendedVault, password []byte, salt []byte, opts Op
 	if vault.Recovery != nil && len(recoveryKey) > 0 && opts.SaveRecoveryFile != nil {
 		recoverySalt := vaultcrypto.Random(opts.SaltSize)
 		recoveryMeta := highEntropyContainerMetadata(opts.SaltSize)
-		recoveryKeyDerived, err := vaultcrypto.DeriveKeyWithConfig(recoveryKey, recoverySalt, kdfConfigFromMetadata(recoveryMeta, opts.Scrypt))
+		recoveryKDF, err := vaultcrypto.KDFConfigForMetadata(container.KindRecoveryVault, recoveryMeta, opts.Scrypt)
+		if err != nil {
+			return err
+		}
+		recoveryKeyDerived, err := vaultcrypto.DeriveKeyWithConfig(recoveryKey, recoverySalt, recoveryKDF)
 		if err != nil {
 			return err
 		}
@@ -427,24 +435,6 @@ func highEntropyContainerMetadata(saltSize int) container.Metadata {
 	meta.Argon2Threads = 0
 	meta.KeySize = 32
 	return meta
-}
-
-func kdfConfigFromMetadata(meta container.Metadata, fallback vaultcrypto.ScryptConfig) vaultcrypto.KDFConfig {
-	if meta.KDF == container.KDFArgon2id {
-		return vaultcrypto.KDFConfig{
-			Name: container.KDFArgon2id,
-			Argon2id: vaultcrypto.Argon2idConfig{
-				MemoryKiB: meta.Argon2MemoryKiB,
-				Time:      meta.Argon2Time,
-				Threads:   meta.Argon2Threads,
-				KeySize:   uint32(meta.KeySize), // #nosec G115 -- metadata key size is validated by KDFConfigForContainer before use.
-			},
-		}
-	}
-	if meta.KDF == container.KDFHKDFSHA256 {
-		return vaultcrypto.HKDFSHA256Config("myminivault:"+container.KindName(container.KindRecoveryVault), uint32(meta.KeySize)) // #nosec G115 -- metadata key size is validated by KDFConfigForContainer before use.
-	}
-	return vaultcrypto.KDFConfig{Name: container.KDFScrypt, Scrypt: fallback}
 }
 
 // TryLoad reads either a headered MYMV container or the legacy salt prefix and

@@ -152,6 +152,15 @@ func TestSaveWritesConfiguredNonDefaultKDFMetadata(t *testing.T) {
 	if parsed.Metadata.Argon2MemoryKiB != 0 || parsed.Metadata.Argon2Time != 0 || parsed.Metadata.Argon2Threads != 0 {
 		t.Fatalf("metadata = %+v, want no argon2 fields for scrypt", parsed.Metadata)
 	}
+	// The explicit write profile differs from the legacy fallback in opts.
+	// The ciphertext must use the parameters recorded in its own header.
+	loaded, _, err := Load("password", opts)
+	if err != nil {
+		t.Fatalf("Load configured scrypt save: %v", err)
+	}
+	if loaded.Data["API_KEY"] != "secret" {
+		t.Fatal("configured scrypt save did not round-trip")
+	}
 }
 
 func TestSaveRejectsNonAES256KeySizes(t *testing.T) {
@@ -888,16 +897,6 @@ func TestContainerMetadataCanWriteDeprecatedScryptProfile(t *testing.T) {
 	}
 }
 
-func TestKDFConfigFromMetadataReturnsDeprecatedScryptProfile(t *testing.T) {
-	meta := container.Metadata{KDF: container.KDFScrypt}
-	fallback := vaultcrypto.ScryptConfig{N: 4, R: 1, P: 1, KeySize: 32}
-
-	cfg := kdfConfigFromMetadata(meta, fallback)
-	if cfg.Name != container.KDFScrypt || cfg.Scrypt != fallback {
-		t.Fatalf("config = %+v, want fallback scrypt", cfg)
-	}
-}
-
 func storageTestOptions(dir string) Options {
 	return Options{
 		VaultFile: filepath.Join(dir, "vault.db"),
@@ -922,7 +921,11 @@ func writeEncryptedPlaintext(t *testing.T, opts Options, password, salt, plainte
 	t.Helper()
 
 	meta := container.DefaultMetadata(opts.SaltSize)
-	key, err := vaultcrypto.DeriveKeyWithConfig(password, salt, kdfConfigFromMetadata(meta, opts.Scrypt))
+	cfg, err := vaultcrypto.KDFConfigForMetadata(container.KindMainVault, meta, opts.Scrypt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	key, err := vaultcrypto.DeriveKeyWithConfig(password, salt, cfg)
 	if err != nil {
 		t.Fatalf("DeriveKey: %v", err)
 	}

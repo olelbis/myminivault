@@ -84,17 +84,10 @@ func KDFConfigForContainer(parsed container.Parsed, fallback ScryptConfig) (KDFC
 	}
 }
 
-// ScryptConfigForContainer is kept for tests and legacy callers that only need
-// the old scrypt policy.
-func ScryptConfigForContainer(parsed container.Parsed, fallback ScryptConfig) (ScryptConfig, error) {
-	kdf, err := KDFConfigForContainer(parsed, fallback)
-	if err != nil {
-		return ScryptConfig{}, err
-	}
-	if kdf.Name != container.KDFScrypt {
-		return ScryptConfig{}, fmt.Errorf("container KDF %q is not scrypt", kdf.Name)
-	}
-	return kdf.Scrypt, nil
+// KDFConfigForMetadata validates the current container metadata for both writes
+// and reads, including the file-kind-specific HKDF context.
+func KDFConfigForMetadata(kind byte, meta container.Metadata, fallback ScryptConfig) (KDFConfig, error) {
+	return KDFConfigForContainer(container.Parsed{Version: container.Version, Kind: kind, Metadata: meta}, fallback)
 }
 
 func checkedUint32(value int, name string) (uint32, error) {

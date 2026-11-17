@@ -73,19 +73,6 @@ func HashKeyBytes(recovery *model.RecoveryData, key []byte) {
 	recovery.RecoveryKeyHash = hash[:]
 }
 
-// DecryptVault decrypts a recovery snapshot and validates that the provided
-// recovery key belongs to the embedded vault metadata.
-func DecryptVault(salt, encryptedData []byte, recoveryKey string, opts Options, aad ...[]byte) (*model.ExtendedVault, error) {
-	recoveryKeyBytes := []byte(recoveryKey)
-	defer wipeBytes(recoveryKeyBytes)
-	return DecryptVaultBytes(salt, encryptedData, recoveryKeyBytes, opts, aad...)
-}
-
-// DecryptVaultBytes decrypts a recovery snapshot using a byte-slice recovery key.
-func DecryptVaultBytes(salt, encryptedData []byte, recoveryKey []byte, opts Options, aad ...[]byte) (*model.ExtendedVault, error) {
-	return decryptVaultBytes(salt, encryptedData, recoveryKey, vaultcrypto.KDFConfig{Name: container.KDFScrypt, Scrypt: opts.Scrypt}, aad...)
-}
-
 // DecryptParsedVault decrypts a parsed recovery container using the container
 // KDF metadata when present and allowed by the loading policy.
 func DecryptParsedVault(parsed container.Parsed, recoveryKey []byte, opts Options) (*model.ExtendedVault, error) {

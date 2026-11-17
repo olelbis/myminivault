@@ -251,8 +251,9 @@ Primary risks:
 Current mitigations:
 
 - token expiry and max-use limits
-- v2 HMAC token signatures verified with the local token master key before shared-vault loading
-- legacy HMAC token signature compatibility after shared-vault loading
+- v3 HMAC-SHA256 token signatures verified before shared-vault loading, using a 32-byte HKDF-SHA256 subkey with empty salt and context `myminivault:compact-token-signing:v3`
+- signing and shared-vault encryption use distinct HKDF contexts; neither operation uses the raw token master key directly
+- six-field and v2 compact tokens are rejected before accessing token key material or loading the shared vault; revoke and reissue them with the master password
 - key-pattern and permission checks
 - encrypted shared token vault
 - usage-count persistence

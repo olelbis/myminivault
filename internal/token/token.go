@@ -125,7 +125,11 @@ func SaveEncryptedVault(vault *model.ExtendedVault, tokenVaultPath string, opts 
 	if meta.KDF != container.KDFHKDFSHA256 {
 		return fmt.Errorf("KDF %q is not allowed for new shared token vaults", meta.KDF)
 	}
-	key, err := vaultcrypto.DeriveKeyWithConfig(tokenKey, salt, kdfConfigFromMetadata(meta, opts.Scrypt))
+	kdfConfig, err := vaultcrypto.KDFConfigForMetadata(container.KindSharedTokenVault, meta, opts.Scrypt)
+	if err != nil {
+		return err
+	}
+	key, err := vaultcrypto.DeriveKeyWithConfig(tokenKey, salt, kdfConfig)
 	if err != nil {
 		return err
 	}
@@ -318,24 +322,6 @@ func containerMetadata(opts Options) container.Metadata {
 	return meta
 }
 
-func kdfConfigFromMetadata(meta container.Metadata, fallback vaultcrypto.ScryptConfig) vaultcrypto.KDFConfig {
-	if meta.KDF == container.KDFArgon2id {
-		return vaultcrypto.KDFConfig{
-			Name: container.KDFArgon2id,
-			Argon2id: vaultcrypto.Argon2idConfig{
-				MemoryKiB: meta.Argon2MemoryKiB,
-				Time:      meta.Argon2Time,
-				Threads:   meta.Argon2Threads,
-				KeySize:   uint32(meta.KeySize), // #nosec G115 -- metadata key size is validated by KDFConfigForContainer before use.
-			},
-		}
-	}
-	if meta.KDF == container.KDFHKDFSHA256 {
-		return vaultcrypto.HKDFSHA256Config("myminivault:"+container.KindName(container.KindSharedTokenVault), uint32(meta.KeySize)) // #nosec G115 -- metadata key size is validated by KDFConfigForContainer before use.
-	}
-	return vaultcrypto.KDFConfig{Name: container.KDFScrypt, Scrypt: fallback}
-}
-
 // GetOrCreateMasterKey loads the token master key or creates one when absent.
 func GetOrCreateMasterKey(opts Options) ([]byte, error) {
 	if key, err := LoadMasterKey(opts.TokenKeyFile); err == nil {
@@ -377,7 +363,7 @@ func StripChecksum(decrypted []byte) ([]byte, error) {
 }
 
 // ParseAndValidateProductionToken verifies a compact token, loads the shared
-// vault it grants access to, and persists the incremented usage count.
+// vault it grants access to. The caller consumes usage after a successful operation.
 func ParseAndValidateProductionToken(tokenStr, sharedTokenVault string, opts Options) (model.AccessToken, *model.ExtendedVault, error) {
 	tokenStr = AddBase64Padding(tokenStr)
 
@@ -390,15 +376,14 @@ func ParseAndValidateProductionToken(tokenStr, sharedTokenVault string, opts Opt
 	}
 
 	parts := strings.Split(string(decoded), ":")
-	versioned := len(parts) == 7 && parts[0] == "v2"
-	if len(parts) != 6 && !versioned {
-		return model.AccessToken{}, nil, errors.New("malformed token structure")
+	if len(parts) == 6 || (len(parts) == 7 && parts[0] == "v2") {
+		return model.AccessToken{}, nil, errors.New("retired token format; revoke the old token and create a new token with the master password")
+	}
+	if len(parts) != 7 || parts[0] != "v3" {
+		return model.AccessToken{}, nil, errors.New("malformed token structure or unsupported token version")
 	}
 
-	offset := 0
-	if versioned {
-		offset = 1
-	}
+	const offset = 1
 	tokenID := parts[offset]
 	keyPattern := parts[offset+1]
 	expiresUnix, err := strconv.ParseInt(parts[offset+2], 10, 64)
@@ -413,15 +398,18 @@ func ParseAndValidateProductionToken(tokenStr, sharedTokenVault string, opts Opt
 	providedSignature := parts[offset+5]
 	payload := strings.Join(parts[:offset+5], ":")
 
-	if versioned {
-		tokenKey, err := masterKey(opts)
-		if err != nil {
-			return model.AccessToken{}, nil, fmt.Errorf("failed to get token master key: %w", err)
-		}
-		defer wipeBytes(tokenKey)
-		if !validTokenSignature(payload, providedSignature, tokenKey) {
-			return model.AccessToken{}, nil, errors.New("invalid token signature - token may be forged")
-		}
+	tokenKey, err := masterKey(opts)
+	if err != nil {
+		return model.AccessToken{}, nil, fmt.Errorf("failed to get token master key: %w", err)
+	}
+	defer wipeBytes(tokenKey)
+	signingKey, err := tokenSigningKey(tokenKey)
+	if err != nil {
+		return model.AccessToken{}, nil, err
+	}
+	defer wipeBytes(signingKey)
+	if !validTokenSignature(payload, providedSignature, signingKey) {
+		return model.AccessToken{}, nil, errors.New("invalid token signature - token may be forged")
 	}
 
 	vault, err := LoadEncryptedVault(sharedTokenVault, opts)
@@ -446,11 +434,6 @@ func ParseAndValidateProductionToken(tokenStr, sharedTokenVault string, opts Opt
 	if !tokenClaimsMatch(storedToken, keyPattern, expiresUnix, permissions, maxUses) {
 		return model.AccessToken{}, nil, errors.New("token claims do not match registry")
 	}
-
-	if !versioned && !validTokenSignature(payload, providedSignature, vault.TokenManager.SecretKey) {
-		return model.AccessToken{}, nil, errors.New("invalid token signature - token may be forged")
-	}
-
 	return storedToken, vault, nil
 }
 
@@ -513,44 +496,33 @@ func GenerateShortRandomID() string {
 	return strings.TrimRight(base64.URLEncoding.EncodeToString(b), "=")
 }
 
-// CreateShortSignedToken serializes and signs a token into the compact form
-// shown to users.
-func CreateShortSignedToken(token model.AccessToken, secretKey []byte) (string, error) {
-	payload := fmt.Sprintf("%s:%s:%d:%s:%d",
-		token.TokenID,
-		token.KeyPattern,
-		token.ExpiresAt.Unix(),
-		strings.Join(token.Permissions, ","),
-		token.MaxUses)
-
-	h := hmac.New(sha256.New, secretKey)
-	h.Write([]byte(payload))
-	signature := h.Sum(nil)
-
-	tokenData := payload + ":" + base64.StdEncoding.EncodeToString(signature)
-
-	encoded := base64.URLEncoding.EncodeToString([]byte(tokenData))
-	return strings.TrimRight(encoded, "="), nil
+// tokenSigningKey separates token authentication from shared-vault encryption.
+func tokenSigningKey(tokenMasterKey []byte) ([]byte, error) {
+	if len(tokenMasterKey) != 32 {
+		return nil, errors.New("invalid token master key length")
+	}
+	return vaultcrypto.DeriveKeyWithConfig(tokenMasterKey, nil,
+		vaultcrypto.HKDFSHA256Config("myminivault:compact-token-signing:v3", 32))
 }
 
-// CreateShortSignedTokenV2 signs a compact token with the local token master
-// key so forged inputs can be rejected before loading the shared token vault.
-func CreateShortSignedTokenV2(token model.AccessToken, tokenMasterKey []byte) (string, error) {
-	payload := fmt.Sprintf("v2:%s:%s:%d:%s:%d",
+// CreateShortSignedToken signs a v3 token with a dedicated HKDF signing subkey.
+func CreateShortSignedToken(token model.AccessToken, tokenMasterKey []byte) (string, error) {
+	signingKey, err := tokenSigningKey(tokenMasterKey)
+	if err != nil {
+		return "", err
+	}
+	defer wipeBytes(signingKey)
+	payload := fmt.Sprintf("v3:%s:%s:%d:%s:%d",
 		token.TokenID,
 		token.KeyPattern,
 		token.ExpiresAt.Unix(),
 		strings.Join(token.Permissions, ","),
 		token.MaxUses)
 
-	h := hmac.New(sha256.New, tokenMasterKey)
+	h := hmac.New(sha256.New, signingKey)
 	h.Write([]byte(payload))
-	signature := h.Sum(nil)
-
-	tokenData := payload + ":" + base64.StdEncoding.EncodeToString(signature)
-
-	encoded := base64.URLEncoding.EncodeToString([]byte(tokenData))
-	return strings.TrimRight(encoded, "="), nil
+	tokenData := payload + ":" + base64.StdEncoding.EncodeToString(h.Sum(nil))
+	return strings.TrimRight(base64.URLEncoding.EncodeToString([]byte(tokenData)), "="), nil
 }
 
 // IsExpiredOrUsedUp reports whether a token should be rejected for time or

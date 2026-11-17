@@ -360,6 +360,8 @@ Token access uses:
 
 ### Create Token
 
+New compact tokens use the `v3` format and a dedicated signing subkey. Tokens from older versions (six-field legacy tokens and `v2`) are no longer accepted. Use the master password to identify and revoke their records with `list-tokens` and `revoke-token <token-id>`, then run `create-token` again with the required scope, permissions, duration, and max uses. Update scripts and token files with the new value. Existing strings cannot be converted; saving or syncing the vault does not renew them. This change does not require regenerating the token master key or migrating encrypted vault files.
+
 ```bash
 ./bin/vault create-token --keys="API_*" --duration="2h" --permissions="read" --max-uses=20
 ```
