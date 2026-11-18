@@ -157,3 +157,12 @@ Linux non-CGO cross-build, Darwin non-CGO fallback tests, gofmt, documentation
 links, and diff checks passed. See `docs/coverage.md` for the final profile.
 No real Keychain, power-loss, remote CI, packaging install, or release test is
 claimed. The user subsequently authorized commit, push, and PR creation. CI review and merge remain with the user; cleanup requires a separate post-merge go-ahead. No release is authorized.
+
+
+## Merge And Closure
+
+PR #22 merged on 2026-11-18 as `190c422`. CI and Security Scanning completed
+successfully, including CodeQL analysis/upload. The user authorized post-merge
+cleanup; local main was fast-forwarded and the task branch removed locally and
+remotely. Live isolated Keychain validation remains the next task. No release
+was prepared or published.
