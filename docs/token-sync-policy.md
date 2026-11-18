@@ -167,3 +167,32 @@ write failures; no live personal Keychain access or end-to-end OS ACL test is
 claimed. `doctor` authenticates token ciphertext with a read-only provider,
 wipes the plaintext buffer, and neither decodes nor prints its secret values.
 `inspect-runtime` remains a non-decrypting inventory.
+
+## Token Root Storage Hardening (SR-1–SR-3)
+
+macOS writes now call Security.framework with an in-memory Base64 buffer; item
+service and encoding remain compatible. Reads still use `security`. Permission
+prompts may differ because the writer is now the vault executable. Builds need
+CGO and the Apple SDK for writes; non-CGO builds fail clearly without file fallback.
+Native ACL/prompt behavior still requires isolated live validation. The native
+update/add flow follows [Apple's Keychain update API](https://developer.apple.com/documentation/security/updating-and-deleting-keychain-items).
+
+Accounts use the absolute path with the parent directory's aliases resolved.
+A missing canonical account falls back read-only to the original path spelling.
+Keep the original `MYMINIVAULT_HOME` spelling for the first authenticated token
+creation after upgrade: it copies and verifies the legacy item, authenticating
+any existing token snapshot first. It never removes a legacy account, which may
+serve another runtime. The canonical item takes precedence; an existing mismatch
+blocks reconciliation. Rotations write only the canonical account. Copies from
+a legacy shared account initially retain the same root; rotate each migrated
+runtime to establish independent key material. No automatic enumeration or
+search of unrelated Keychain accounts occurs.
+
+File roots use exclusive random 0600 staging, file synchronization, atomic rename,
+and parent-directory synchronization before success. Handled failures remove
+staging; a crash may leave `.myminivault-token-key-*` files. They are sensitive,
+never adopted automatically, and may be removed after verifying the published
+key and snapshot in an authenticated runtime. A directory-sync failure is reported
+even if the complete new key is already visible; the reconciliation barrier stays
+in place so normal authenticated repair/retry applies. This is filesystem crash
+consistency, not a physical-erasure guarantee.

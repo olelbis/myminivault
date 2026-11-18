@@ -45,7 +45,7 @@ func LoadMasterKey(tokenKeyFile string) ([]byte, error) {
 		return nil, err
 	}
 
-	key, err := os.ReadFile(tokenKeyFile)
+	key, err := vaultpaths.ReadFileChecked(tokenKeyFile)
 	if err != nil {
 		return nil, err
 	}
@@ -59,10 +59,11 @@ func LoadMasterKey(tokenKeyFile string) ([]byte, error) {
 
 // SaveMasterKey writes the local token master key with owner-only permissions.
 func SaveMasterKey(tokenKeyFile string, key []byte) error {
-	if err := vaultpaths.WriteFileChecked(tokenKeyFile, key, 0600); err != nil {
-		return err
+	if len(key) != 32 {
+		return errors.New("invalid token key length")
 	}
-	return os.Chmod(tokenKeyFile, 0600)
+	return saveMasterKeyAtomic(tokenKeyFile, key)
+
 }
 
 // LoadRegistry reads token registry metadata or returns an empty registry when

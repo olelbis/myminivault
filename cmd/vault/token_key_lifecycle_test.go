@@ -21,28 +21,24 @@ func useLifecycleKeychain(t *testing.T, key []byte) *fakeLifecycleKeychain {
 	original := tokenKeyStore
 	t.Cleanup(func() { tokenKeyStore = original })
 	fake := &fakeLifecycleKeychain{key: append([]byte(nil), key...)}
-	tokenKeyStore = keychain.Store{Detector: keychain.Detector{GOOS: "darwin", LookPath: func(string) (string, error) { return "/fake/security", nil }}, Run: func(_ string, args ...string) ([]byte, error) {
+	tokenKeyStore = keychain.Store{Detector: keychain.Detector{GOOS: "darwin", LookPath: func(string) (string, error) { return "/fake/security", nil }}, Save: func(_ string, encoded []byte) error {
+		if fake.failSave {
+			return errors.New("test Keychain write failure")
+		}
+		k, err := base64.StdEncoding.DecodeString(string(encoded))
+		if err != nil {
+			return err
+		}
+		fake.key = k
+		fake.writes++
+		return nil
+	}, Run: func(_ string, args ...string) ([]byte, error) {
 		switch args[0] {
 		case "find-generic-password":
 			if len(fake.key) == 0 {
 				return []byte("The specified item could not be found"), errors.New("test item missing")
 			}
 			return []byte(base64.StdEncoding.EncodeToString(fake.key)), nil
-		case "add-generic-password":
-			if fake.failSave {
-				return nil, errors.New("test Keychain write failure")
-			}
-			for i, arg := range args {
-				if arg == "-w" && i+1 < len(args) {
-					raw, err := base64.StdEncoding.DecodeString(args[i+1])
-					if err != nil {
-						return nil, err
-					}
-					fake.key = raw
-					fake.writes++
-					return nil, nil
-				}
-			}
 		}
 		return nil, errors.New("unexpected test Keychain operation")
 	}}
