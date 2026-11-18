@@ -15,6 +15,7 @@ import (
 	"github.com/olelbis/myminivault/internal/keychain"
 	vaultpaths "github.com/olelbis/myminivault/internal/paths"
 	vaultrollback "github.com/olelbis/myminivault/internal/rollback"
+	vaulttoken "github.com/olelbis/myminivault/internal/token"
 )
 
 type doctorCheck struct {
@@ -32,6 +33,7 @@ func handleDoctorCommand() {
 		checkConfigHealth(),
 		checkLockFileHealth(),
 		checkTokenKeyStorageHealth(),
+		checkTokenKeyVaultConsistency(),
 		checkBackupHealth(),
 		checkRecoveryFreshness(),
 		checkRecoveryCompatibility(),
@@ -358,4 +360,37 @@ func doctorIcon(status string) string {
 
 func formatDoctorTime(t time.Time) string {
 	return t.Format(time.RFC3339)
+}
+
+func checkTokenKeyVaultConsistency() doctorCheck {
+	check := doctorCheck{name: "token key/vault consistency", status: "OK", detail: "shared token vault not present"}
+	if _, err := os.Lstat(sharedTokenVault + ".reconcile"); err == nil {
+		check.status = "FAIL"
+		check.detail = "interrupted token reconciliation; run vault sync-tokens with the master password"
+		return check
+	} else if !os.IsNotExist(err) {
+		check.status = "FAIL"
+		check.detail = err.Error()
+		return check
+	}
+	path, err := sharedTokenStatePath()
+	if path == "" && err == nil {
+		return check
+	}
+	if err != nil {
+		check.status = "FAIL"
+		check.detail = err.Error()
+		return check
+	}
+	if err := vaulttoken.CheckEncryptedVaultKey(path, tokenOptions()); err != nil {
+		check.status = "FAIL"
+		check.detail = "cannot decrypt shared token vault with configured token key: " + err.Error()
+		return check
+	}
+	check.detail = "shared token vault authenticates with the existing token key"
+	if path != sharedTokenVault {
+		check.status = "WARN"
+		check.detail = "active token snapshot missing; authenticated recovery copy found; run vault sync-tokens"
+	}
+	return check
 }

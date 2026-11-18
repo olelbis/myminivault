@@ -45,6 +45,21 @@ source paths. All 34 CLI smoke scenarios also passed in both the regular and
 race test suites; their separately compiled subprocess binary remains
 uninstrumented. Historical measurements above remain unchanged.
 
+On 2026-11-17, the critical token/shared-vault follow-up measured `85.8%`
+(1,247 of 1,453 statements) for `./internal/...` with Go `1.27.3` on macOS
+arm64. The successful full race run used a separate build cache:
+
+```bash
+GOCACHE=/tmp/myminivault-critical-gocache go test -race -count=1 -covermode=atomic -coverprofile=/tmp/myminivault-critical-final-coverage.out ./...
+```
+
+The internal figure filters the resulting profile to
+`github.com/olelbis/myminivault/internal/` source paths and was confirmed with
+`go tool cover -func`. The regular full suite, all 35 CLI smoke scenarios,
+focused final lifecycle/race tests, `go vet`, and Staticcheck `v0.8.2` passed.
+The separately compiled CLI smoke subprocess remains uninstrumented. Historical
+measurements above retain their original date, scope, and toolchain.
+
 CI enforces an internal package coverage floor of `80.0%`. Full repository coverage remains informational because subprocess-based CLI smoke tests protect real behavior without raising statement coverage in `cmd/vault`.
 
 As command-independent logic moves into `internal/...` packages, `cmd/vault` should become thinner while internal package coverage remains the main quality signal.

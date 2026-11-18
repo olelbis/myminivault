@@ -11,6 +11,34 @@ import (
 	vaulttoken "github.com/olelbis/myminivault/internal/token"
 )
 
+var tokenKeyStore = keychain.Store{}
+
+// loadTokenMasterKey never creates or migrates key material.
+func loadTokenMasterKey() ([]byte, error) {
+	useKeychain, err := shouldUseTokenKeychain()
+	if err != nil {
+		return nil, err
+	}
+	if useKeychain {
+		key, err := tokenKeyStore.LoadTokenKey(tokenKeyFile)
+		if !errors.Is(err, keychain.ErrNotFound) {
+			return key, err
+		}
+	}
+	return vaulttoken.LoadMasterKey(tokenKeyFile)
+}
+
+func ensureTokenKeyCanBeCreated() error {
+	for _, path := range []string{sharedTokenVault, sharedTokenVault + ".bak", sharedTokenVault + ".tmp"} {
+		if _, err := os.Lstat(path); err == nil {
+			return errors.New("existing token state requires its original key; restore the key before proceeding")
+		} else if !os.IsNotExist(err) {
+			return err
+		}
+	}
+	return nil
+}
+
 func getOrCreateTokenMasterKey() ([]byte, error) {
 	if useKeychain, err := shouldUseTokenKeychain(); err != nil {
 		return nil, err
@@ -23,6 +51,9 @@ func getOrCreateTokenMasterKey() ([]byte, error) {
 		return nil, fmt.Errorf("failed to load token master key: %w", err)
 	}
 
+	if err := ensureTokenKeyCanBeCreated(); err != nil {
+		return nil, err
+	}
 	fmt.Println("🔑 Generating secure token master key...")
 	key := generateRandom(32)
 
@@ -38,13 +69,13 @@ func saveTokenMasterKey(key []byte) error {
 	if useKeychain, err := shouldUseTokenKeychain(); err != nil {
 		return err
 	} else if useKeychain {
-		return keychain.Store{}.SaveTokenKey(tokenKeyFile, key)
+		return tokenKeyStore.SaveTokenKey(tokenKeyFile, key)
 	}
 	return vaulttoken.SaveMasterKey(tokenKeyFile, key)
 }
 
 func shouldUseTokenKeychain() (bool, error) {
-	result := keychain.Detect(keychain.Detector{})
+	result := keychain.Detect(tokenKeyStore.Detector)
 
 	switch config.TokenKeyStorage {
 	case vaultconfig.TokenKeyStorageFile:
@@ -63,7 +94,7 @@ func shouldUseTokenKeychain() (bool, error) {
 }
 
 func getOrCreateKeychainTokenMasterKey() ([]byte, error) {
-	store := keychain.Store{}
+	store := tokenKeyStore
 	if key, err := store.LoadTokenKey(tokenKeyFile); err == nil {
 		return key, nil
 	} else if !errors.Is(err, keychain.ErrNotFound) {
@@ -84,6 +115,9 @@ func getOrCreateKeychainTokenMasterKey() ([]byte, error) {
 		return nil, fmt.Errorf("failed to load token master key for migration: %w", err)
 	}
 
+	if err := ensureTokenKeyCanBeCreated(); err != nil {
+		return nil, err
+	}
 	fmt.Println("🔑 Generating secure token master key in macOS Keychain...")
 	key := generateRandom(32)
 	if err := store.SaveTokenKey(tokenKeyFile, key); err != nil {

@@ -26,28 +26,31 @@ type AccessToken struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
-// TokenManager stores token access grants and the signing key used to verify
-// compact token strings. It lives inside the encrypted shared token vault.
+// TokenManager stores token grants and counters inside encrypted vaults.
+// SecretKey is retained only for historical payload compatibility; v3 signing
+// uses a dedicated subkey derived from the external token master key.
 type TokenManager struct {
 	Tokens    map[string]AccessToken `json:"tokens"`
-	SecretKey []byte                 `json:"secret_key"`
+	SecretKey []byte                 `json:"secret_key,omitempty"`
 }
 
 // ExtendedVault is the encrypted vault payload schema. Keep JSON field names
 // stable unless a migration path is added.
 type ExtendedVault struct {
-	Data         map[string]string `json:"data"`
-	Recovery     *RecoveryData     `json:"recovery,omitempty"`
-	TokenManager *TokenManager     `json:"token_manager,omitempty"`
-	Sync         *SyncMetadata     `json:"sync,omitempty"`
-	Metadata     VaultMetadata     `json:"metadata"`
+	Data              map[string]string `json:"data"`
+	TokenStateVersion int               `json:"token_state_version,omitempty"`
+	Recovery          *RecoveryData     `json:"recovery,omitempty"`
+	TokenManager      *TokenManager     `json:"token_manager,omitempty"`
+	Sync              *SyncMetadata     `json:"sync,omitempty"`
+	Metadata          VaultMetadata     `json:"metadata"`
 }
 
 // SyncMetadata tracks local best-effort update and deletion timestamps used
 // when reconciling the main vault with the shared token vault.
 type SyncMetadata struct {
-	UpdatedAt map[string]time.Time `json:"updated_at,omitempty"`
-	DeletedAt map[string]time.Time `json:"deleted_at,omitempty"`
+	PendingWrites map[string]bool      `json:"pending_writes,omitempty"`
+	UpdatedAt     map[string]time.Time `json:"updated_at,omitempty"`
+	DeletedAt     map[string]time.Time `json:"deleted_at,omitempty"`
 }
 
 // VaultMetadata records basic schema and usage information for the encrypted

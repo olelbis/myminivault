@@ -119,6 +119,9 @@ func runtimeHealthFileSpecs() []runtimeFileSpec {
 		{name: vaultFileName + ".recovery", path: vaultFile + ".recovery", mode: 0600},
 		{name: tokenKeyFileName, path: tokenKeyFile, mode: 0600},
 		{name: sharedTokenVaultName, path: sharedTokenVault, mode: 0600},
+		{name: sharedTokenVaultName + ".bak", path: sharedTokenVault + ".bak", mode: 0600},
+		{name: sharedTokenVaultName + ".tmp", path: sharedTokenVault + ".tmp", mode: 0600},
+		{name: sharedTokenVaultName + ".reconcile", path: sharedTokenVault + ".reconcile", mode: 0600},
 		{name: tokenRegistryName, path: tokenRegistry, mode: 0600},
 		{name: rollbackStateName, path: rollbackStateFile, mode: 0600},
 		{name: logFileName, path: logFile, mode: 0600},
@@ -241,5 +244,6 @@ func isEncryptedContainerRuntimeFile(name string) bool {
 		name == vaultFileName+".bak" ||
 		name == vaultFileName+".recovery" ||
 		name == sharedTokenVaultName ||
+		name == sharedTokenVaultName+".bak" || name == sharedTokenVaultName+".tmp" ||
 		(strings.HasPrefix(name, vaultFileName+".") && strings.HasSuffix(name, ".bak"))
 }

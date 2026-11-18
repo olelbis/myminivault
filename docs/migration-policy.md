@@ -55,6 +55,10 @@ This retirement applies to short-lived bearer credentials (maximum lifetime:
 24 hours), not encrypted vault containers. The encrypted-file compatibility
 and sunset policy above remains in force; no vault-file migration is needed.
 
+## Scoped Shared Token State
+
+On upgrade, run `vault sync-tokens` with the master password. It reconciles legacy counters and authorized write scopes, removes unrelated mirrored values/metadata and obsolete snapshots, and writes `token_state_version: 1` with explicit pending-write metadata. Existing v3 strings need no reissue solely for this state upgrade. Token commands reject unscoped state until authenticated reconciliation succeeds. Encrypted container formats and their compatibility fixtures remain unchanged.
+
 ## Compatibility Fixtures
 
 The compatibility fixture corpus lives in

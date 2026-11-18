@@ -1,160 +1,169 @@
 # Token And Shared Vault Sync Policy
 
-This document records the current `myminivault` token synchronization policy. It is intentionally explicit because this is one of the most subtle parts of the project.
-
 ## Summary
 
-Current decision: keep automatic import of token writes before master-password commands, keep `sync-tokens` as an explicit manual import command, and use per-key sync timestamps when available to avoid stale shared-vault overwrites.
+The password-protected main vault is the source of token grants. The shared
+vault contains the union of active **read** scopes, plus authorized token
+writes awaiting import. A write-only grant does not copy existing values into
+the mirror. Scopes and read/write permissions are CLI checks, not separate
+cryptographic compartments for each token.
 
-Per-key update timestamps and delete markers are stored as sync metadata. There are still no revision counters, merge bases, or distributed conflict-resolution records.
+Master-password commands reconcile pending writes and monotonic usage counts
+before rebuilding the mirror. The main copy becomes durable before shared
+state is discarded. This is local synchronization, without a merge base or
+distributed conflict resolution.
 
 ## Runtime Files
 
-Token sync files are resolved inside the active runtime home. By default this is `~/.myminivault/`; set `MYMINIVAULT_HOME=/path/to/dir` to use an isolated runtime home.
+All paths resolve under the active runtime home (`MYMINIVAULT_HOME` or
+`~/.myminivault/`):
 
-Use `vault inspect-runtime` to confirm which runtime home contains `shared-token-vault.json`, `vault-token.key` when file-backed token key storage is used, and `vault-tokens.json` before troubleshooting token sync behavior.
+- `vault.db`: master-password-encrypted main vault and token grants.
+- `shared-token-vault.json`: token-key-encrypted scoped values, grants, usage,
+  update/deletion metadata, and pending-write markers.
+- `vault-token.key`: the token master key for the file backend.
+- `vault-tokens.json`: grant-to-path metadata, without bearer tokens or values.
+- `shared-token-vault.json.reconcile`: a non-secret durable interruption marker.
 
-Token synchronization uses two encrypted vault files:
+The token master key derives distinct HKDF-SHA256 encryption and signing
+subkeys. Encryption uses `myminivault:shared-token-vault` with a per-file salt;
+v3 HMAC-SHA256 signing uses `myminivault:compact-token-signing:v3` with empty
+salt. Six-field and v2 tokens remain retired and require revocation/reissue.
 
-- `vault.db`: the main master-password vault
-- `shared-token-vault.json`: the encrypted shared vault used by token commands
+A `.bak` exists only during atomic replacement. Successful saves remove it;
+cleanup also removes obsolete `.tmp` files. On an interrupted rename, an
+authenticated master command can reconcile the backup, or initial staging
+file, before rebuilding. An unreadable snapshot or key error aborts the
+operation instead of generating a replacement key or overwriting the state.
+Copied snapshots outside the runtime directory cannot be removed by the CLI.
 
-Token metadata also uses:
+Legacy migration moves a reconciliation marker before token/main state. It
+preserves interrupted bundles instead of mixing them into an occupied runtime,
+and recognizes directory aliases as the same context. Inventory and permission
+checks include the marker, backup, and staging snapshot. Authenticated rebuilds
+remove stale staging only after the main copy is durable.
 
-- `vault-token.key`: local token master key when file-backed token key storage is used
-- `vault-tokens.json`: token registry metadata
+Scoping and unlinking old snapshots do not guarantee physical erasure or undo
+previously copied file-key/full-mirror pairs. After an actual compromise,
+rotate exposed secret values as well as the token key.
 
-`vault-token.key` is critical token-system material when present. Current shared-token vault saves derive encryption keys from that high-entropy token master key with HKDF-SHA256. New compact tokens use v3 HMAC-SHA256 signatures with a dedicated 32-byte HKDF-SHA256 subkey (empty salt, context `myminivault:compact-token-signing:v3`). Shared-vault encryption keeps its separate `myminivault:shared-token-vault` context and per-file salt. Forged v3 token strings are rejected before the shared token vault is loaded. Six-field legacy tokens and v2 tokens are retired: validation rejects them before accessing the token key or shared vault and asks the owner to revoke and reissue them using the master password. There is no signature fallback or automatic conversion. If the token master key is exposed, regenerate it and treat existing compact tokens and shared-token-vault state as compromised. On macOS, `token_key_storage=auto` can store token master-key material in Keychain instead. See [Security Model](security.md#token-flow) for the broader token threat model.
+## Upgrade Existing Token State
+
+Run `vault sync-tokens` with the master password after upgrading. It reconciles
+old counters and authorized writes, removes unrelated mirrored values and
+metadata, and writes `token_state_version: 1`. Token commands require this
+scoped state; existing v3 bearer strings remain valid subject to their grants,
+expiry, and usage. Legacy containers remain readable through the documented
+container migration policy.
+
+Legacy full mirrors have no dirty-key markers. Their one-time import is
+limited to unchanged write grants known to both main and shared vaults. New
+state imports only keys explicitly marked in `sync.pending_writes`.
 
 ## Current Flow
 
 ### Master-Password Commands
 
-When a command uses the master password, the CLI:
+1. Decrypt the main vault and check rollback policy.
+2. Authenticate shared state using the existing token key; check vault identity.
+3. Import only authorized pending writes and merge usage with `max(main, shared)`
+   for existing, unchanged grants. Never add grants from the shared vault.
+4. Create a durable reconciliation marker. Clean expired/exhausted grants and
+   persist imported data/counters before executing the requested command.
+5. Save command changes, rebuild the scoped mirror, update registry metadata,
+   and remove the marker after successful completion.
 
-1. loads and decrypts `vault.db`
-2. imports staged token writes from `shared-token-vault.json` if it exists
-3. cleans up expired or fully used tokens
-4. runs the requested command
-5. saves `vault.db` when the command mutates state
-6. mirrors the main vault back to `shared-token-vault.json` for `set`, `delete`, `clear`, and `import`
-
-Read-only commands such as `get`, `list`, `search`, `export`, and `stats` import token writes into memory before running, but they do not save `vault.db`.
-
-Main-vault mutations mark per-key sync metadata:
-
-- `set` marks the key as updated
-- `delete` marks the key as deleted
-- `clear` marks existing keys as deleted
-- `import` marks imported keys as updated
+Read commands also persist imported changes. When no active grants remain,
+after pending writes/counters are saved, the shared file and obsolete snapshots
+are removed. No token key is created by ordinary reads, diagnostics, or sync.
+A new key is created only through explicit token creation or authenticated
+regeneration. Token creation can migrate an existing file key to Keychain;
+read-only compatibility lookup does not migrate it.
 
 ### Token Commands
 
-Token commands use `shared-token-vault.json` directly.
+Token `get`, `list`, and `search` read the scoped mirror. Token `set` marks its
+key as pending and saves it with the usage increment before returning success.
+Unauthorized or failed operations do not return secret values.
 
-Token `get`, `list`, and `search` read from the shared token vault.
-
-Token `set` writes immediately to the shared token vault. The write becomes visible to the main vault when:
-
-- a master-password command imports staged token writes, or
-- the user runs `sync-tokens`
-
-Token commands also support `--json` for third-party subprocess callers. JSON output changes the command presentation only; it does not change token validation, sync, expiry, max-use, or permission semantics. JSON token failures return a non-zero process status while keeping stdout parseable.
+A final-use write must survive until a master can save it. Therefore exhausted
+grant counters and authorized pending values may remain in shared state until
+reconciliation, even with no usable grants. Other values outside active read
+scopes are dropped on the next successful token save or master reconciliation.
+Expiry does not erase bytes from an idle filesystem automatically.
 
 ## `sync-tokens`
 
-`sync-tokens` imports staged token writes from `shared-token-vault.json` into the main vault and then saves `vault.db`.
+`vault sync-tokens` reconciles data and usage and refreshes the scoped state.
+`vault sync-tokens --dry-run` previews authorized data changes and counter
+updates without saving vaults, changing keys, cleaning grants, or removing an
+interruption marker. Use the normal command to complete a pending reconciliation.
 
-It is useful when the user wants to make token writes durable in the main vault immediately instead of waiting for another master-password command.
-
-`sync-tokens --dry-run` applies the same import policy as a preview only. It reports keys that would be imported or updated, deleted keys, skipped conflicts, and legacy metadata fallback decisions, then exits without saving `vault.db`, `shared-token-vault.json`, or `rollback-state.json`.
+JSON token `set` responses retain `sync_required: true` and
+`sync_command: "vault sync-tokens"` until the owner imports the staged write.
 
 ## Conflict Policy
 
-Current conflict behavior is timestamp-aware when both sides have sync metadata.
+Only authorized dirty values participate in current-state import. The newer
+per-key update wins when both sides have timestamps. A main deletion tombstone
+blocks missing or older/equal shared timestamps before legacy fallback is
+considered. A genuinely newer authorized write may intentionally recreate a
+key. Unknown grants, modified claims, and read-only grants cannot import writes.
 
-If both the main vault and shared token vault have update timestamps for a key, the newer timestamp wins. If the shared token vault contains an older value for a key that was updated more recently in the main vault, the import skips that shared value and prints a warning.
+## Interrupted Operations
 
-Legacy vaults without sync metadata keep the previous import behavior for compatibility. When an import decision uses that fallback path, the CLI reports that legacy sync metadata fallback was used so the user understands that the decision was not fully timestamp-based.
+The reconciliation marker blocks token validation until authenticated repair.
+This covers interruption between saving a master revocation/delete and updating
+the shared mirror, or failure while saving token usage. `doctor` reports the
+marker as a failure. Run `vault sync-tokens` with the master password after
+resolving reported filesystem/key errors. Do not delete the marker merely to
+bypass the check: it protects against stale token grants and data.
 
-There is still no merge base or rich conflict object. If metadata is absent or incomplete, behavior falls back to simple import semantics.
+## Restore, Recovery, And Key Rotation
 
-This policy is local and best-effort. It should not be described as multi-device sync, distributed conflict resolution, or a shared source of truth.
+`restore` first preserves pending writes and usage in the pre-restore main-vault
+backup, then clears shared state and restores a freshly encrypted candidate
+with all token grants removed. If the current main copy is missing or cannot
+be opened with the backup password, readable token state is preserved in a
+private `.myminivault-restore-tokens-*` archive encrypted with that password.
+Ordinary commands refuse to initialize a new vault over orphaned token state.
+A subsequent import cannot undo the restore; restoring a backup cannot
+reactivate its bearer tokens.
 
-## Practical Examples
+`regenerate-token-key` now requires the master password and confirmation. It
+persists pending writes, revokes grants, removes shared snapshots, and replaces
+the key. An error leaves token use blocked until authenticated reconciliation;
+it does not report successful rotation with an unreadable shared vault.
+After a key-store write failure, retry regeneration once the backend is fixed;
+`sync-tokens` can repair state consistency but does not replace the token key.
 
-### Token write, then explicit sync
+Password recovery also revokes snapshot-era grants. Before replacement it
+preserves readable shared state separately in a private
+`.myminivault-recovery-tokens-*` directory, encrypted with the **new** password.
+This archive is not automatically imported into the recovered snapshot. To
+inspect it, restore it in an isolated runtime with the new password; keep it
+protected like other vault backups. If shared state cannot be read, recovery
+stops before replacing the main vault so the original state is preserved.
 
-If a token writes a value, the change is saved immediately in `shared-token-vault.json`:
+## Keychain And Remaining Boundaries
 
-```bash
-vault use-token "$TOKEN" set API_KEY new-value
-```
+With file-backed storage, copying the token key and shared snapshot exposes
+all retained read scopes and pending writes. It does not provide the main
+password or unrelated main-vault values. Separate per-token encryption keys
+were evaluated: they require a different capability/key-distribution and
+pending-write format and are deferred to a dedicated design review. The current
+shared key provides no cryptographic isolation between token holders who can
+obtain that key. Deriving per-token keys from the same exposed root would not
+change this boundary. A candidate stronger design places an independent random
+capability key in each bearer token, keeps owner copies inside the password-
+protected main vault, and separates encrypted snapshots and write queues by
+grant. Its format, revocation, backup, and crash-recovery semantics need review
+before implementation.
 
-The main vault is updated when the user runs:
-
-```bash
-vault sync-tokens
-```
-
-or when a later master-password command imports staged token writes.
-
-To inspect the pending effect first:
-
-```bash
-vault sync-tokens --dry-run
-```
-
-### Newer main value wins
-
-If `vault.db` has `API_KEY=main-new` with newer sync metadata and `shared-token-vault.json` has `API_KEY=token-old` with older metadata, import skips the shared value and keeps the main value.
-
-The CLI reports a skipped older token conflict.
-
-### Newer shared value wins
-
-If `shared-token-vault.json` has `API_KEY=token-new` with newer sync metadata than the main vault, import copies that value into the main vault and records a fresh main-vault update timestamp.
-
-### Legacy metadata fallback
-
-If either side lacks per-key sync metadata, the importer keeps compatibility with older vaults and uses the previous simple import behavior. This can overwrite the main value because there is no reliable per-key timestamp to compare.
-
-The CLI reports that legacy metadata fallback was used. After the next successful save, current metadata is written and future decisions can use the timestamp-aware path.
-
-### Doctor warning for staged token writes
-
-If `shared-token-vault.json` is newer than `vault.db`, `vault doctor` reports how far ahead the shared token vault appears to be and suggests `vault sync-tokens`. This usually means token writes may be staged but not yet persisted into the main vault.
-
-## Delete Semantics
-
-Deletes from master-password commands are marked in sync metadata and remain authoritative after the main vault is mirrored back to the shared token vault.
-
-This means a deleted key is removed from the shared token vault when a mutating master-password command saves and mirrors the main vault.
-
-Delete markers are stored as per-key timestamps. They are not yet a full distributed tombstone system, but they let the importer compare delete time with update time when metadata is present.
-
-## Why Keep Automatic Import For Now
-
-Automatic import makes token writes easier to use:
-
-- token-set values are picked up by normal master-password workflows
-- users do not need to remember `sync-tokens` after every token write
-- existing CLI smoke tests already protect this behavior
-
-The cost is complexity:
-
-- users must understand that read-only master commands may show staged token writes without saving them to `vault.db`
-- conflicts are represented only by per-key timestamps, not by a full merge record
-- future multi-device or remote sync would need a stronger model
-
-## Deferred Decisions
-
-Future work may revisit:
-
-- requiring explicit `sync-tokens` for all token writes
-- adding revision counters or merge-base records
-- upgrading delete markers into explicit tombstones if sync becomes more distributed
-- separating staged token writes from full shared vault mirroring
-- changing command output to show when token writes were imported
-
-Until then, documentation and command output should describe the automatic import behavior clearly.
+macOS Keychain can remove the adjacent key-file exposure after migration, but
+an authorized local process can still request the shared key. Lifecycle tests
+use an injected macOS store for lookup, migration, rotation, missing items, and
+write failures; no live personal Keychain access or end-to-end OS ACL test is
+claimed. `doctor` authenticates token ciphertext with a read-only provider,
+wipes the plaintext buffer, and neither decodes nor prints its secret values.
+`inspect-runtime` remains a non-decrypting inventory.

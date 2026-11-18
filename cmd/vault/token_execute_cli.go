@@ -10,9 +10,11 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	vaultaudit "github.com/olelbis/myminivault/internal/audit"
 	vaultpaths "github.com/olelbis/myminivault/internal/paths"
+	vaultsync "github.com/olelbis/myminivault/internal/sync"
 	vaulttoken "github.com/olelbis/myminivault/internal/token"
 )
 
@@ -257,7 +259,11 @@ func writeJSON(value any) error {
 }
 
 func parseAndValidateProductionToken(tokenStr string) (AccessToken, *ExtendedVault, error) {
-	return vaulttoken.ParseAndValidateProductionToken(tokenStr, sharedTokenVault, tokenOptions())
+	token, vault, err := vaulttoken.ParseAndValidateProductionToken(tokenStr, sharedTokenVault, tokenOptions())
+	if err == nil && vault.TokenStateVersion != vaulttoken.ScopedStateVersion {
+		return AccessToken{}, nil, errors.New("token state requires upgrade; run vault sync-tokens with the master password")
+	}
+	return token, vault, err
 }
 
 func addBase64Padding(s string) string {
@@ -288,10 +294,16 @@ func saveSuccessfulTokenUse(vault *ExtendedVault, tokenID string, jsonOutput boo
 	if !exists {
 		return tokenCommandError(jsonOutput, "token not found or has been revoked")
 	}
+	if err := beginTokenReconciliation(); err != nil {
+		return tokenCommandError(jsonOutput, err.Error())
+	}
 	token.UsageCount++
 	vault.TokenManager.Tokens[tokenID] = token
-	if err := saveTokenVaultEncrypted(vault, sharedTokenVault); err != nil {
+	if err := saveTokenVaultEncrypted(vaulttoken.ScopedSharedVault(vault, time.Now(), true), sharedTokenVault); err != nil {
 		return tokenCommandError(jsonOutput, fmt.Sprintf("failed to save token usage: %v", err))
+	}
+	if err := finishTokenReconciliation(); err != nil {
+		return tokenCommandError(jsonOutput, err.Error())
 	}
 	return nil
 }
@@ -348,6 +360,11 @@ func executeTokenSet(vault *ExtendedVault, token AccessToken, key, value string,
 
 	vault.Data[key] = value
 	markKeyUpdated(vault, key)
+	metadata := vaultsync.EnsureMetadata(vault)
+	if metadata.PendingWrites == nil {
+		metadata.PendingWrites = map[string]bool{}
+	}
+	metadata.PendingWrites[key] = true
 
 	if err := saveSuccessfulTokenUse(vault, token.TokenID, jsonOutput); err != nil {
 		return err

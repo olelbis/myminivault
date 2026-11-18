@@ -524,12 +524,17 @@ func TestCLISmokeCreateTokenRejectsInvalidLimits(t *testing.T) {
 		"too long duration": {"create-token", "--keys=API_*", "--duration=25h"},
 	}
 
+	expected := map[string]string{
+		"zero duration":     "token duration must be greater than zero",
+		"negative duration": "token duration must be greater than zero",
+		"zero max uses":     "max uses must be greater than zero",
+		"invalid max uses":  "invalid max uses",
+		"colon key pattern": "token key patterns cannot contain ':'",
+		"too long duration": "maximum duration is 24 hours",
+	}
 	for name, args := range tests {
 		t.Run(name, func(t *testing.T) {
-			output := requireOK(t, runVault(t, bin, dir, "pass\n", args...))
-			if !strings.Contains(output, "❌") {
-				t.Fatalf("expected validation error, got:\n%s", output)
-			}
+			requireFailedContains(t, runVault(t, bin, dir, "pass\n", args...), expected[name])
 		})
 	}
 }
@@ -592,7 +597,7 @@ func TestCLISmokeKeychainStorageRequiresImplementedBackend(t *testing.T) {
 	requireContains(t, doctorOutput, "token key storage")
 	requireContains(t, doctorOutput, "keychain configured")
 
-	createOutput := requireOK(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=API_*", "--duration=1h"))
+	createOutput := requireFailure(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=API_*", "--duration=1h"))
 	requireContains(t, createOutput, `token_key_storage="keychain" configured`)
 }
 
@@ -1015,4 +1020,33 @@ func extractTokenID(t *testing.T, output string) string {
 	}
 
 	return matches[1]
+}
+
+func TestCLISmokeCriticalTokenRotationLifecycle(t *testing.T) {
+	bin := buildVaultBinary(t)
+	dir, err := os.MkdirTemp("/tmp", "myminivault-critical-cli-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(dir) })
+	if err := os.WriteFile(filepath.Join(dir, configFile), []byte(`{"token_key_storage":"file"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "API_KEY", "fake-initial"))
+	requireOK(t, runVault(t, bin, dir, "pass\n", "set", "PRIVATE", "fake-unrelated"))
+	created := requireOK(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=API_*", "--duration=1h", "--permissions=read,write"))
+	token := extractCompactToken(t, created)
+	requireOK(t, runVault(t, bin, dir, "", "use-token", token, "set", "API_KEY", "fake-pending", "--json"))
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\nyes\n", "regenerate-token-key")), "pending writes saved")
+	requireContains(t, requireOK(t, runVault(t, bin, dir, "pass\n", "get", "API_KEY", "--show")), "fake-pending")
+	requireFailure(t, runVault(t, bin, dir, "", "use-token", token, "get", "API_KEY", "--json"))
+	created = requireOK(t, runVault(t, bin, dir, "pass\n", "create-token", "--keys=API_*", "--duration=1h"))
+	replacement := extractCompactToken(t, created)
+	payload := parseJSONMap(t, requireOK(t, runVault(t, bin, dir, "", "use-token", replacement, "get", "API_KEY", "--json")))
+	if payload["value"] != "fake-pending" {
+		t.Fatal("replacement token lost retained write")
+	}
+	doctor := requireOK(t, runVault(t, bin, dir, "", "doctor"))
+	requireContains(t, doctor, "token key/vault consistency")
+	requireContains(t, doctor, "shared token vault authenticates with the existing token key")
 }

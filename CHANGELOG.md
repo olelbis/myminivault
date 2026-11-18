@@ -4,6 +4,12 @@
 
 ### Changed
 
+- Restricted shared-token snapshots to active read scopes and authorized pending writes; write-only tokens no longer mirror existing values. Upgrade existing state with authenticated `sync-tokens`.
+- Preserved monotonic token usage and final-use writes across master saves and cleanup; honored deletion tombstones before legacy fallback and blocked token use during interrupted reconciliation.
+- Made restore and password recovery revoke snapshot-era grants while preserving pending state in protected backups; token-key regeneration now requires the master password and reconciles writes before revocation/rotation.
+- Stopped implicit token-key creation/migration during reads, removed obsolete shared backups after successful writes, and added non-mutating key/ciphertext consistency checks to `doctor`.
+- Preserved interruption markers/snapshots during legacy migration, refused mixed runtime contexts, and recognized canonical directory aliases; invalid token creation/revocation now returns a nonzero exit status.
+
 - Separated compact-token signing from shared-vault encryption with a dedicated HKDF-SHA256 subkey and v3 signatures. Retired six-field and v2 compact tokens; owners must revoke and reissue them with the master password.
 - Consolidated KDF metadata validation for reads and writes and removed unused recovery/config compatibility entry points.
 - Reduced duplicate CI/security runs for PR branches, skipped documentation-only changes, canceled superseded PR runs, limited race testing to Linux, and grouped future Dependabot version updates by Go modules, CodeQL Actions, and other Actions.

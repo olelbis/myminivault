@@ -90,14 +90,16 @@ func initializeRuntimePaths(readOnly bool) error {
 
 func hardenRuntimeFilePermissions() error {
 	critical := map[string]bool{
-		vaultFile:                  true,
-		vaultFile + ".bak":         true,
-		vaultFile + ".recovery":    true,
-		vaultFile + ".transaction": true,
-		tokenKeyFile:               true,
-		sharedTokenVault:           true,
-		sharedTokenVault + ".bak":  true,
-		rollbackStateFile:          true,
+		vaultFile:                       true,
+		vaultFile + ".bak":              true,
+		vaultFile + ".recovery":         true,
+		vaultFile + ".transaction":      true,
+		tokenKeyFile:                    true,
+		sharedTokenVault:                true,
+		sharedTokenVault + ".bak":       true,
+		sharedTokenVault + ".tmp":       true,
+		sharedTokenVault + ".reconcile": true,
+		rollbackStateFile:               true,
 	}
 	files := []string{
 		vaultFile,
@@ -110,6 +112,8 @@ func hardenRuntimeFilePermissions() error {
 		tokenKeyFile,
 		sharedTokenVault,
 		sharedTokenVault + ".bak",
+		sharedTokenVault + ".tmp",
+		sharedTokenVault + ".reconcile",
 		rollbackStateFile,
 		vaultLockFile,
 	}
@@ -180,8 +184,52 @@ func migrateLegacyRuntimeFiles(home string) error {
 	if filepath.Clean(cwd) == filepath.Clean(home) {
 		return nil
 	}
+	// Canonical aliases such as /tmp and /private/tmp name the same runtime.
+	// Compare directories before inspecting files that another command may replace.
+	if source, err := os.Stat(cwd); err == nil {
+		if target, err := os.Stat(home); err == nil && os.SameFile(source, target) {
+			return nil
+		}
+	}
+
+	// Move the interruption barrier before any state files. A failed partial
+	// migration must never expose stale token grants without their barrier.
+	legacyTokenArtifacts := false
+	for _, suffix := range []string{".reconcile", ".bak", ".tmp"} {
+		info, err := os.Lstat(filepath.Join(cwd, sharedTokenVaultName+suffix))
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("legacy token state artifact is not a regular file")
+		}
+		legacyTokenArtifacts = true
+	}
+	if legacyTokenArtifacts {
+		// Do not mix an interrupted source bundle into an occupied vault context.
+		for _, name := range []string{vaultFileName, sharedTokenVaultName, tokenKeyFileName} {
+			target, err := os.Lstat(filepath.Join(home, name))
+			if os.IsNotExist(err) {
+				continue
+			}
+			if err != nil {
+				return err
+			}
+			source, err := os.Lstat(filepath.Join(cwd, name))
+			if err == nil && os.SameFile(source, target) {
+				continue
+			}
+			return fmt.Errorf("legacy token state conflicts with the active runtime; inspect both runtime directories before migration")
+		}
+	}
 
 	names := []string{
+		sharedTokenVaultName + ".reconcile",
+		sharedTokenVaultName + ".bak",
+		sharedTokenVaultName + ".tmp",
 		vaultFileName,
 		vaultFileName + ".bak",
 		vaultFileName + ".recovery",

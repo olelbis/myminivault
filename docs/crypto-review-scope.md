@@ -65,10 +65,9 @@ Supporting files:
 - The decrypted payload is `sha256(json_payload) || json_payload`.
 - Recovery uses a separate encrypted recovery snapshot and a dedicated random
   recovery salt.
-- Token commands use a local token master key to encrypt the shared token vault.
+- Token commands use a local token master key to encrypt active read scopes and authorized pending writes. The same key exposes all retained token scopes; individual bearer tokens do not have separate encryption keys.
 - New compact tokens are v3 HMAC-SHA256 tokens signed with a 32-byte HKDF-SHA256 subkey (empty salt, context `myminivault:compact-token-signing:v3`), separate from the shared-vault encryption context. Forged signatures are rejected before loading the shared vault. Six-field and v2 compact tokens are retired and rejected before key/vault access; owners must revoke and reissue them with the master password.
-- Token writes are staged in `shared-token-vault.json` and imported into
-  `vault.db` by master-password commands or `vault sync-tokens`.
+- Only marked, authorized writes are imported from current shared state. Usage is merged monotonically; tombstones block stale resurrection; durable interruption markers block stale token use. Restore/recovery and authenticated key rotation revoke grants. Keychain lifecycle tests use an injected store, not live OS ACL testing.
 - Standalone Go and Python reference decryptors check MYMV v2 main-vault files
   with Argon2id or scrypt independently from the production loader. Both
   readers also check the existing HKDF recovery and shared-token fixtures,

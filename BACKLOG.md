@@ -13,7 +13,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
-- Only `main` remains locally and on GitHub after PRs #18–20 were merged and their branches cleaned up on 2026-11-17. Local `main` is aligned with `origin/main`.
+- PRs #18–20 are merged and their branches cleaned up. The current local task branch is `token-shared-vault-lifecycle`, based on `main` at `4ad5efb`, with commit/push/PR creation authorized on 2026-11-18 and PR review next.
 
 ## Project Assessment
 
@@ -68,16 +68,17 @@ Use this section first when resuming work. The detailed backlog below explains e
 
 ### Immediate Next Work
 
-Updated on 2026-11-17. Findings 6–8 are merged in PR #20: dedicated HKDF signing subkey with v3 tokens, six-field/v2 token retirement and reissue guidance, shared KDF metadata validation, and removal of unused compatibility entry points. Grouped Dependabot PRs #18 and #19 are also merged. Follow this order; the historical detail below is not a separate queue.
+Updated on 2026-11-18. Claude findings 1–8 and grouped Dependabot PRs #17–19 are merged. The critical follow-up is implemented locally on `token-shared-vault-lifecycle`; local validation passed (including full suite/race, 85.8% internal coverage, vet, and Staticcheck); commit/push/PR creation are now authorized; the user follows remote CI and handles merge. Follow this order; historical detail below is not a separate queue.
 
-1. **Investigate and fix the reported critical token/shared-vault design and correctness issues**
-   - A reviewer reports that the shared token vault retains a full copy of main-vault secrets, encrypted with a token key stored beside it in file-backed mode. A restricted token pattern does not limit what those two files expose. Scope the shared vault to keys covered by active tokens, remove it when no tokens remain, and evaluate per-token secret/key separation. Update the threat model and assess macOS Keychain separately; that path was not tested by the reviewer.
-   - The reviewer reproduced token usage counters resetting after a master-vault write, restore being undone by a subsequent shared-vault import, and token-key regeneration leaving the shared vault unreadable while `doctor` reports healthy. Preserve monotonic usage counts, handle pending token writes before rebuilds, and verify key/vault consistency in diagnostics.
-   - The reviewer also identified a possible deleted-key resurrection in `ShouldImportSharedValue` when the main value has no update timestamp; this case was not reproduced. Test mirror interruption after delete and enforce tombstones during import.
-   - Reproduce with fake secrets in an isolated runtime directory, then design and test the full token create/use/sync/restore/key-rotation lifecycle before changing behavior. Treat this as higher priority than additional format fixtures.
-2. **Maintain the focused external security review**
-   - Keep the public request, scope, file-format specification, independent readers, and compatibility fixtures consistent with current code.
-   - Triage concrete reviewer findings first. The project remains self-reviewed and unaudited until independent evidence says otherwise.
+1. **Complete PR review of the critical token/shared-vault follow-up**
+   - Reproduced all five original cases against `4ad5efb` with fake secrets, including the previously unconfirmed tombstone resurrection. Also reproduced key creation during a failed read.
+   - Implemented active read-scope projection, authorized pending-write tracking (including final-use writes), monotonic counter reconciliation, obsolete-snapshot cleanup, fail-closed interruption markers, safe restore/recovery invalidation, authenticated key rotation, and read-only key/AEAD consistency diagnostics.
+   - The lifecycle and Keychain error paths are covered by regression tests. Keychain is simulated; real macOS ACL behavior is not independently validated. Upgrade existing shared state with authenticated `sync-tokens`; no release is prepared.
+2. **Independently review the hardened lifecycle and remaining isolation boundary**
+   - Review failure/retry behavior, original reproductions, scope unions, pending-write retention, and restore/recovery/rotation before release.
+   - Design an isolated macOS Keychain validation using fake account material. Never access personal vaults or Keychain items.
+   - Per-token secret/key separation was evaluated and deferred: a shared root still exposes the union of retained read scopes and pending writes. Decide on an explicit capability/key-distribution and pending-write format before implementing stronger cryptographic isolation.
+   - Keep public review issue #1, crypto scope, migration policy, reference readers, and compatibility fixtures aligned. Headerless legacy-reader expansion follows security triage. The project remains self-reviewed and unaudited until independent evidence says otherwise.
 
 ### Recurring Maintenance
 

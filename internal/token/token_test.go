@@ -264,6 +264,9 @@ func TestEncryptedVaultRoundTripWithKeyFileProvider(t *testing.T) {
 		Scrypt:       testScrypt,
 	}
 
+	if _, err := GetOrCreateMasterKey(opts); err != nil {
+		t.Fatal(err)
+	}
 	if err := SaveEncryptedVault(tokenTestVault(), sharedVault, opts); err != nil {
 		t.Fatalf("SaveEncryptedVault: %v", err)
 	}
@@ -432,28 +435,19 @@ func TestSaveVaultFileAtomicRejectsExistingDirectory(t *testing.T) {
 	}
 }
 
-func TestSaveVaultFileAtomicPreservesPreviousVersionAsBackup(t *testing.T) {
-	sharedVault := filepath.Join(t.TempDir(), "shared-token-vault.json")
-	if err := os.WriteFile(sharedVault, []byte("previous"), 0644); err != nil {
-		t.Fatalf("write previous vault: %v", err)
+func TestSaveVaultFileAtomicRemovesObsoleteBackup(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "shared-token-vault.json")
+	if err := os.WriteFile(path, []byte("old-full-vault-secrets"), 0600); err != nil {
+		t.Fatal(err)
 	}
-
-	if err := SaveVaultFileAtomic(sharedVault, []byte("1234567890123456"), []byte("new")); err != nil {
-		t.Fatalf("SaveVaultFileAtomic: %v", err)
+	if err := SaveVaultFileAtomic(path, []byte("1234567890123456"), []byte("new-scoped-data")); err != nil {
+		t.Fatal(err)
 	}
-	backup, err := os.ReadFile(sharedVault + ".bak")
-	if err != nil {
-		t.Fatalf("read backup: %v", err)
+	if _, err := os.Stat(path + ".bak"); !os.IsNotExist(err) {
+		t.Fatalf("obsolete full-vault snapshot retained: %v", err)
 	}
-	if string(backup) != "previous" {
-		t.Fatalf("backup = %q, want previous", backup)
-	}
-	info, err := os.Stat(sharedVault + ".bak")
-	if err != nil {
-		t.Fatalf("stat backup: %v", err)
-	}
-	if info.Mode().Perm() != 0600 {
-		t.Fatalf("backup mode = %04o, want 0600", info.Mode().Perm())
+	if _, err := os.Stat(path); err != nil {
+		t.Fatal(err)
 	}
 }
 

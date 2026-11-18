@@ -23,11 +23,12 @@ import (
 // Options groups the files, crypto parameters, and optional key provider used
 // by token vault operations.
 type Options struct {
-	TokenKeyFile string
-	SaltSize     int
-	Scrypt       vaultcrypto.ScryptConfig
-	KDF          vaultcrypto.KDFConfig
-	MasterKey    func() ([]byte, error)
+	ReconcileFile string
+	TokenKeyFile  string
+	SaltSize      int
+	Scrypt        vaultcrypto.ScryptConfig
+	KDF           vaultcrypto.KDFConfig
+	MasterKey     func() ([]byte, error)
 }
 
 // SharedVaultKDFConfig derives per-file keys from the random token master key.
@@ -150,6 +151,35 @@ func SaveEncryptedVault(vault *model.ExtendedVault, tokenVaultPath string, opts 
 
 // LoadEncryptedVault decrypts and parses the shared token vault.
 func LoadEncryptedVault(tokenFilePath string, opts Options) (*model.ExtendedVault, error) {
+	decrypted, err := decryptVaultPayload(tokenFilePath, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer wipeBytes(decrypted)
+	vaultData, err := StripChecksum(decrypted)
+	if err != nil {
+		return nil, err
+	}
+	var vault model.ExtendedVault
+	if err := json.Unmarshal(vaultData, &vault); err != nil {
+		return nil, fmt.Errorf("cannot parse vault data: %w", err)
+	}
+	return &vault, nil
+}
+
+// CheckEncryptedVaultKey authenticates a snapshot and wipes its plaintext;
+// diagnostics do not deserialize or display vault values.
+func CheckEncryptedVaultKey(path string, opts Options) error {
+	plain, err := decryptVaultPayload(path, opts)
+	if err != nil {
+		return err
+	}
+	defer wipeBytes(plain)
+	_, err = StripChecksum(plain)
+	return err
+}
+
+func decryptVaultPayload(tokenFilePath string, opts Options) ([]byte, error) {
 	if err := vaultpaths.RejectSymlink(tokenFilePath); err != nil {
 		return nil, err
 	}
@@ -188,17 +218,7 @@ func LoadEncryptedVault(tokenFilePath string, opts Options) (*model.ExtendedVaul
 		return nil, fmt.Errorf("decryption failed: %w", err)
 	}
 
-	vaultData, err := StripChecksum(decrypted)
-	if err != nil {
-		return nil, err
-	}
-
-	var vault model.ExtendedVault
-	if err := json.Unmarshal(vaultData, &vault); err != nil {
-		return nil, fmt.Errorf("cannot parse vault data: %w", err)
-	}
-
-	return &vault, nil
+	return decrypted, nil
 }
 
 // SaveVaultFileAtomic writes token vault data through a temporary file and
@@ -288,7 +308,10 @@ func SaveVaultFileAtomic(tokenVaultPath string, salt, data []byte, metadata ...c
 		}
 		return fmt.Errorf("failed to secure token vault: %w", err)
 	}
-	return nil
+	if err := os.Remove(backupFile); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to remove obsolete token snapshot: %w", err)
+	}
+	return vaultpaths.SyncParentDir(tokenVaultPath)
 }
 
 func containerMetadata(opts Options) container.Metadata {
@@ -345,7 +368,7 @@ func masterKey(opts Options) ([]byte, error) {
 	if opts.MasterKey != nil {
 		key, err = opts.MasterKey()
 	} else {
-		key, err = GetOrCreateMasterKey(opts)
+		key, err = LoadMasterKey(opts.TokenKeyFile)
 	}
 	if err != nil {
 		return nil, err
@@ -365,6 +388,13 @@ func StripChecksum(decrypted []byte) ([]byte, error) {
 // ParseAndValidateProductionToken verifies a compact token, loads the shared
 // vault it grants access to. The caller consumes usage after a successful operation.
 func ParseAndValidateProductionToken(tokenStr, sharedTokenVault string, opts Options) (model.AccessToken, *model.ExtendedVault, error) {
+	if opts.ReconcileFile != "" {
+		if _, err := os.Lstat(opts.ReconcileFile); err == nil {
+			return model.AccessToken{}, nil, errors.New("token reconciliation incomplete; run vault sync-tokens with the master password")
+		} else if !os.IsNotExist(err) {
+			return model.AccessToken{}, nil, err
+		}
+	}
 	tokenStr = AddBase64Padding(tokenStr)
 
 	decoded, err := base64.URLEncoding.DecodeString(tokenStr)
@@ -414,6 +444,12 @@ func ParseAndValidateProductionToken(tokenStr, sharedTokenVault string, opts Opt
 
 	vault, err := LoadEncryptedVault(sharedTokenVault, opts)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			if expiresUnix <= time.Now().Unix() {
+				return model.AccessToken{}, nil, errors.New("token has expired")
+			}
+			return model.AccessToken{}, nil, errors.New("token not found or has been revoked")
+		}
 		return model.AccessToken{}, nil, fmt.Errorf("cannot load shared token vault: %w", err)
 	}
 

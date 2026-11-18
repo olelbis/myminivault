@@ -13,7 +13,7 @@
   <img alt="Go" src="https://img.shields.io/badge/Go-1.27.3-00ADD8?logo=go&logoColor=white">
   <img alt="Latest release" src="https://img.shields.io/github/v/release/olelbis/myminivault?sort=semver">
   <img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/olelbis/myminivault.svg">
-  <img alt="Internal coverage" src="https://img.shields.io/badge/internal_coverage-86.3%25-brightgreen">
+  <img alt="Internal coverage" src="https://img.shields.io/badge/internal_coverage-85.8%25-brightgreen">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
   <img alt="Status" src="https://img.shields.io/badge/status-experimental-orange">
   <img alt="CLI" src="https://img.shields.io/badge/interface-CLI-2f3337">
@@ -127,7 +127,7 @@ Restore a backup after previewing its metadata:
 ./bin/vault restore ~/.myminivault/vault.db.2026-08-31_10-00-00.bak
 ```
 
-`restore` asks for the master password, reads the backup through checked no-follow opens, verifies that the exact backup bytes can be decrypted, shows non-secret metadata, saves the current `vault.db` as a pre-restore backup, replaces `vault.db`, and accepts the restored rollback revision.
+`restore` asks for the master password, reads the backup through checked no-follow opens, verifies that the exact backup bytes can be decrypted, shows non-secret metadata, preserves pending token writes in a pre-restore backup, re-encrypts the verified candidate with token grants removed, replaces `vault.db`, and accepts the restored rollback revision.
 
 ## Common Commands
 
@@ -205,7 +205,7 @@ vault use-token --token-fd 3 get API_KEY --json
 
 Direct `set <key> <value>` and human-readable direct `use-token <token>` forms print a `stderr` warning because secret material in process arguments may be exposed by shell history or process inspection. `use-token --json` keeps stdout parseable and suppresses that runtime warning. Prefer `set <key> --stdin` and `use-token --stdin`, `--token-file`, or `--token-fd` for real secrets.
 
-Token writes are staged in `shared-token-vault.json` and imported into the main vault by master-password commands or explicitly with `vault sync-tokens`. Use `vault sync-tokens --dry-run` to preview pending imports, deletes, skipped conflicts, and legacy metadata decisions without modifying runtime files. `vault doctor` warns when the shared token vault appears newer than the main vault, which usually means staged token writes should be synced.
+The shared mirror contains active read scopes and authorized pending writes, rather than a full copy of the main vault. Token writes and monotonic usage counters are reconciled by master-password commands or explicitly with `vault sync-tokens`. After upgrading, run that command with the master password to scope existing token state. Restore and authenticated token-key regeneration revoke existing grants. Use `vault sync-tokens --dry-run` to preview pending imports, deletes, skipped conflicts, and legacy metadata decisions without modifying runtime files. `vault doctor` warns when the shared token vault appears newer than the main vault, which usually means staged token writes should be synced.
 
 ## Screenshots
 

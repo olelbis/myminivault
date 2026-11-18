@@ -114,3 +114,13 @@ Future improvements to consider:
 `vault inspect-runtime` includes a recovery relationship summary next to the active and legacy runtime-file listing. Use it when `vault doctor` reports recovery freshness or compatibility warnings, especially if `MYMINIVAULT_HOME` is set or legacy current-directory files may still exist.
 
 These commands are intentionally non-mutating. Normal startup tightens runtime permissions when possible, but `doctor` and `inspect-runtime` only report what they see.
+
+## Token Grants During Password Recovery
+
+Password recovery revokes token grants restored from the recovery snapshot.
+Before replacement, readable shared token state is preserved separately under
+a private `.myminivault-recovery-tokens-*` directory, encrypted with the new
+master password. This archive is not imported automatically; inspect it by
+restoring it in an isolated runtime with that password. If token state cannot
+be opened, recovery stops before replacing the main vault, preserving the
+original files. See [Token Sync Policy](token-sync-policy.md).

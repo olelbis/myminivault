@@ -12,6 +12,7 @@ type ImportResult struct {
 	Imported         int
 	Deleted          int
 	SkippedConflicts int
+	TokensUpdated    int
 	LegacyDecisions  int
 }
 
@@ -134,12 +135,18 @@ func UsesLegacyImportDecision(mainVault, sharedVault *model.ExtendedVault, key s
 // ShouldImportSharedValue reports whether a shared value should overwrite the
 // main value under the current local timestamp policy.
 func ShouldImportSharedValue(mainVault, sharedVault *model.ExtendedVault, key string) bool {
-	if mainVault.Data[key] == sharedVault.Data[key] {
+	if value, exists := mainVault.Data[key]; exists && value == sharedVault.Data[key] {
 		return false
 	}
 
 	sharedUpdatedAt := UpdatedAt(sharedVault, key)
 	mainUpdatedAt := UpdatedAt(mainVault, key)
+	if deletedAt := DeletedAt(mainVault, key); !deletedAt.IsZero() && (sharedUpdatedAt.IsZero() || !sharedUpdatedAt.After(deletedAt)) {
+		return false
+	}
+	if sharedDeletedAt := DeletedAt(sharedVault, key); !sharedDeletedAt.IsZero() && (sharedUpdatedAt.IsZero() || !sharedUpdatedAt.After(sharedDeletedAt)) {
+		return false
+	}
 
 	if sharedUpdatedAt.IsZero() || mainUpdatedAt.IsZero() {
 		return true
