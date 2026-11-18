@@ -13,7 +13,7 @@ This file is the project handoff note. Use it to resume work from a fresh chat o
 - Staging/scratch area for validation: `/tmp/myminivault-*`
 - Main CLI package: `cmd/vault`
 - Runtime vault files are stored under `~/.myminivault/` by default and ignored by Git.
-- PRs #18–20 are merged and their branches cleaned up. The current local task branch is `token-shared-vault-lifecycle`, based on `main` at `4ad5efb`, with commit/push/PR creation authorized on 2026-11-18 and PR review next.
+- PRs #18–21 are merged and their branches cleaned up. Only `main` remains locally and on GitHub after PR #21 cleanup on 2026-11-18; local `main` is aligned with `origin/main`.
 
 ## Project Assessment
 
@@ -68,15 +68,13 @@ Use this section first when resuming work. The detailed backlog below explains e
 
 ### Immediate Next Work
 
-Updated on 2026-11-18. Claude findings 1–8 and grouped Dependabot PRs #17–19 are merged. The critical follow-up is implemented locally on `token-shared-vault-lifecycle`; local validation passed (including full suite/race, 85.8% internal coverage, vet, and Staticcheck); commit/push/PR creation are now authorized; the user follows remote CI and handles merge. Follow this order; historical detail below is not a separate queue.
+Updated on 2026-11-18. Claude findings 1–8, grouped Dependabot PRs #17–19, and the critical token/shared-vault follow-up (PR #21) are merged. Local validation and remote CI/security checks passed; internal coverage is 85.8%. Follow this order; historical detail below is not a separate queue.
 
-1. **Complete PR review of the critical token/shared-vault follow-up**
-   - Reproduced all five original cases against `4ad5efb` with fake secrets, including the previously unconfirmed tombstone resurrection. Also reproduced key creation during a failed read.
-   - Implemented active read-scope projection, authorized pending-write tracking (including final-use writes), monotonic counter reconciliation, obsolete-snapshot cleanup, fail-closed interruption markers, safe restore/recovery invalidation, authenticated key rotation, and read-only key/AEAD consistency diagnostics.
-   - The lifecycle and Keychain error paths are covered by regression tests. Keychain is simulated; real macOS ACL behavior is not independently validated. Upgrade existing shared state with authenticated `sync-tokens`; no release is prepared.
-2. **Independently review the hardened lifecycle and remaining isolation boundary**
+The critical follow-up reproduced all five original cases against `4ad5efb`, including the previously unconfirmed tombstone resurrection, and implicit key creation during failed reads. It added scoped read mirrors, explicit pending writes, monotonic counters, interruption barriers, snapshot cleanup, safe restore/recovery/rotation, and read-only key/AEAD diagnostics. Upgrade existing token state with authenticated `sync-tokens`; no release is prepared.
+
+1. **Independently review the hardened lifecycle and remaining isolation boundary**
    - Review failure/retry behavior, original reproductions, scope unions, pending-write retention, and restore/recovery/rotation before release.
-   - Design an isolated macOS Keychain validation using fake account material. Never access personal vaults or Keychain items.
+   - Design an isolated macOS Keychain validation using fake account material. Never access personal vaults or Keychain items. Existing lifecycle tests use an injected store; real macOS ACL behavior remains unverified.
    - Per-token secret/key separation was evaluated and deferred: a shared root still exposes the union of retained read scopes and pending writes. Decide on an explicit capability/key-distribution and pending-write format before implementing stronger cryptographic isolation.
    - Keep public review issue #1, crypto scope, migration policy, reference readers, and compatibility fixtures aligned. Headerless legacy-reader expansion follows security triage. The project remains self-reviewed and unaudited until independent evidence says otherwise.
 
