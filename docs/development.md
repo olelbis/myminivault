@@ -97,7 +97,7 @@ docs/
 - `internal/commands`: export/import/key validation helpers
 - `internal/clipboard`: clipboard backend detection and best-effort clearing
 - `internal/export`: shell export rendering and restrictive export-file writes
-- `internal/keychain`: OS keychain availability detection and macOS token master-key storage through the `security` tool
+- `internal/keychain`: OS keychain availability detection and macOS token master-key lookup through `security` and native Security.framework writes
 - `internal/health`: reusable runtime health checks that do not decrypt secrets
 
 The project still keeps command-line parsing, prompts, output, and top-level orchestration in `cmd/vault`. Future extractions should happen only when tests cover the behavior well enough.
@@ -384,3 +384,14 @@ README images live in:
 - `assets/screenshots/*.svg`
 
 Screenshots are terminal-style SVGs rather than captured runtime secrets. Keep them synthetic and avoid real secret values.
+
+## Native macOS Keychain Builds
+
+macOS token-key writes require `CGO_ENABLED=1` and the Apple SDK/C compiler
+(Xcode Command Line Tools). The macOS release job enables CGO; Linux remains
+`CGO_ENABLED=0`. Non-CGO Darwin builds retain read compatibility but explicitly
+reject Keychain writes; they never send the key through process arguments or
+silently change an existing Keychain context to file storage. Availability
+inspection remains a tool-presence probe, not proof of permission or unlock.
+Native write compilation and mocked lifecycle tests do not validate OS ACLs.
+See [token policy](token-sync-policy.md) for migration and live-test limits.

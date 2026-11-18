@@ -63,3 +63,15 @@ measurements above retain their original date, scope, and toolchain.
 CI enforces an internal package coverage floor of `80.0%`. Full repository coverage remains informational because subprocess-based CLI smoke tests protect real behavior without raising statement coverage in `cmd/vault`.
 
 As command-independent logic moves into `internal/...` packages, `cmd/vault` should become thinner while internal package coverage remains the main quality signal.
+
+On 2026-11-18, the SR-1–SR-3 follow-up measured **85.4%** internal coverage
+(1,275/1,493 statements) with Go 1.27.3 on macOS arm64:
+
+```bash
+GOCACHE=/tmp/myminivault-critical-gocache go test -race -count=1 -covermode=atomic -coverprofile=/tmp/myminivault-sr-internal-final.out ./internal/...
+```
+
+This final internal run includes the native backend build, injected Keychain
+lifecycle, account identity/migration support, and atomic root persistence.
+Actual native Keychain calls and OS ACLs are not exercised by automated tests.
+Historical measurements above remain unchanged.

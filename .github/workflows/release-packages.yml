@@ -233,7 +233,7 @@ jobs:
         env:
           GOOS: darwin
           GOARCH: arm64
-          CGO_ENABLED: '0'
+          CGO_ENABLED: '1'
           TAG_NAME: ${{ github.event.release.tag_name || inputs.tag }}
         run: |
           set -euo pipefail

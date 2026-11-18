@@ -4,6 +4,10 @@
 
 ### Changed
 
+- Removed token-root bytes from Keychain subprocess arguments using native macOS writes; macOS release builds now enable CGO.
+- Canonicalized Keychain account identities with read-compatible legacy lookup and authenticated copy migration, preserving legacy accounts used by other runtimes.
+- Made file-backed token-root saves atomic and durable before clearing reconciliation, with isolated failure and migration regressions.
+
 - Restricted shared-token snapshots to active read scopes and authorized pending writes; write-only tokens no longer mirror existing values. Upgrade existing state with authenticated `sync-tokens`.
 - Preserved monotonic token usage and final-use writes across master saves and cleanup; honored deletion tombstones before legacy fallback and blocked token use during interrupted reconciliation.
 - Made restore and password recovery revoke snapshot-era grants while preserving pending state in protected backups; token-key regeneration now requires the master password and reconciles writes before revocation/rotation.

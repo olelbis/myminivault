@@ -72,7 +72,12 @@ Updated on 2026-11-18. Claude findings 1–8, grouped Dependabot PRs #17–19, a
 
 The critical follow-up reproduced all five original cases against `4ad5efb`, including the previously unconfirmed tombstone resurrection, and implicit key creation during failed reads. It added scoped read mirrors, explicit pending writes, monotonic counters, interruption barriers, snapshot cleanup, safe restore/recovery/rotation, and read-only key/AEAD diagnostics. Upgrade existing token state with authenticated `sync-tokens`; no release is prepared.
 
-1. **Independently review the hardened lifecycle and remaining isolation boundary**
+1. **Review the local SR-1–SR-3 fixes and validate native Keychain behavior**
+   - The 2026-11-18 [review](docs/token-security-review-2026-11-18.md) found root material in Keychain subprocess arguments (SR-1/P1), colliding relative-runtime Keychain accounts (SR-2/P2, reproduced), and missing durable atomic file-root persistence (SR-3/P2, source finding).
+   - Implemented on `token-key-security`: in-memory native macOS writes, canonical accounts with read-compatible legacy lookup and authenticated copy/verification, and atomic durable file-root writes. Commit, push, and PR creation are authorized. The user handles CI and merge; cleanup requires the separate post-merge go-ahead. No release is authorized.
+   - Local full race suite (35 CLI smoke scenarios), focused regressions, vet, Staticcheck and platform builds passed on 2026-11-18; final internal coverage is 85.4%. The user will review remote CI on the PR.
+   - Review the diff and prepare live ACL/prompt validation using an explicitly isolated disposable Keychain and dedicated test account; never use personal items. Keep legacy shared accounts until every dependent runtime has migrated; rotate each migrated runtime to separate inherited root material.
+   - Then continue lifecycle review, isolated OS validation, and the per-token design below.
    - Review failure/retry behavior, original reproductions, scope unions, pending-write retention, and restore/recovery/rotation before release.
    - Design an isolated macOS Keychain validation using fake account material. Never access personal vaults or Keychain items. Existing lifecycle tests use an injected store; real macOS ACL behavior remains unverified.
    - Per-token secret/key separation was evaluated and deferred: a shared root still exposes the union of retained read scopes and pending writes. Decide on an explicit capability/key-distribution and pending-write format before implementing stronger cryptographic isolation.

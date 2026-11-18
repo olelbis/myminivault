@@ -40,10 +40,12 @@ type Result struct {
 // CommandRunner executes an OS command and returns its combined output.
 type CommandRunner func(name string, args ...string) ([]byte, error)
 
-// Store wraps OS keychain command access behind injectable command execution.
+// Store injects lookup commands and in-memory native writes for isolated tests.
 type Store struct {
 	Detector Detector
 	Run      CommandRunner
+	// Save receives a borrowed Base64 buffer, wiped immediately after return.
+	Save func(account string, encoded []byte) error
 }
 
 // Detect reports best-effort keychain availability without reading or writing
@@ -112,8 +114,18 @@ func (store Store) SaveTokenKey(account string, key []byte) error {
 		return err
 	}
 
-	encoded := base64.StdEncoding.EncodeToString(key)
-	if _, err := store.run("security", "add-generic-password", "-s", TokenKeyService, "-a", account, "-w", encoded, "-U"); err != nil {
+	encoded := make([]byte, base64.StdEncoding.EncodedLen(len(key)))
+	base64.StdEncoding.Encode(encoded, key)
+	defer func() {
+		for i := range encoded {
+			encoded[i] = 0
+		}
+	}()
+	save := store.Save
+	if save == nil {
+		save = saveNative
+	}
+	if err := save(account, encoded); err != nil {
 		return fmt.Errorf("failed to save token key to keychain: %w", err)
 	}
 	return nil

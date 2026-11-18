@@ -153,16 +153,13 @@ func TestStoreLoadTokenKeyRejectsWrongLength(t *testing.T) {
 func TestStoreSaveTokenKey(t *testing.T) {
 	key := bytes.Repeat([]byte{0x24}, 32)
 	account := filepath.Join(t.TempDir(), "vault-token.key")
-	store := testDarwinStore(t, func(name string, args ...string) ([]byte, error) {
-		if name != "security" {
-			t.Fatalf("command name = %q, want security", name)
+	store := testDarwinStore(t, func(string, ...string) ([]byte, error) { t.Fatal("save must not launch a process"); return nil, nil })
+	store.Save = func(got string, encoded []byte) error {
+		if got != account || string(encoded) != base64.StdEncoding.EncodeToString(key) {
+			t.Fatal("unexpected native input")
 		}
-		wantArgs := []string{"add-generic-password", "-s", TokenKeyService, "-a", account, "-w", base64.StdEncoding.EncodeToString(key), "-U"}
-		if !reflect.DeepEqual(args, wantArgs) {
-			t.Fatalf("args = %v, want %v", args, wantArgs)
-		}
-		return nil, nil
-	})
+		return nil
+	}
 
 	if err := store.SaveTokenKey(account, key); err != nil {
 		t.Fatalf("SaveTokenKey: %v", err)
@@ -184,6 +181,8 @@ func TestStoreSaveTokenKeyReportsCommandError(t *testing.T) {
 	store := testDarwinStore(t, func(string, ...string) ([]byte, error) {
 		return []byte("denied"), errors.New("security failed")
 	})
+
+	store.Save = func(string, []byte) error { return errors.New("denied") }
 
 	if err := store.SaveTokenKey(filepath.Join(t.TempDir(), "vault-token.key"), bytes.Repeat([]byte{0x11}, 32)); err == nil {
 		t.Fatal("expected command error")
@@ -259,5 +258,28 @@ func testDarwinStore(t *testing.T, run CommandRunner) Store {
 			},
 		},
 		Run: run,
+	}
+}
+
+func TestNativeWriteBufferIsWipedOnSuccessAndFailure(t *testing.T) {
+	for _, fail := range []bool{false, true} {
+		t.Run(map[bool]string{false: "success", true: "failure"}[fail], func(t *testing.T) {
+			var borrowed []byte
+			store := testDarwinStore(t, func(string, ...string) ([]byte, error) { t.Fatal("secret write launched subprocess"); return nil, nil })
+			store.Save = func(_ string, b []byte) error {
+				borrowed = b
+				if fail {
+					return errors.New("injected")
+				}
+				return nil
+			}
+			err := store.SaveTokenKey("fake-account", bytes.Repeat([]byte{42}, 32))
+			if (err != nil) != fail {
+				t.Fatal("unexpected result")
+			}
+			if len(borrowed) != 44 || !bytes.Equal(borrowed, make([]byte, 44)) {
+				t.Fatal("encoded secret retained")
+			}
+		})
 	}
 }

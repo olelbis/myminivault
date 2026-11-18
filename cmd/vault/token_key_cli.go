@@ -1,10 +1,11 @@
-// Code split from myminivault.go; behavior intentionally unchanged.
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	vaultconfig "github.com/olelbis/myminivault/internal/config"
 	"github.com/olelbis/myminivault/internal/keychain"
@@ -20,7 +21,7 @@ func loadTokenMasterKey() ([]byte, error) {
 		return nil, err
 	}
 	if useKeychain {
-		key, err := tokenKeyStore.LoadTokenKey(tokenKeyFile)
+		key, err := loadCompatibleKeychainKey()
 		if !errors.Is(err, keychain.ErrNotFound) {
 			return key, err
 		}
@@ -69,7 +70,11 @@ func saveTokenMasterKey(key []byte) error {
 	if useKeychain, err := shouldUseTokenKeychain(); err != nil {
 		return err
 	} else if useKeychain {
-		return tokenKeyStore.SaveTokenKey(tokenKeyFile, key)
+		account, err := canonicalTokenAccount()
+		if err != nil {
+			return err
+		}
+		return saveVerifiedKeychainKey(account, key)
 	}
 	return vaulttoken.SaveMasterKey(tokenKeyFile, key)
 }
@@ -94,15 +99,39 @@ func shouldUseTokenKeychain() (bool, error) {
 }
 
 func getOrCreateKeychainTokenMasterKey() ([]byte, error) {
+	account, err := canonicalTokenAccount()
+	if err != nil {
+		return nil, err
+	}
 	store := tokenKeyStore
-	if key, err := store.LoadTokenKey(tokenKeyFile); err == nil {
+	if key, err := loadCompatibleKeychainKey(); err == nil {
+		canonical, canonicalErr := store.LoadTokenKey(account)
+		defer wipeBytes(canonical)
+		if errors.Is(canonicalErr, keychain.ErrNotFound) {
+			if err := validateMigrationKey(key); err != nil {
+				wipeBytes(key)
+				return nil, err
+			}
+			if err := saveVerifiedKeychainKey(account, key); err != nil {
+				wipeBytes(key)
+				return nil, err
+			}
+		} else if canonicalErr != nil {
+			wipeBytes(key)
+			return nil, canonicalErr
+		}
 		return key, nil
 	} else if !errors.Is(err, keychain.ErrNotFound) {
 		return nil, err
 	}
 
 	if key, err := vaulttoken.LoadMasterKey(tokenKeyFile); err == nil {
-		if err := store.SaveTokenKey(tokenKeyFile, key); err != nil {
+		if err := validateMigrationKey(key); err != nil {
+			wipeBytes(key)
+			return nil, err
+		}
+		if err := saveVerifiedKeychainKey(account, key); err != nil {
+			wipeBytes(key)
 			return nil, err
 		}
 		if err := os.Remove(tokenKeyFile); err != nil && !os.IsNotExist(err) {
@@ -120,9 +149,63 @@ func getOrCreateKeychainTokenMasterKey() ([]byte, error) {
 	}
 	fmt.Println("🔑 Generating secure token master key in macOS Keychain...")
 	key := generateRandom(32)
-	if err := store.SaveTokenKey(tokenKeyFile, key); err != nil {
+	if err := saveVerifiedKeychainKey(account, key); err != nil {
+		wipeBytes(key)
 		return nil, err
 	}
 	fmt.Println("✅ Token master key created in macOS Keychain")
 	return key, nil
+}
+
+// Preserve legacy account lookup without mutating or deleting a possibly shared item.
+func canonicalTokenAccount() (string, error) {
+	absolute, err := filepath.Abs(tokenKeyFile)
+	if err != nil {
+		return "", err
+	}
+	parent, err := filepath.EvalSymlinks(filepath.Dir(absolute))
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(parent, filepath.Base(absolute)), nil
+}
+
+func loadCompatibleKeychainKey() ([]byte, error) {
+	account, err := canonicalTokenAccount()
+	if err != nil {
+		return nil, err
+	}
+	key, err := tokenKeyStore.LoadTokenKey(account)
+	if !errors.Is(err, keychain.ErrNotFound) || account == tokenKeyFile {
+		return key, err
+	}
+	return tokenKeyStore.LoadTokenKey(tokenKeyFile)
+}
+
+func validateMigrationKey(key []byte) error {
+	path, err := sharedTokenStatePath()
+	if err != nil || path == "" {
+		return err
+	}
+	opts := tokenOptions()
+	opts.MasterKey = func() ([]byte, error) { return key, nil }
+	if err := vaulttoken.CheckEncryptedVaultKey(path, opts); err != nil {
+		return fmt.Errorf("legacy key cannot authenticate existing token state: %w", err)
+	}
+	return nil
+}
+
+func saveVerifiedKeychainKey(account string, key []byte) error {
+	if err := tokenKeyStore.SaveTokenKey(account, key); err != nil {
+		return err
+	}
+	saved, err := tokenKeyStore.LoadTokenKey(account)
+	if err != nil {
+		return fmt.Errorf("verify saved Keychain item: %w", err)
+	}
+	defer wipeBytes(saved)
+	if !bytes.Equal(saved, key) {
+		return errors.New("saved Keychain key does not match; original file preserved")
+	}
+	return nil
 }
