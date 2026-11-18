@@ -46,34 +46,36 @@ func cleanupExpiredTokens(vault *ExtendedVault) error {
 	}
 
 	if cleanedCount > 0 {
-		if err := syncMainVaultToSharedVault(vault); err != nil {
-			return err
-		}
 		fmt.Printf("🧹 Auto-cleaned %d expired/used tokens\n", cleanedCount)
 	}
 
 	return nil
 }
 
-func handleCreateToken(vault *ExtendedVault) {
+func handleCreateToken(vault *ExtendedVault) error {
 	if len(os.Args) < 3 {
 		fmt.Println("Usage: vault create-token --keys=<pattern> --duration=<time> [--permissions=read,write] [--max-uses=N]")
 		fmt.Println("Examples:")
 		fmt.Println("  vault create-token --keys=\"API_*\" --duration=\"2h\" --permissions=\"read\"")
 		fmt.Println("  vault create-token --keys=\"*\" --duration=\"1h\" --permissions=\"read,write\" --max-uses=50")
-		return
+		return errors.New("token command failed")
 	}
 
 	options, err := parseTokenCreationOptions(os.Args[2:])
 	if err != nil {
-		fmt.Printf("❌ %s\n", capitalizeError(err))
-		return
+		return err
 	}
 
+	if vault.TokenManager != nil && len(vault.TokenManager.Tokens) > 0 {
+		original, err := loadTokenMasterKey()
+		if err != nil {
+			return fmt.Errorf("existing grants require the original token key; use authenticated regenerate-token-key to revoke them before replacement: %w", err)
+		}
+		wipeBytes(original)
+	}
 	if vault.TokenManager == nil {
 		vault.TokenManager = &TokenManager{
-			Tokens:    make(map[string]AccessToken),
-			SecretKey: generateRandom(32),
+			Tokens: make(map[string]AccessToken),
 		}
 	}
 
@@ -88,31 +90,20 @@ func handleCreateToken(vault *ExtendedVault) {
 		CreatedAt:   time.Now(),
 	}
 
+	if vault.TokenManager.Tokens == nil {
+		vault.TokenManager.Tokens = map[string]AccessToken{}
+	}
 	vault.TokenManager.Tokens[tokenID] = token
-
-	if err := syncMainVaultToSharedVault(vault); err != nil {
-		fmt.Printf("❌ Failed to sync with shared token vault: %v\n", err)
-		return
-	}
-
-	registry, _ := loadTokenRegistry()
-	registry.Tokens[tokenID] = sharedTokenVault
-	if err := saveTokenRegistry(registry); err != nil {
-		fmt.Printf("❌ Failed to update token registry: %v\n", err)
-		return
-	}
 
 	tokenMasterKey, err := getOrCreateTokenMasterKey()
 	if err != nil {
-		fmt.Printf("❌ Failed to load token master key: %v\n", err)
-		return
+		return fmt.Errorf("failed to load token master key: %w", err)
 	}
 	defer wipeBytes(tokenMasterKey)
 
 	signedToken, err := createShortSignedToken(token, tokenMasterKey)
 	if err != nil {
-		fmt.Printf("❌ Failed to create signed token: %v\n", err)
-		return
+		return err
 	}
 
 	fmt.Printf("✅ Secure synchronized token created!\n")
@@ -124,6 +115,7 @@ func handleCreateToken(vault *ExtendedVault) {
 	fmt.Printf("\n🎟️  Compact Token (use this with 'vault use-token'):\n")
 	printBoxedValue(signedToken)
 	fmt.Printf("\n🔄 Token writes are stored in the shared token vault and imported by master commands.\n")
+	return nil
 }
 
 // parseTokenCreationOptions validates the command-independent token policy.
@@ -185,11 +177,6 @@ func parseTokenCreationOptions(args []string) (tokenCreationOptions, error) {
 	return options, nil
 }
 
-func capitalizeError(err error) string {
-	message := err.Error()
-	return strings.ToUpper(message[:1]) + message[1:]
-}
-
 func generateShortRandomID() string {
 	return vaulttoken.GenerateShortRandomID()
 }
@@ -198,32 +185,28 @@ func createShortSignedToken(token AccessToken, secretKey []byte) (string, error)
 	return vaulttoken.CreateShortSignedToken(token, secretKey)
 }
 
-func handleRevokeToken(vault *ExtendedVault) {
+func handleRevokeToken(vault *ExtendedVault) error {
 	if len(os.Args) < 3 {
 		fmt.Println("Usage: vault revoke-token <token-id>")
-		return
+		return errors.New("token command failed")
 	}
 
 	tokenID := os.Args[2]
 
 	if vault.TokenManager == nil {
 		fmt.Println("❌ No tokens found")
-		return
+		return errors.New("token command failed")
 	}
 
 	if _, exists := vault.TokenManager.Tokens[tokenID]; !exists {
 		fmt.Printf("❌ Token %s not found\n", tokenID)
-		return
+		return errors.New("token command failed")
 	}
 
 	delete(vault.TokenManager.Tokens, tokenID)
 
-	if err := syncMainVaultToSharedVault(vault); err != nil {
-		fmt.Printf("❌ Failed to sync token revocation: %v\n", err)
-		return
-	}
-
 	fmt.Printf("✅ Token %s revoked and removed from shared vault\n", tokenID)
+	return nil
 }
 
 func shortTokenID(tokenID string) string {
@@ -235,11 +218,12 @@ func shortTokenID(tokenID string) string {
 
 func tokenOptions() vaulttoken.Options {
 	return vaulttoken.Options{
-		TokenKeyFile: tokenKeyFile,
-		SaltSize:     saltSize,
-		MasterKey:    getOrCreateTokenMasterKey,
-		Scrypt:       config.ScryptConfig(),
-		KDF:          vaulttoken.SharedVaultKDFConfig(),
+		TokenKeyFile:  tokenKeyFile,
+		SaltSize:      saltSize,
+		MasterKey:     loadTokenMasterKey,
+		ReconcileFile: sharedTokenVault + ".reconcile",
+		Scrypt:        config.ScryptConfig(),
+		KDF:           vaulttoken.SharedVaultKDFConfig(),
 	}
 }
 
@@ -274,7 +258,7 @@ func handleListTokens(vault *ExtendedVault) {
 	}
 
 	fmt.Printf("\n📊 Summary: %d active, %d expired\n", activeCount, expiredCount)
-	fmt.Printf("🔄 All tokens share synchronized data with main vault\n")
+	fmt.Printf("🔄 Shared data covers the union of active token scopes\n")
 	if expiredCount > 0 {
 		fmt.Printf("💡 Run 'vault cleanup-tokens' to remove expired tokens\n")
 	}
@@ -347,7 +331,7 @@ func handleSecurityAudit(vault *ExtendedVault) {
 
 		fmt.Printf("🎫 Tokens: %d active, %d expired\n", activeTokens, expiredTokens)
 		fmt.Println("🔄 Token architecture: shared token vault imported by master commands")
-		fmt.Println("🔒 Token files: AES-256-GCM encrypted with unique keys")
+		fmt.Println("🔒 Shared token state: AES-256-GCM encrypted; the token master key unlocks all retained token scopes")
 		if expiredTokens > 0 {
 			fmt.Println("💡 Consider running 'vault cleanup-tokens'")
 		}

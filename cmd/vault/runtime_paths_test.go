@@ -274,3 +274,120 @@ func captureStderr(t *testing.T, fn func()) string {
 	}
 	return buffer.String()
 }
+
+func TestTokenMigrationMovesBarrierBeforeInterruptedState(t *testing.T) {
+	cwd := t.TempDir()
+	home := t.TempDir()
+	t.Chdir(cwd)
+	for _, name := range []string{sharedTokenVaultName + ".reconcile", sharedTokenVaultName + ".bak", vaultFileName, configFileName, tokenKeyFileName} {
+		if err := os.WriteFile(filepath.Join(cwd, name), []byte("fake-state"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	target := filepath.Join(t.TempDir(), "untouched")
+	if err := os.WriteFile(target, []byte("preserve"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, filepath.Join(home, configFileName)); err != nil {
+		t.Fatal(err)
+	}
+	if err := migrateLegacyRuntimeFiles(home); err == nil {
+		t.Fatal("expected migration to stop at unsafe target")
+	}
+	for _, suffix := range []string{".reconcile", ".bak"} {
+		if _, err := os.Stat(filepath.Join(home, sharedTokenVaultName+suffix)); err != nil {
+			t.Fatalf("barrier/recoverable snapshot not migrated first: %v", err)
+		}
+	}
+	if raw, _ := os.ReadFile(target); string(raw) != "preserve" {
+		t.Fatal("migration modified symlink target")
+	}
+}
+
+func TestTokenMigrationRejectsUnsafeBarrierBeforeMovingMain(t *testing.T) {
+	cwd := t.TempDir()
+	home := t.TempDir()
+	t.Chdir(cwd)
+	if err := os.WriteFile(filepath.Join(cwd, vaultFileName), []byte("fake-main"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(cwd, sharedTokenVaultName+".reconcile"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := migrateLegacyRuntimeFiles(home); err == nil {
+		t.Fatal("ignored unsafe legacy barrier")
+	}
+	if _, err := os.Stat(filepath.Join(home, vaultFileName)); !os.IsNotExist(err) {
+		t.Fatal("migrated main before checking barrier")
+	}
+}
+
+func TestTokenInterruptionArtifactsAreHardenedAndInspected(t *testing.T) {
+	for _, suffix := range []string{".bak", ".tmp", ".reconcile"} {
+		found := false
+		for _, spec := range runtimeHealthFileSpecs() {
+			if spec.name == sharedTokenVaultName+suffix {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("token artifact %s missing from inventory", suffix)
+		}
+	}
+	path := filepath.Join(t.TempDir(), "shared.reconcile")
+	if err := os.Mkdir(path, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := hardenRuntimeFilePermission(path, true); err == nil {
+		t.Fatal("accepted directory as reconciliation barrier")
+	}
+}
+
+func TestTokenMigrationPreservesInterruptedBundleOnContextConflict(t *testing.T) {
+	cwd := t.TempDir()
+	home := t.TempDir()
+	t.Chdir(cwd)
+	for _, name := range []string{sharedTokenVaultName + ".reconcile", sharedTokenVaultName + ".bak", vaultFileName, tokenKeyFileName} {
+		if err := os.WriteFile(filepath.Join(cwd, name), []byte("fake-source"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(home, vaultFileName), []byte("fake-active"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := migrateLegacyRuntimeFiles(home); err == nil {
+		t.Fatal("mixed interrupted state into another runtime")
+	}
+	if _, err := os.Stat(filepath.Join(cwd, sharedTokenVaultName+".bak")); err != nil {
+		t.Fatal("moved the only pending-write copy on context conflict")
+	}
+	if value, _ := os.ReadFile(filepath.Join(home, vaultFileName)); string(value) != "fake-active" {
+		t.Fatal("overwrote active context")
+	}
+}
+
+func TestTokenMigrationRecognizesCanonicalRuntimeAlias(t *testing.T) {
+	physical := t.TempDir()
+	if err := os.Mkdir(filepath.Join(physical, "runtime"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(physical, alias); err != nil {
+		t.Fatal(err)
+	}
+	home := filepath.Join(alias, "runtime")
+	t.Chdir(filepath.Join(physical, "runtime"))
+	for _, name := range []string{vaultFileName, sharedTokenVaultName + ".reconcile"} {
+		if err := os.WriteFile(name, []byte("fake-state"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	output := captureStdout(t, func() {
+		if err := migrateLegacyRuntimeFiles(home); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if output != "" {
+		t.Fatal("treated a canonical runtime alias as legacy migration")
+	}
+}

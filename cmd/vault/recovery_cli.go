@@ -119,6 +119,14 @@ func recoverMasterPassword() error {
 		return errors.New("passwords don't match")
 	}
 
+	if err := beginTokenReconciliation(); err != nil {
+		return err
+	}
+	archive, err := archiveSharedTokenState(newPassword, "recovery")
+	if err != nil {
+		return err
+	}
+	vault.TokenManager = nil
 	vault.Recovery.LastUsed = time.Now()
 	vault.Recovery.UseCount++
 
@@ -126,6 +134,16 @@ func recoverMasterPassword() error {
 		return fmt.Errorf("failed to save vault with new password: %w", err)
 	}
 
+	if err := clearSharedTokenState(); err != nil {
+		return err
+	}
+	if err := finishTokenReconciliation(); err != nil {
+		return err
+	}
+	if archive != "" {
+		fmt.Printf("Token state preserved in a separate archive encrypted with the new password: %s\n", archive)
+	}
+	fmt.Println("Previous token grants revoked; create replacements with the new master password.")
 	fmt.Println("✅ Master password changed successfully!")
 	return nil
 }

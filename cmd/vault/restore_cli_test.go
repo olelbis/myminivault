@@ -186,6 +186,7 @@ func writeRestoreVault(t *testing.T, path string, password []byte, source string
 
 func useRestoreTestRuntime(t *testing.T) func() {
 	t.Helper()
+	previousShared, previousKey, previousRegistry := sharedTokenVault, tokenKeyFile, tokenRegistry
 	previousArgs := os.Args
 	previousConfig := config
 	previousRuntimeHome := runtimeHome
@@ -196,6 +197,10 @@ func useRestoreTestRuntime(t *testing.T) func() {
 
 	dir := t.TempDir()
 	config = vaultconfig.Default
+	config.TokenKeyStorage = vaultconfig.TokenKeyStorageFile
+	sharedTokenVault = filepath.Join(dir, sharedTokenVaultName)
+	tokenKeyFile = filepath.Join(dir, tokenKeyFileName)
+	tokenRegistry = filepath.Join(dir, tokenRegistryName)
 	config.KDF = vaultconfig.KDFScrypt
 	runtimeHome = dir
 	vaultFile = filepath.Join(dir, vaultFileName)
@@ -204,6 +209,7 @@ func useRestoreTestRuntime(t *testing.T) func() {
 	currentRecoveryKeyBytes = nil
 
 	return func() {
+		sharedTokenVault, tokenKeyFile, tokenRegistry = previousShared, previousKey, previousRegistry
 		os.Args = previousArgs
 		config = previousConfig
 		runtimeHome = previousRuntimeHome

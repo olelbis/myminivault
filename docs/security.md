@@ -168,7 +168,9 @@ Security notes for `MYMINIVAULT_HOME`:
 | `vault.db.transaction` | Low | Interrupted-save state confusion | Temporary marker; used only to restore a valid backup or report a clear startup error |
 | `vault.db.recovery` | High | Recovery-encrypted snapshot exposure | High-entropy recovery key, HKDF-SHA256 for new saves, restrictive writes |
 | `vault-token.key` | Critical | Token system compromise | Restrictive writes, `regenerate-token-key`, macOS Keychain support with file fallback |
-| `shared-token-vault.json` and `.bak` | High | Token-access vault exposure | Encrypted current and previous shared vault, HKDF-SHA256 from token master key |
+| `shared-token-vault.json` and temporary `.bak` | High | Exposure of all retained token scopes if the token key is copied | Active read scopes plus authorized pending writes; HKDF-SHA256 encryption; obsolete snapshots removed after successful saves |
+| `shared-token-vault.json.reconcile` | Low | Interrupted token-state update | Durable marker blocks token use until authenticated reconciliation |
+| `.myminivault-recovery-tokens-*` / `.myminivault-restore-tokens-*` | High | Historical token values | Private directories; archives encrypted with the authenticated restore/recovery password |
 | `vault-tokens.json` | Medium | Token registry metadata leakage | Restrictive writes |
 | `rollback-state.json` | Medium | Trusted revision confusion | Restrictive writes, symlink rejection, warning-by-default rollback checks with opt-in blocking |
 | `vault.log` | Medium | Operational metadata leakage | Redacted key/token identifiers, optional logging |
@@ -236,15 +238,17 @@ Current mitigations:
 ### Token Flow
 
 1. `create-token` creates a compact bearer token with scope, expiry, permissions, and max-use limits.
-2. Token metadata and shared vault data are stored in encrypted token runtime files.
+2. The shared vault stores active read scopes, authorized pending writes, grants, and usage; write-only grants do not copy existing plaintext.
 3. `use-token` validates the token and applies allowed read/write operations.
 4. Usage count is persisted only after an authorized token command succeeds.
-5. Master-password commands import staged token writes according to the token sync policy.
+5. Master-password commands durably reconcile pending writes and monotonic counters before pruning grants and rebuilding shared state.
 
 Primary risks:
 
 - a compact token is a bearer credential while valid
-- `vault-token.key` compromise undermines token security
+- copying the file-backed token key and shared vault exposes all retained read scopes and pending writes, bypassing individual bearer-token checks
+- a shared key does not isolate one token scope from another cryptographically
+- idle files are not automatically erased at token expiry; exhausted counters and final-use writes persist until authenticated reconciliation
 - shared token vault sync is local best-effort, not distributed merge
 - token writes may surprise users if they expect fully separate vaults
 
@@ -255,9 +259,12 @@ Current mitigations:
 - signing and shared-vault encryption use distinct HKDF contexts; neither operation uses the raw token master key directly
 - six-field and v2 compact tokens are rejected before accessing token key material or loading the shared vault; revoke and reissue them with the master password
 - key-pattern and permission checks
-- encrypted shared token vault
-- usage-count persistence
-- revocation support
+- scoped encrypted shared state, with obsolete backups removed after successful writes
+- usage counts merged monotonically before cleanup or mirror rebuilds
+- durable reconciliation marker blocks stale grants after interrupted updates
+- deletion tombstones take precedence over timestamp-free or stale shared values
+- restore, password recovery, and authenticated key rotation revoke existing grants
+- read-only token-key lookup and non-mutating key/ciphertext consistency diagnostics
 - documented sync behavior in [Token Sync Policy](token-sync-policy.md)
 
 ### Export And Clipboard Flow
@@ -285,7 +292,7 @@ Current mitigations:
 | Copied encrypted vault file | Mitigated by Argon2id and AES-GCM for new password-based main-vault saves, but weak passwords remain risky |
 | Copied plaintext export | Not mitigated after export; rotate exposed secrets |
 | Stolen compact token | Limited by expiry, max uses, scope, and revocation |
-| Stolen `vault-token.key` | Serious; regenerate token key and treat tokens as compromised |
+| Stolen `vault-token.key` plus shared state | Exposes all retained scoped values/pending writes; authenticate key regeneration, reissue tokens, and rotate exposed secrets |
 | Stolen recovery key and recovery file | Critical for that recovery snapshot; replace recovery setup and rotate sensitive secrets |
 | Malicious modified executable | Out of scope once the user runs it with credentials |
 | Same-user malware | Out of scope |
@@ -327,8 +334,9 @@ If the master password is exposed:
 
 If `vault-token.key` is exposed:
 
-- run `regenerate-token-key`
+- authenticate `regenerate-token-key` with the master password
 - treat existing compact tokens and shared token vault state as compromised
+- rotate exposed secret values; scoping current state cannot undo historical copied full mirrors
 - recreate needed tokens
 
 If a compact token is exposed:

@@ -245,7 +245,7 @@ Restore a backup after previewing its metadata:
 
 Checks local runtime health without asking for the master password. It reports config validity, runtime file permissions, timestamped backup presence, lock-file presence, timestamp-based recovery freshness and compatibility, token files, and log file status.
 
-Sensitive runtime files should normally be readable only by the local user. Startup rejects symlinked sensitive runtime paths and tightens file permissions when possible. `vault doctor` warns when files such as `vault.db`, backups, recovery snapshots, token files, or logs are group/world-readable, and reports symlinked sensitive files as failures. It also warns when `vault.db.recovery` appears older than the main vault, has an unexpected container kind, or was written with crypto parameters that differ from the current config. Because `doctor` does not decrypt secrets, revision-based recovery freshness is shown after unlock in `vault stats` and `vault security-audit`.
+Sensitive runtime files should normally be readable only by the local user. Startup rejects symlinked sensitive runtime paths and tightens file permissions when possible. `vault doctor` warns when files such as `vault.db`, backups, recovery snapshots, token files, or logs are group/world-readable, and reports symlinked sensitive files as failures. It also warns when `vault.db.recovery` appears older than the main vault, has an unexpected container kind, or was written with crypto parameters that differ from the current config. `doctor` also authenticates token ciphertext using the existing file/Keychain key, wipes its temporary plaintext buffer without decoding or displaying values, and reports missing/mismatched keys or interrupted reconciliation. It does not ask for the master password, create keys, or migrate Keychain items. Revision-based recovery freshness still requires unlock in `vault stats` and `vault security-audit`.
 
 ## Runtime Inspection
 
@@ -489,7 +489,7 @@ Regenerate the token master key:
 ./bin/vault regenerate-token-key
 ```
 
-This invalidates all existing tokens.
+This now asks for the master password and confirmation. Pending token writes are saved in the main vault before grants are revoked, shared snapshots removed, and the key replaced. Missing or unreadable existing token state stops the operation instead of silently overwriting it.
 
 If `vault-token.key` is exposed, run `regenerate-token-key` and treat existing tokens and shared-token-vault state as compromised.
 
@@ -500,7 +500,7 @@ The CLI keeps a main vault and a shared token vault:
 - `vault.db` is the main password-protected vault
 - `shared-token-vault.json` is an encrypted shared vault used for token commands
 
-Commands that mutate the main vault, such as `set`, `delete`, `clear`, and `import`, mirror the main vault back to the shared token vault after saving only when token runtime files already exist or token data is configured.
+Authenticated master commands rebuild a scoped mirror after pending writes and counters are saved. Only active read scopes are copied; write-only tokens do not receive existing values. When no active grants remain, shared state and obsolete snapshots are removed after reconciliation. A final-use write remains encrypted and pending until the master can save it.
 
 Token write operations save immediately to the shared token vault. Master-password commands import token-side changes from the shared vault before running, and you can also import them explicitly with:
 
@@ -524,9 +524,16 @@ Sync policy:
 - token writes are staged in `shared-token-vault.json`
 - master commands import staged token writes before they execute
 - ordinary password commands do not create token runtime files until token features are used
-- master mutations mirror the full main vault back to the shared vault after saving once token runtime files exist, so deletes remain deleted
-- conflict handling uses per-key sync timestamps when both vaults have metadata; legacy vaults without metadata fall back to simple import behavior
+- master commands rebuild only active read scopes after saving; deletion tombstones block stale or timestamp-free shared values
+- usage counts never decrease when mirrored; restore and key regeneration invalidate existing grants
+- current shared state imports only marked, authorized pending writes; legacy fallback is restricted to known write grants and never bypasses deletion tombstones
 - when `vault doctor` reports that `shared-token-vault.json` is newer than `vault.db`, run `sync-tokens` to persist staged token writes into the main vault
+
+After upgrading, run `vault sync-tokens` with the master password to scope existing shared state. Existing v3 bearer strings keep their expiry/usage limits; token commands require the upgraded shared state. A `token reconciliation incomplete` error means token use is blocked until an authenticated `sync-tokens` succeeds. A dry run leaves that marker in place.
+
+`restore` preserves pending writes in the pre-restore backup and removes all restored token grants. When the current main is missing or cannot be opened, readable token state is archived separately in a private `.myminivault-restore-tokens-*` directory, encrypted with the backup password. Ordinary commands stop rather than initialize a new vault over orphaned token state. Password recovery also revokes grants and saves readable shared state in a separate private archive encrypted with the new password; it does not import that archive automatically. Treat the printed archive path as a sensitive backup. If existing token state cannot be opened, recovery stops before replacing the main vault.
+
+The shared token key can decrypt the union of retained read scopes and pending writes. Individual token permissions are CLI checks. For Keychain storage, the lifecycle is tested with a simulated backend; live macOS ACL behavior is not claimed as verified. See [Token Sync Policy](token-sync-policy.md).
 
 ## Locking And Concurrent CLI Usage
 

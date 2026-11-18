@@ -9,6 +9,7 @@ import (
 	"time"
 
 	vaultsync "github.com/olelbis/myminivault/internal/sync"
+	vaulttoken "github.com/olelbis/myminivault/internal/token"
 )
 
 func syncSharedVaultToMainVault(mainVault *ExtendedVault) error {
@@ -27,22 +28,31 @@ func syncTokensDryRunRequested() bool {
 }
 
 func previewSharedVaultToMainVault(mainVault *ExtendedVault) error {
-	if _, err := os.Stat(sharedTokenVault); err != nil {
-		if os.IsNotExist(err) {
-			fmt.Println("🔎 Token sync dry run")
-			fmt.Println("No shared token vault found; nothing to import.")
-			return nil
-		}
+	path, err := sharedTokenStatePath()
+	if err != nil {
 		return err
 	}
+	if path == "" {
+		fmt.Println("🔎 Token sync dry run")
+		fmt.Println("No shared token vault found; nothing to import.")
+		return nil
+	}
 
-	sharedVault, err := loadVaultFromTokenFileEncrypted(sharedTokenVault)
+	sharedVault, err := loadVaultFromTokenFileEncrypted(path)
 	if err != nil {
 		return fmt.Errorf("failed to load shared vault: %w", err)
 	}
 
-	preview := vaultsync.PreviewSharedVault(mainVault, sharedVault)
+	view, err := vaulttoken.ImportView(mainVault, sharedVault)
+	if err != nil {
+		return err
+	}
+	preview := vaultsync.PreviewSharedVault(mainVault, view)
 	fmt.Println("🔎 Token sync dry run")
+	fmt.Printf("Token usage counters to persist: %d\n", vaulttoken.PreviewUsageMerge(mainVault, sharedVault))
+	if sharedVault.TokenStateVersion == 0 {
+		fmt.Println("Legacy token state will be scoped during authenticated sync.")
+	}
 	printPreviewKeys("Would import/update", preview.ImportKeys)
 	printPreviewKeys("Would delete", preview.DeleteKeys)
 	printPreviewKeys("Would skip conflicts", preview.ConflictKeys)
@@ -63,16 +73,29 @@ func printPreviewKeys(label string, keys []string) {
 }
 
 func importSharedVaultToMainVault(mainVault *ExtendedVault) (vaultsync.ImportResult, error) {
-	if _, err := os.Stat(sharedTokenVault); err != nil {
+	path, err := sharedTokenStatePath()
+	if err != nil {
+		return vaultsync.ImportResult{}, err
+	}
+	if path == "" {
 		return vaultsync.ImportResult{}, nil
 	}
 
-	sharedVault, err := loadVaultFromTokenFileEncrypted(sharedTokenVault)
+	if mainVault.Metadata.VaultID == "" && mainVault.TokenManager == nil {
+		return vaultsync.ImportResult{}, fmt.Errorf("shared token state exists without an authenticated main vault; restore a backup or recover before continuing")
+	}
+
+	sharedVault, err := loadVaultFromTokenFileEncrypted(path)
 	if err != nil {
 		return vaultsync.ImportResult{}, fmt.Errorf("failed to load shared vault: %w", err)
 	}
 
-	result := vaultsync.ImportSharedVault(mainVault, sharedVault, time.Now())
+	view, err := vaulttoken.ImportView(mainVault, sharedVault)
+	if err != nil {
+		return vaultsync.ImportResult{}, err
+	}
+	result := vaultsync.ImportSharedVault(mainVault, view, time.Now())
+	result.TokensUpdated = vaulttoken.MergeUsage(mainVault, sharedVault)
 
 	if result.Imported > 0 || result.Deleted > 0 {
 		total := result.Imported + result.Deleted
@@ -90,49 +113,27 @@ func importSharedVaultToMainVault(mainVault *ExtendedVault) (vaultsync.ImportRes
 }
 
 func hasImportedTokenChanges(result vaultsync.ImportResult) bool {
-	return result.Imported > 0 || result.Deleted > 0
+	return result.Imported > 0 || result.Deleted > 0 || result.TokensUpdated > 0
 }
 
 func syncMainVaultToSharedVault(vault *ExtendedVault) error {
 	tokenVaultMutex.Lock()
 	defer tokenVaultMutex.Unlock()
-
-	sharedExists := true
-	if _, err := os.Stat(sharedTokenVault); err != nil {
-		if os.IsNotExist(err) {
-			sharedExists = false
-		} else {
-			return err
-		}
+	if !vaulttoken.HasActiveTokens(vault, time.Now()) {
+		return clearSharedTokenState()
 	}
-
-	if !sharedExists && vault.TokenManager == nil {
-		return nil
+	shared := vaulttoken.ScopedSharedVault(vault, time.Now(), false)
+	// The caller has durably reconciled main state and holds the barrier. Retire
+	// stale staging files too, so an interrupted save cannot block every retry.
+	if err := vaulttoken.RemoveSharedVault(sharedTokenVault); err != nil {
+		return err
 	}
-
-	sharedVault := &ExtendedVault{
-		TokenManager: vault.TokenManager,
-		Sync:         vault.Sync,
-		Metadata:     vault.Metadata,
+	if err := saveTokenVaultEncrypted(shared, sharedTokenVault); err != nil {
+		return err
 	}
-
-	if sharedExists {
-		existing, err := loadVaultFromTokenFileEncrypted(sharedTokenVault)
-		if err != nil {
-			return err
-		}
-		sharedVault.TokenManager = existing.TokenManager
-		if vault.TokenManager != nil {
-			sharedVault.TokenManager = vault.TokenManager
-		}
+	registry := &TokenRegistry{VaultPath: vaultFile, SharedVaultPath: sharedTokenVault, Tokens: map[string]string{}}
+	for id := range shared.TokenManager.Tokens {
+		registry.Tokens[id] = sharedTokenVault
 	}
-
-	sharedVault.Data = copyVaultData(vault.Data)
-	sharedVault.Sync = vault.Sync
-
-	return saveTokenVaultEncrypted(sharedVault, sharedTokenVault)
-}
-
-func copyVaultData(data map[string]string) map[string]string {
-	return vaultsync.CopyVaultData(data)
+	return saveTokenRegistry(registry)
 }

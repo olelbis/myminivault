@@ -26,7 +26,7 @@ func handleRestoreCommand(password []byte) error {
 		return fmt.Errorf("backup cannot be read safely: %w", err)
 	}
 
-	candidate, _, err := vaultstorage.LoadBytesFromData(backupData, password, storageOptions())
+	candidate, candidateSalt, err := vaultstorage.LoadBytesFromData(backupData, password, storageOptions())
 	if err != nil {
 		return fmt.Errorf("backup cannot be decrypted with the current password: %w", err)
 	}
@@ -42,17 +42,67 @@ func handleRestoreCommand(password []byte) error {
 		return nil
 	}
 
+	// Preflight the public staging path before modifying any current state.
+	if _, err := os.Lstat(vaultFile + ".restore.tmp"); err == nil {
+		return errors.New("restore staging path already exists")
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	restoredData, err := sanitizedRestoreBytes(candidate, password, candidateSalt)
+	if err != nil {
+		return err
+	}
+	if err := beginTokenReconciliation(); err != nil {
+		return err
+	}
+	statePath, stateErr := sharedTokenStatePath()
+	if stateErr != nil {
+		return stateErr
+	}
+	tokenArchive := ""
+	if statePath != "" {
+		current, salt, currentErr := loadAndDecryptExtendedVaultBytes(password)
+		if currentErr != nil || (current.Metadata.VaultID == "" && current.TokenManager == nil) {
+			tokenArchive, err = archiveSharedTokenState(password, "restore")
+			if err != nil {
+				return err
+			}
+		} else {
+			result, err := importSharedVaultToMainVault(current)
+			if err != nil {
+				return fmt.Errorf("cannot preserve pending token writes before restore: %w", err)
+			}
+			if hasImportedTokenChanges(result) {
+				if err := saveExtendedVaultBytes(current, password, salt); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
 	currentBackup, err := createPreRestoreBackup()
 	if err != nil {
 		return err
 	}
-	if err := replaceVaultWithBackupData(backupData); err != nil {
+	if err := clearSharedTokenState(); err != nil {
+		return err
+	}
+	if err := replaceVaultWithBackupData(restoredData); err != nil {
 		return err
 	}
 	if err := vaultrollback.SaveState(rollbackStateFile, candidate.Metadata); err != nil {
 		return fmt.Errorf("failed to update rollback state after restore: %w", err)
 	}
 
+	if err := finishTokenReconciliation(); err != nil {
+		return err
+	}
+	fmt.Println("Existing token grants revoked.")
+	if tokenArchive != "" {
+		fmt.Printf("Token state preserved in a separate password-encrypted archive: %s\n", tokenArchive)
+	} else if currentBackup != "" {
+		fmt.Println("Pending token writes preserved in the pre-restore backup.")
+	}
 	fmt.Printf("✅ Restored vault from %s\n", backupPath)
 	if currentBackup != "" {
 		fmt.Printf("Previous vault saved as %s\n", currentBackup)

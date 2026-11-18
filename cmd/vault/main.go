@@ -2,11 +2,8 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"log"
 	"os"
-	"strings"
 	"time"
 
 	vaultcommands "github.com/olelbis/myminivault/internal/commands"
@@ -87,23 +84,7 @@ func run() error {
 			return fmt.Errorf("❌ Recovery failed: %w", err)
 		}
 		return nil
-	case "regenerate-token-key":
-		fmt.Print("⚠️  This will invalidate ALL existing tokens. Continue? (yes/no): ")
-		reader := bufio.NewReader(os.Stdin)
-		confirm, _ := reader.ReadString('\n')
-		if strings.TrimSpace(strings.ToLower(confirm)) == "yes" {
-			if err := withVaultLock(func() error {
-				key := generateRandom(32)
-				defer wipeBytes(key)
-				return saveTokenMasterKey(key)
-			}); err != nil {
-				return fmt.Errorf("❌ Failed: %w", err)
-			} else {
-				fmt.Println("✅ New token master key generated")
-				fmt.Println("⚠️  All existing tokens are now invalid")
-			}
-		}
-		return nil
+
 	}
 
 	password, err := readSecurePasswordBytes()
@@ -113,6 +94,9 @@ func run() error {
 	defer wipeBytes(password)
 
 	return withVaultLock(func() error {
+		if command == "regenerate-token-key" {
+			return handleTokenKeyRotation(password)
+		}
 		if command == "restore" {
 			return handleRestoreCommand(password)
 		}
@@ -138,42 +122,54 @@ func runPasswordCommandBytes(command string, password []byte) error {
 	if err := enforceRollbackState(extendedVault); err != nil {
 		return err
 	}
-	tokenImportResult := importTokenChangesBeforePasswordCommand(extendedVault)
-	tokenImportChanged := hasImportedTokenChanges(tokenImportResult)
-
-	if !syncTokensDryRunRequested() {
-		if err := cleanupExpiredTokens(extendedVault); err != nil {
-			log.Printf("Token cleanup warning: %v", err)
-		}
-	}
-
-	recordPasswordCommandAccess(command, extendedVault)
-	saveImportedTokenChanges := func() error {
-		if !tokenImportChanged {
-			return nil
-		}
-		return saveExtendedVaultBytes(extendedVault, password, salt)
-	}
-
-	outcome, err := executePasswordCommand(command, extendedVault, salt, password, saveImportedTokenChanges)
+	tokenImportResult, err := importTokenChangesBeforePasswordCommand(extendedVault)
 	if err != nil {
+		return fmt.Errorf("cannot reconcile token state; original files preserved: %w", err)
+	}
+	if syncTokensDryRunRequested() {
+		_, err := executePasswordCommand(command, extendedVault, salt, password, func() error { return nil })
 		return err
 	}
-	if !outcome.saveVault {
-		return nil
+	if err := beginTokenReconciliation(); err != nil {
+		return err
 	}
-
-	if err := saveExtendedVaultBytes(extendedVault, password, salt); err != nil {
-		return fmt.Errorf("❌ Error saving vault: %w", err)
+	before := 0
+	if extendedVault.TokenManager != nil {
+		before = len(extendedVault.TokenManager.Tokens)
 	}
-
-	if outcome.mirrorShared {
-		if err := syncMainVaultToSharedVault(extendedVault); err != nil {
-			log.Printf("Warning: failed to mirror main vault to shared vault: %v", err)
+	if err := cleanupExpiredTokens(extendedVault); err != nil {
+		return err
+	}
+	after := 0
+	if extendedVault.TokenManager != nil {
+		after = len(extendedVault.TokenManager.Tokens)
+	}
+	// Import and counters become durable before any cleanup or mirror can discard
+	// the shared copy, including when the command only reads main-vault data.
+	if hasImportedTokenChanges(tokenImportResult) || before != after {
+		if err := saveExtendedVaultBytes(extendedVault, password, salt); err != nil {
+			return err
 		}
 	}
-
-	return nil
+	recordPasswordCommandAccess(command, extendedVault)
+	outcome, err := executePasswordCommand(command, extendedVault, salt, password, func() error { return nil })
+	if err != nil {
+		// Discard partial in-memory grant changes after validation/provider errors.
+		// Only the authenticated durable snapshot may be mirrored during repair.
+		if repairErr := repairTokenReconciliation(password); repairErr != nil {
+			return fmt.Errorf("%w; token reconciliation pending: %v", err, repairErr)
+		}
+		return err
+	}
+	if outcome.saveVault {
+		if err := saveExtendedVaultBytes(extendedVault, password, salt); err != nil {
+			return fmt.Errorf("error saving vault: %w", err)
+		}
+	}
+	if err := syncMainVaultToSharedVault(extendedVault); err != nil {
+		return fmt.Errorf("token reconciliation incomplete; run vault sync-tokens: %w", err)
+	}
+	return finishTokenReconciliation()
 }
 
 func enforceRollbackState(vault *ExtendedVault) error {
@@ -203,16 +199,11 @@ func acceptRollbackState(vault *ExtendedVault) error {
 	return nil
 }
 
-func importTokenChangesBeforePasswordCommand(vault *ExtendedVault) vaultsync.ImportResult {
+func importTokenChangesBeforePasswordCommand(vault *ExtendedVault) (vaultsync.ImportResult, error) {
 	if syncTokensDryRunRequested() {
-		return vaultsync.ImportResult{}
+		return vaultsync.ImportResult{}, nil
 	}
-	result, err := importSharedVaultToMainVault(vault)
-	if err != nil {
-		log.Printf("Warning: failed to sync from shared vault: %v", err)
-		return vaultsync.ImportResult{}
-	}
-	return result
+	return importSharedVaultToMainVault(vault)
 }
 
 func recordPasswordCommandAccess(command string, vault *ExtendedVault) {
@@ -293,12 +284,16 @@ func executePasswordCommand(command string, extendedVault *ExtendedVault, salt, 
 		return passwordCommandOutcome{}, handleRefreshRecovery(extendedVault, salt, password)
 
 	case "create-token":
-		handleCreateToken(extendedVault)
+		if err := handleCreateToken(extendedVault); err != nil {
+			return passwordCommandOutcome{}, err
+		}
 	case "list-tokens":
 		handleListTokens(extendedVault)
 		return passwordCommandOutcome{}, saveImportedTokenChanges()
 	case "revoke-token":
-		handleRevokeToken(extendedVault)
+		if err := handleRevokeToken(extendedVault); err != nil {
+			return passwordCommandOutcome{}, err
+		}
 	case "token-info":
 		handleTokenInfo(extendedVault)
 		return passwordCommandOutcome{}, saveImportedTokenChanges()
